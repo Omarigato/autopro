@@ -36,7 +36,7 @@ def list_plans(db: Session = Depends(get_db)) -> list[SubscriptionPlanResponse]:
     return plans
 
 
-@router.get("/me", response_model[OwnerSubscriptionStatusResponse | None])
+@router.get("/me", response_model=OwnerSubscriptionStatusResponse | None)
 def my_subscription_status(
     db: Session = Depends(get_db), current_owner=Depends(get_current_owner)
 ):

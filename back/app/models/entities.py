@@ -92,15 +92,19 @@ class Car(Base):
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     author: Mapped[User] = relationship("User")
+    images: Mapped[list["CarImage"]] = relationship("CarImage", back_populates="car", cascade="all, delete-orphan")
 
 
-class CarPhoto(Base):
-    __tablename__ = "car_photos"
+class CarImage(Base):
+    __tablename__ = "car_images"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"))
     url: Mapped[str] = mapped_column(String(500))
+    image_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Cloudinary public_id
     position: Mapped[int] = mapped_column(Integer, default=0)
+
+    car: Mapped[Car] = relationship("Car", back_populates="images")
 
 
 class Application(Base):

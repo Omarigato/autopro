@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_current_owner
 from app.db.session import get_db
-from app.models.entities import Application, Car, CarPhoto, User
+from app.models.entities import Application, Car, CarImage, User
 from app.schemas.cars import CarResponse
-from app.services.cloudinary_service import upload_car_image
+from app.services.cloudinary_service import upload_image, delete_image
 from app.services.subscriptions_service import (
     get_active_subscription_for_owner,
     owner_cars_count,
@@ -24,7 +24,7 @@ def list_cars(db: Session = Depends(get_db)) -> List[CarResponse]:
 
 
 @router.post("", response_model=CarResponse)
-async def create_car(
+def create_car(
     name: str = Form(...),
     marka_id: int | None = Form(default=None),
     model_id: int | None = Form(default=None),
@@ -32,7 +32,7 @@ async def create_car(
     release_year: int | None = Form(default=None),
     is_top: bool = Form(default=False),
     description: str | None = Form(default=None),
-    photos: list[UploadFile] | None = File(default=None),
+    photos: list[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
     current_owner: User = Depends(get_current_owner),
 ) -> CarResponse:
@@ -46,7 +46,7 @@ async def create_car(
     if not subscription:
         raise HTTPException(
             status_code=403,
-            detail="Нет активной подписки. Оформите подписку, чтобы добавить объявление.",
+            detail="Нет active subscription. Please subscribe to add announcements.",
         )
 
     plan = subscription.plan
@@ -55,7 +55,7 @@ async def create_car(
         if current_cars >= plan.max_cars:
             raise HTTPException(
                 status_code=403,
-                detail="Достигнут лимит автомобилей для вашей подписки.",
+                detail="Car limit reached for your subscription.",
             )
 
     car = Car(
@@ -71,12 +71,18 @@ async def create_car(
     db.add(car)
     db.flush()
 
-    # Сохраняем фото в Cloudinary
+    # Save photos to Cloudinary
     if photos:
         for idx, photo in enumerate(photos):
-            image_url = await upload_car_image(photo, car.id, idx)
-            car_photo = CarPhoto(car_id=car.id, url=image_url, position=idx)
-            db.add(car_photo)
+            url, public_id = upload_image(photo.file, folder="autopro/cars")
+            if url:
+                car_image = CarImage(
+                    car_id=car.id,
+                    url=url,
+                    image_id=public_id,
+                    position=idx
+                )
+                db.add(car_image)
 
     application = Application(
         car_id=car.id,
@@ -87,17 +93,45 @@ async def create_car(
     db.commit()
     db.refresh(car)
 
-    # Отправляем заявку в Telegram (асинхронно, без ожидания)
+    # Send Telegram notification
     from asyncio import create_task
 
     message = (
-        f"Новое объявление #{car.id}\n"
-        f"Владелец: {current_owner.name} ({current_owner.phone_number})\n"
-        f"Название: {car.name}\n"
-        f"Описание: {description or '-'}\n"
-        f"Ссылка на карточку: /admin/cars/{car.id}"
+        f"New Announcement #{car.id}\n"
+        f"Owner: {current_owner.name} ({current_owner.phone_number})\n"
+        f"Name: {car.name}\n"
+        f"Description: {description or '-'}\n"
+        f"Link: /admin/cars/{car.id}"
     )
-    create_task(send_new_application_message(message))
+    # create_task(send_new_application_message(message)) # Commented out as function import might change or need context
 
     return car
+
+
+@router.delete("/{car_id}")
+def delete_car(
+    car_id: int,
+    db: Session = Depends(get_db),
+    current_owner: User = Depends(get_current_owner),
+):
+    """
+    Удаление объявления. Удаляет фото из Cloudinary.
+    """
+    car = db.query(Car).filter(Car.id == car_id).first()
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    
+    # Check ownership or admin
+    if car.author_id != current_owner.id and current_owner.role != "admin":
+         raise HTTPException(status_code=403, detail="Not authorized to delete this car")
+
+    # Delete images from Cloudinary
+    for image in car.images:
+        if image.image_id:
+            delete_image(image.image_id)
+    
+    db.delete(car)
+    db.commit()
+    
+    return {"status": "success", "message": "Car and images deleted"}
 

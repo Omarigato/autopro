@@ -1,8 +1,7 @@
 from functools import lru_cache
-from typing import List
-
+from typing import List, Any
 from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -13,10 +12,12 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
     API_V1_STR: str = "/api/v1"
 
-    # БД – PostgreSQL (по умолчанию используем твою Supabase‑БД)
-    SQLALCHEMY_DATABASE_URI: str = (
-        "postgresql://postgres:AutoPro2026@db.tqeelzduldgfwvazvxry.supabase.co:5432/postgres"
-    )
+    # БД – PostgreSQL (ожидаем через переменную окружения)
+    SQLALCHEMY_DATABASE_URI: str
+
+    # Supabase (для инициализации клиента)
+    SUPABASE_URL: str | None = None
+    SUPABASE_KEY: str | None = None
 
     # JWT
     SECRET_KEY: str = "CHANGE_ME_SECRET"  # заменить в .env
@@ -25,10 +26,10 @@ class Settings(BaseSettings):
 
     # Server
     HOST: str = "0.0.0.0"
-    PORT: int = 8000
+    BACKEND_PORT: int = 8000
 
     # CORS
-    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: Any = ["*"]
 
     # Telegram уведомления
     TELEGRAM_NOTIFICATION_BOT_TOKEN: str | None = None
@@ -50,9 +51,9 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        extra="ignore"
+    )
 
 
 @lru_cache

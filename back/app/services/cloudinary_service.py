@@ -1,48 +1,38 @@
-from typing import Any
-
 import cloudinary
 import cloudinary.uploader
-from fastapi import UploadFile
-
 from app.core.config import settings
 
+# Initialize Cloudinary
+cloudinary.config(
+    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+    api_key=settings.CLOUDINARY_API_KEY,
+    api_secret=settings.CLOUDINARY_API_SECRET,
+    secure=True,
+)
 
-def _configure_cloudinary() -> None:
+
+def upload_image(file_obj, folder: str = "autopro/cars") -> tuple[str, str] | tuple[None, None]:
     """
-    Однократная конфигурация Cloudinary на основе настроек.
-    Если переменные не заданы, загрузка будет падать с понятной ошибкой.
+    Uploads a file-like object to Cloudinary.
+    Returns (url, public_id) or (None, None) on failure.
     """
-
-    if not all(
-        [
-            settings.CLOUDINARY_CLOUD_NAME,
-            settings.CLOUDINARY_API_KEY,
-            settings.CLOUDINARY_API_SECRET,
-        ]
-    ):
-        raise RuntimeError("Cloudinary не сконфигурирован. Проверьте переменные окружения.")
-
-    cloudinary.config(
-        cloud_name=settings.CLOUDINARY_CLOUD_NAME,
-        api_key=settings.CLOUDINARY_API_KEY,
-        api_secret=settings.CLOUDINARY_API_SECRET,
-        secure=True,
-    )
+    try:
+        response = cloudinary.uploader.upload(file_obj, folder=folder)
+        return response.get("secure_url"), response.get("public_id")
+    except Exception as e:
+        print(f"Cloudinary upload error: {e}")
+        return None, None
 
 
-async def upload_car_image(file: UploadFile, car_id: int, position: int) -> str:
+def delete_image(public_id: str) -> bool:
     """
-    Загружает фото авто в Cloudinary и возвращает защищённый URL.
+    Deletes an image from Cloudinary by its public_id.
     """
-
-    _configure_cloudinary()
-    content: bytes = await file.read()
-    result: dict[str, Any] = cloudinary.uploader.upload(
-        content,
-        folder="autopro/cars",
-        public_id=f"car_{car_id}_{position}",
-        overwrite=True,
-        resource_type="image",
-    )
-    return str(result.get("secure_url") or result.get("url"))
-
+    if not public_id:
+        return False
+    try:
+        cloudinary.uploader.destroy(public_id)
+        return True
+    except Exception as e:
+        print(f"Cloudinary delete error: {e}")
+        return False

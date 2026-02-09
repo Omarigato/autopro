@@ -1,42 +1,23 @@
-version: '3.8'
-
 services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: autopro
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   back:
     build: ./back
     ports:
-      - "8000:8000"
-    environment:
-      - SQLALCHEMY_DATABASE_URI=postgresql://postgres:password@db:5432/autopro
-      - POSTGRES_SERVER=db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=autopro
-      # Override any other necessary envs
-    depends_on:
-      db:
-        condition: service_healthy
-    command: sh -c "python -m app.init_db && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
+    env_file:
+      - .env
+    command: sh -c "python -m app.init_db && uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000}"
 
   front:
-    build: ./front
+    build:
+      context: ./front
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
-      - NEXT_PUBLIC_API_URL=/api/v1
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
     depends_on:
       - back
       
@@ -49,6 +30,3 @@ services:
     depends_on:
       - front
       - back
-
-volumes:
-  postgres_data:

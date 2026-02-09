@@ -36,6 +36,3 @@ class OwnerSubscriptionStatusResponse(BaseModel):
     started_at: datetime | None
     valid_until: datetime | None
     trial_until: datetime | None
-
-*** End Patch***"} -->
-+++++++++assistant to=functions.ApplyPatchобритuser to=functions.ApplyPatchicipants +#+#+#+#+#+assistant to=functions.ApplyPatch.SerializedNameյա to=functions.ApplyPatchัจ to=functions.ApplyPatchassistant to=functions.ApplyPatch	RTLRassistant to=functions.ApplyPatch:@"%@"Overallassistant to=functions.ApplyPatchschirm to=functions.ApplyPatchassistant to=functions.ApplyPatch((&___assistant to=functions.ApplyPatch:-------------</assistant to=functions.ApplyPatch​ន to=functions.ApplyPatchassistant to=functions.ApplyPatch RichTextBox to=functions.ApplyPatchassistant to=functions.ApplyPatch:@"%@*** Begin Patch
