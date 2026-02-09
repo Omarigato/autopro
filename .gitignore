@@ -1,0 +1,38 @@
+# General
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Checkpoints
+.ipynb_checkpoints/
+
+# Frontend (Next.js)
+front/node_modules/
+front/.next/
+front/build/
+front/dist/
+front/.vercel/
+front/*.log
+front/coverage/
+
+# Backend (Python/FastAPI)
+back/__pycache__/
+back/*.py[cod]
+back/*$py.class
+back/venv/
+back/.venv/
+back/env/
+back/.env
+back/.pytest_cache/
+back/.coverage
+back/htmlcov/

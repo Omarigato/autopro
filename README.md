@@ -26,3 +26,18 @@ uvicorn app.main:app --reload
 ```
 
 Основной API: `http://localhost:8000/api/v1`.
+
+## Запуск через Docker
+
+Запуск всего проекта одной командой:
+
+```bash
+docker-compose up --build -d
+```
+
+После запуска:
+- Frontend: `http://localhost`
+- Backend API: `http://localhost/api/`
+- API документация: `http://localhost/docs`
+
+
