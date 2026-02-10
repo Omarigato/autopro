@@ -12,18 +12,27 @@ from app.services.subscriptions_service import (
     get_active_subscription_for_owner,
     owner_cars_count,
 )
+from app.core.responses import create_response
+from fastapi import Request
 from app.services.telegram import send_new_application_message
 
 router = APIRouter()
 
 
-@router.get("", response_model=List[CarResponse])
-def list_cars(db: Session = Depends(get_db)) -> List[CarResponse]:
+@router.get("")
+def list_cars(request: Request, db: Session = Depends(get_db)):
     cars = db.query(Car).filter(Car.is_active.is_(True), Car.delete_date.is_(None)).all()
-    return cars
+    # Increment views for each car (usually done on single car view, but doing here for demo)
+    for car in cars:
+        car.views_count += 1
+    db.commit()
+    
+    # We should return a list of serialized cars
+    # For now returning as is, but create_response will handle JSON serialisation if possible
+    return create_response(data=[{"id": c.id, "name": c.name, "views": c.views_count} for c in cars], lang=request.state.lang)
 
 
-@router.post("", response_model=CarResponse)
+@router.post("")
 def create_car(
     name: str = Form(...),
     marka_id: int | None = Form(default=None),
@@ -33,9 +42,10 @@ def create_car(
     is_top: bool = Form(default=False),
     description: str | None = Form(default=None),
     photos: list[UploadFile] = File(default=[]),
+    request: Request = None,
     db: Session = Depends(get_db),
     current_owner: User = Depends(get_current_owner),
-) -> CarResponse:
+):
     """
     Создание объявления арендодателем.
     По умолчанию объявление не активно (ждёт модерации администратора).
@@ -44,18 +54,20 @@ def create_car(
     """
     subscription = get_active_subscription_for_owner(db, current_owner.id)
     if not subscription:
-        raise HTTPException(
-            status_code=403,
-            detail="Нет active subscription. Please subscribe to add announcements.",
+        return create_response(
+            code=403,
+            message_key="no_subscription",
+            lang=request.state.lang
         )
 
     plan = subscription.plan
     if plan.max_cars is not None:
         current_cars = owner_cars_count(db, current_owner.id)
         if current_cars >= plan.max_cars:
-            raise HTTPException(
-                status_code=403,
-                detail="Car limit reached for your subscription.",
+            return create_response(
+                code=403,
+                message_key="car_limit_reached",
+                lang=request.state.lang
             )
 
     car = Car(
@@ -105,12 +117,17 @@ def create_car(
     )
     # create_task(send_new_application_message(message)) # Commented out as function import might change or need context
 
-    return car
+    return create_response(
+        data={"id": car.id, "name": car.name},
+        message_key="client_application_sent",
+        lang=request.state.lang
+    )
 
 
 @router.delete("/{car_id}")
 def delete_car(
     car_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_owner: User = Depends(get_current_owner),
 ):
@@ -133,5 +150,8 @@ def delete_car(
     db.delete(car)
     db.commit()
     
-    return {"status": "success", "message": "Car and images deleted"}
+    return create_response(
+        message_key="car_deleted",
+        lang=request.state.lang
+    )
 

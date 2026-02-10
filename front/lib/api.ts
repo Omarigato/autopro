@@ -8,15 +8,34 @@ export const apiClient = axios.create({
   withCredentials: false
 });
 
-// В клиентском коде автоматически добавляем Bearer‑токен, если он есть в localStorage
-if (typeof window !== "undefined") {
-  apiClient.interceptors.request.use((config) => {
+// Добавляем Bearer‑токен
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
     const token = window.localStorage.getItem("token");
     if (token) {
-      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
     }
-    return config;
-  });
-}
+    // Set language header from local storage or default to 'ru'
+    const lang = window.localStorage.getItem("lang") || "ru";
+    config.params = { ...config.params, lang };
+  }
+  return config;
+});
+
+// Интерцептор для обработки унифицированного ответа
+apiClient.interceptors.response.use(
+  (response) => {
+    // Если бэкенд вернул { data, code, message }, пробрасываем data
+    if (response.data && "data" in response.data) {
+      return response.data;
+    }
+    return response;
+  },
+  (error) => {
+    if (error.response?.data) {
+      return Promise.reject(error.response.data);
+    }
+    return Promise.reject(error);
+  }
+);
 

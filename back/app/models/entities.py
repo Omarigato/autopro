@@ -21,8 +21,13 @@ class Dictionary(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
     code: Mapped[str] = mapped_column(String(100), index=True)
+    type: Mapped[str] = mapped_column(String(50), index=True)  # MARKA, MODEL, CATEGORY, etc.
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    parent: Mapped["Dictionary | None"] = relationship("Dictionary", remote_side=[id])
+    translations: Mapped[list["DictionaryTranslation"]] = relationship("DictionaryTranslation", back_populates="dictionary")
 
 
 class Client(Base):
@@ -50,11 +55,16 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
-    login: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    phone_number: Mapped[str] = mapped_column(String(30))
-    password_hash: Mapped[str] = mapped_column(String(255))
+    login: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    phone_number: Mapped[str | None] = mapped_column(String(30), unique=True, index=True, nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(50), default="owner")  # owner, admin
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    otp_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    otp_expiry: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -86,6 +96,7 @@ class Car(Base):
     bin: Mapped[str | None] = mapped_column(String(50))
     release_year: Mapped[int | None] = mapped_column(Integer)
     is_top: Mapped[bool] = mapped_column(Boolean, default=False)
+    views_count: Mapped[int] = mapped_column(Integer, default=0)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)  # активирует админ
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -147,6 +158,8 @@ class DictionaryTranslation(Base):
     dictionary_id: Mapped[int] = mapped_column(ForeignKey("dictionaries.id"))
     lang: Mapped[str] = mapped_column(String(5))  # ru, en, kk и т.п.
     name: Mapped[str] = mapped_column(String(255))
+
+    dictionary: Mapped[Dictionary] = relationship("Dictionary", back_populates="translations")
 
 
 class PaymentAccount(Base):
@@ -255,4 +268,21 @@ class PaymentTransaction(Base):
     subscription: Mapped[OwnerSubscription] = relationship(
         "OwnerSubscription", back_populates="transactions"
     )
+
+
+class OTPVerification(Base):
+    """
+    История и логи верификации через OTP (WhatsApp/SMS/Email).
+    Позволяет фиксировать все попытки входа и сброса пароля.
+    """
+
+    __tablename__ = "otp_verifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    target: Mapped[str] = mapped_column(String(255), index=True)  # номер телефона или email
+    code: Mapped[str] = mapped_column(String(10))
+    type: Mapped[str] = mapped_column(String(50))  # login, register, password_reset
+    is_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

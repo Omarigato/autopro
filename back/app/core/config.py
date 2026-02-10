@@ -52,7 +52,9 @@ class Settings(BaseSettings):
         return v
 
     model_config = SettingsConfigDict(
-        extra="ignore"
+        extra="ignore",
+        env_file=(".env", "../.env"),
+        env_file_encoding="utf-8"
     )
 
 

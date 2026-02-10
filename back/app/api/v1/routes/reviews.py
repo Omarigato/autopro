@@ -1,19 +1,18 @@
-from typing import List
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
-
 from app.db.session import get_db
 from app.models.entities import Review
-from app.schemas.reviews import ReviewCreateRequest, ReviewResponse
+from app.schemas.reviews import ReviewCreateRequest
+from app.core.responses import create_response
 
 router = APIRouter()
 
-
-@router.post("", response_model=ReviewResponse)
+@router.post("")
 def create_review(
-    payload: ReviewCreateRequest, db: Session = Depends(get_db)
-) -> ReviewResponse:
+    payload: ReviewCreateRequest, 
+    request: Request,
+    db: Session = Depends(get_db)
+):
     review = Review(
         car_id=payload.car_id,
         car_owner_id=payload.car_owner_id,
@@ -23,12 +22,10 @@ def create_review(
     )
     db.add(review)
     db.commit()
-    db.refresh(review)
-    return review
+    return create_response(message="Review added", lang=request.state.lang)
 
-
-@router.get("/car/{car_id}", response_model=List[ReviewResponse])
-def list_reviews_for_car(car_id: int, db: Session = Depends(get_db)) -> List[ReviewResponse]:
+@router.get("/car/{car_id}")
+def list_reviews_for_car(car_id: int, request: Request, db: Session = Depends(get_db)):
     reviews = db.query(Review).filter(Review.car_id == car_id).all()
-    return reviews
+    return create_response(data=[{"id": r.id, "rating": r.rating, "comment": r.comment} for r in reviews], lang=request.state.lang)
 

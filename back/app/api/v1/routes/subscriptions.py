@@ -12,52 +12,50 @@ from app.models.entities import (
 )
 from app.schemas.subscriptions import (
     BuySubscriptionRequest,
-    BuySubscriptionResponse,
-    OwnerSubscriptionStatusResponse,
-    SubscriptionPlanResponse,
 )
 from app.services.kassa24_service import Kassa24Error, create_kassa24_payment
 from app.services.subscriptions_service import (
     activate_subscription_after_success_payment,
     get_active_subscription_for_owner,
 )
+from app.core.responses import create_response
 
 router = APIRouter()
 
-
-@router.get("/plans", response_model=list[SubscriptionPlanResponse])
-def list_plans(db: Session = Depends(get_db)) -> list[SubscriptionPlanResponse]:
+@router.get("/plans")
+def list_plans(request: Request, db: Session = Depends(get_db)):
     plans = (
         db.query(SubscriptionPlan)
         .filter(SubscriptionPlan.is_active.is_(True))
         .order_by(SubscriptionPlan.price_kzt.asc())
         .all()
     )
-    return plans
+    return create_response(data=[{
+        "id": p.id, "name": p.name, "price": p.price_kzt, "period": p.period_days
+    } for p in plans], lang=request.state.lang)
 
-
-@router.get("/me", response_model=OwnerSubscriptionStatusResponse | None)
+@router.get("/me")
 def my_subscription_status(
+    request: Request,
     db: Session = Depends(get_db), current_owner=Depends(get_current_owner)
 ):
     subscription = get_active_subscription_for_owner(db, current_owner.id)
     if not subscription:
-        return None
-    return OwnerSubscriptionStatusResponse(
-        plan=SubscriptionPlanResponse.model_validate(subscription.plan),
-        status=subscription.status,
-        started_at=subscription.started_at,
-        valid_until=subscription.valid_until,
-        trial_until=subscription.trial_until,
-    )
+        return create_response(data=None, lang=request.state.lang)
+    
+    return create_response(data={
+        "plan_name": subscription.plan.name,
+        "status": subscription.status,
+        "valid_until": subscription.valid_until,
+    }, lang=request.state.lang)
 
-
-@router.post("/buy", response_model=BuySubscriptionResponse)
+@router.post("/buy")
 async def buy_subscription(
     payload: BuySubscriptionRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_owner=Depends(get_current_owner),
-) -> BuySubscriptionResponse:
+):
     """
     Покупка подписки (Lite / Premium).
     Сейчас поддерживается только провайдер Kassa24.
@@ -68,13 +66,10 @@ async def buy_subscription(
         .first()
     )
     if not plan:
-        raise HTTPException(status_code=404, detail="Тариф подписки не найден")
+        return create_response(code=404, message="Subscription plan not found", lang=request.state.lang)
 
     if payload.provider != "kassa24":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пока поддерживается только оплата через Kassa24",
-        )
+        return create_response(code=400, message="Provider not supported", lang=request.state.lang)
 
     subscription = OwnerSubscription(
         owner_id=current_owner.id,
@@ -101,21 +96,17 @@ async def buy_subscription(
             db=db, transaction=transaction, subscription=subscription, plan=plan
         )
     except Kassa24Error as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
-        ) from exc
+        return create_response(code=502, message=str(exc), lang=request.state.lang)
 
     transaction.payment_url = payment_url
     transaction.external_id = external_id
     db.add(transaction)
     db.commit()
-    db.refresh(transaction)
 
-    return BuySubscriptionResponse(
-        transaction_id=transaction.id,
-        payment_url=transaction.payment_url,
-    )
+    return create_response(data={
+        "transaction_id": transaction.id,
+        "payment_url": transaction.payment_url,
+    }, lang=request.state.lang)
 
 
 @router.post("/payments/kassa24/callback")

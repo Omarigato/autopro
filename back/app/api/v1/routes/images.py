@@ -1,30 +1,24 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, Request
 from app.services.cloudinary_service import upload_image, delete_image
+from app.core.responses import create_response
 
 router = APIRouter()
 
-@router.post("/upload", response_model=dict)
-async def upload_car_image(file: UploadFile = File(...)):
-    """
-    Uploads an image to Cloudinary and returns its URL and public_id.
-    """
+@router.post("/upload")
+async def upload_car_image(request: Request, file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
+        return create_response(code=400, message="File must be an image", lang=request.state.lang)
 
     url, public_id = upload_image(file.file, folder="autopro/cars")
-    
     if not url:
-        raise HTTPException(status_code=500, detail="Failed to upload image")
+        return create_response(code=500, message="Upload failed", lang=request.state.lang)
     
-    return {"url": url, "image_id": public_id}
+    return create_response(data={"url": url, "image_id": public_id}, lang=request.state.lang)
 
 @router.delete("/{image_id}")
-async def delete_car_image(image_id: str):
-    """
-    Deletes an image from Cloudinary by public_id.
-    """
+async def delete_car_image(request: Request, image_id: str):
     success = delete_image(image_id)
     if not success:
-        raise HTTPException(status_code=400, detail="Failed to delete image")
+        return create_response(code=400, message="Delete failed", lang=request.state.lang)
     
-    return {"status": "success"}
+    return create_response(message="Deleted", lang=request.state.lang)
