@@ -15,22 +15,21 @@ import {
     List as ListIcon,
     X
 } from "lucide-react";
-import { apiClient } from "@/lib/api";
-import { getCachedDictionaries } from "@/lib/dictionaries";
 import { useTranslation } from "@/lib/translations";
 import Link from "next/link";
 import Image from "next/image";
+import { useCars } from "@/lib/hooks/useCars";
+import { useFullDictionaries } from "@/lib/hooks/useDictionaries";
+import { useAppState } from "@/lib/store";
 
 function CatalogContent() {
     const searchParams = useSearchParams();
     const initialCategory = searchParams.get("category");
+    const { lang } = useAppState();
 
-    const [cars, setCars] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [lang, setLang] = useState("ru");
-    const [showFilters, setShowFilters] = useState(false);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
+    const [showFilters, setShowFilters] = useState(false);
+    
     // Filters logic
     const [filters, setFilters] = useState({
         category: initialCategory || "",
@@ -40,57 +39,23 @@ function CatalogContent() {
         fuel: ""
     });
 
-    const [dictionaries, setDictionaries] = useState<any>({
-        categories: [],
-        marks: [],
-        transmissions: [],
-        fuels: []
-    });
+    const { data: cars = [], isLoading: carsLoading } = useCars(filters);
+    const { data: dictionaries, isLoading: dictLoading } = useFullDictionaries();
 
     const t = useTranslation(lang);
-
-    useEffect(() => {
-        setLang(window.localStorage.getItem("lang") || "ru");
-
-        const fetchAll = async () => {
-            const [categories, marks, transmissions, fuels] = await Promise.all([
-                getCachedDictionaries("CATEGORY"),
-                getCachedDictionaries("MARKA"),
-                getCachedDictionaries("TRANSMISSION"),
-                getCachedDictionaries("FUEL")
-            ]);
-
-            setDictionaries({
-                categories,
-                marks,
-                transmissions,
-                fuels
-            });
-        };
-
-        fetchAll();
-        fetchCars();
-    }, []);
-
-    const fetchCars = async () => {
-        setLoading(true);
-        try {
-            const res: any = await apiClient.get("/cars");
-            setCars(res || []);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleFilterChange = (name: string, value: string) => {
         setFilters(prev => ({ ...prev, [name]: value }));
     };
 
-    const filteredCars = cars.filter(car => {
+    // Filter cars client-side as well if API doesn't support complex filtering yet
+    // Or if useCars already handles it via query params. 
+    // Assuming useCars passes filters to API, let's just use 'cars' directly.
+    // But for now, let's keep the client-side filtering logic as a backup or refinement
+    const filteredCars = cars.filter((car: any) => {
         if (filters.category && car.category_id && car.category_id.toString() !== filters.category) return false;
-        // Simple search logic for demo
+         // logic for price, etc.
+         if (filters.priceMax && car.price_per_day > Number(filters.priceMax)) return false;
         return true;
     });
 
@@ -151,7 +116,7 @@ function CatalogContent() {
                                     >
                                         Все виды
                                     </button>
-                                    {dictionaries.categories.map((c: any) => (
+                                    {dictionaries?.categories?.map((c: any) => (
                                         <button
                                             key={c.id}
                                             onClick={() => handleFilterChange("category", c.id.toString())}
@@ -178,20 +143,21 @@ function CatalogContent() {
                                 </div>
                             </div>
 
-                            <button onClick={fetchCars} className="btn-primary w-full text-xs !py-4 shadow-xl shadow-primary/10">Применить</button>
+                            {/* No explict "Apply" button needed if using SWR/React Query with auto-fetch, 
+                                but keep it for UX or manual triggering if desired (currently hooks auto-refetch on key change) */}
                         </div>
                     </div>
                 </aside>
 
                 {/* Grid */}
                 <div className="lg:col-span-3">
-                    {loading ? (
+                    {carsLoading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {[1, 2, 3, 4].map(i => <div key={i} className="aspect-[4/5] bg-slate-50 animate-pulse rounded-[3rem]" />)}
                         </div>
                     ) : filteredCars.length > 0 ? (
                         <div className={`grid gap-8 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                            {filteredCars.map((car) => (
+                            {filteredCars.map((car: any) => (
                                 <Link
                                     key={car.id}
                                     href={`/cars/${car.id}`}

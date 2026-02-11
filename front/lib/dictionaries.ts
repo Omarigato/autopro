@@ -1,28 +1,42 @@
-import { apiClient } from "./api";
+import { apiClient } from "@/lib/api";
 
-let dictionaryCache: Record<string, any> = {};
+const CACHE_DURATION = 1000 * 60 * 60; // 1 час
+const CACHE_KEY_PREFIX = "dict_";
 
-export async function getCachedDictionaries(type: string, parentId?: string | number) {
-    const cacheKey = parentId ? `${type}_${parentId}` : type;
+export const getCachedDictionaries = async (
+  type: string,
+  parentId?: number
+) => {
+    // Only run on client
+    if (typeof window === 'undefined') return [];
 
-    if (dictionaryCache[cacheKey]) {
-        return dictionaryCache[cacheKey];
+    let cacheKey = `${CACHE_KEY_PREFIX}${type}`;
+    if (parentId) cacheKey += `_${parentId}`;
+
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+        try {
+            const { data, timestamp } = JSON.parse(cached);
+            if (Date.now() - timestamp < CACHE_DURATION) {
+                return data;
+            }
+        } catch (e) {
+            localStorage.removeItem(cacheKey);
+        }
     }
-
-    const endpoint = parentId
-        ? `/dictionaries?type=${type}&parent_id=${parentId}`
-        : `/dictionaries?type=${type}`;
 
     try {
-        const res: any = await apiClient.get(endpoint);
-        dictionaryCache[cacheKey] = res || [];
-        return dictionaryCache[cacheKey];
+        const params: any = { type };
+        if (parentId) params.parent_id = parentId;
+        
+        // Ensure endpoint is correct based on backend. Usually /dictionaries?type=...
+        const res: any = await apiClient.get("/dictionaries", { params });
+        const data = res?.data || res || [];
+
+        localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
+        return data;
     } catch (e) {
-        console.error(`Failed to fetch dict ${type}`, e);
+        console.error(`Failed to fetch dictionary ${type}`, e);
         return [];
     }
-}
-
-export function clearDictionaryCache() {
-    dictionaryCache = {};
-}
+};

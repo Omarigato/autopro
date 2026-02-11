@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ShieldCheck,
@@ -17,39 +16,14 @@ import {
   Check,
   ChevronRight
 } from "lucide-react";
-import { apiClient } from "@/lib/api";
-
-type Car = {
-  id: number;
-  name: string;
-  images: { id: number; url: string }[];
-  release_year?: number;
-  description?: string;
-  views?: number;
-};
+import { useCar } from "@/lib/hooks/useCars";
 
 export default function CarDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const id = Number(params?.id);
-  const [car, setCar] = useState<Car | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    // Standard detail fetch 
-    apiClient
-      .get<Car>(`/cars/${id}`)
-      .then((res: any) => {
-        setCar(res.data);
-      })
-      .catch(() => {
-        // Fallback or handle error
-        setCar(null);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
+  
+  const { data: car, isLoading: loading } = useCar(id);
 
   if (loading) {
     return (
@@ -262,4 +236,3 @@ export default function CarDetailsPage() {
     </div>
   );
 }
-

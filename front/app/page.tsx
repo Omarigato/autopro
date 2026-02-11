@@ -16,27 +16,24 @@ import {
   Clock,
   Search
 } from "lucide-react";
-import { apiClient } from "@/lib/api";
 import { useTranslation } from "@/lib/translations";
-import { getCachedDictionaries } from "@/lib/dictionaries";
-
-type Car = {
-  id: number;
-  name: string;
-  images: { id: number; url: string }[];
-  release_year?: number;
-  price?: number;
-  views?: number;
-};
+import { useAppState } from "@/lib/store";
+import { useCars } from "@/lib/hooks/useCars";
+import { useDictionaries } from "@/lib/hooks/useDictionaries";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 export default function HomePage() {
-  const [cars, setCars] = useState<Car[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lang, setLang] = useState("ru");
-  const [categories, setCategories] = useState<any[]>([]);
+  const { lang } = useAppState();
+  const t = useTranslation(lang);
+  
+  const { data: cars = [], isLoading: carsLoading } = useCars();
+  const { data: dictionaries } = useDictionaries();
+  const categories = dictionaries?.categories || [];
+
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const t = useTranslation(lang);
 
   const ICON_MAP: Record<string, any> = {
     Car: CarIcon,
@@ -57,19 +54,6 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    setLang(window.localStorage.getItem("lang") || "ru");
-
-    // Загрузка категорий из словаря с кэшированием
-    getCachedDictionaries("CATEGORY")
-      .then(res => setCategories(res))
-      .catch(() => setCategories([]));
-
-    apiClient
-      .get<Car[]>("/cars")
-      .then((res: any) => setCars(res || []))
-      .catch(() => setCars([]))
-      .finally(() => setLoading(false));
-
     (window as any).toggleSearch = () => setShowSearch(prev => !prev);
   }, []);
 
@@ -93,22 +77,23 @@ export default function HomePage() {
               autoFocus
               type="text"
               placeholder="Поиск по марке, модели или адресу..."
-              className="flex-1 py-4 bg-transparent border-none focus:ring-0 text-lg font-bold"
+              className="flex-1 py-4 bg-transparent border-none focus:ring-0 text-lg font-bold outline-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setShowSearch(false)}
-              className="p-3 hover:bg-slate-50 rounded-2xl text-slate-400 font-bold text-sm px-6"
+              className="rounded-2xl text-slate-400 font-bold text-sm px-6 hover:bg-slate-50"
             >
               Закрыть
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {/* Hero Section */}
-      <section className="relative h-[400px] md:h-[500px] rounded-[3rem] overflow-hidden group">
+      <section className="relative h-[400px] md:h-[500px] rounded-[3rem] overflow-hidden group mx-4 md:mx-6 mt-4">
         <Image
           src="https://res.cloudinary.com/drtsxey7d/image/upload/v1770773855/full_bihln0.jpg"
           alt="Hero background"
@@ -130,9 +115,11 @@ export default function HomePage() {
             </p>
 
             <div className="pt-4 flex flex-wrap gap-4">
-              <Link href="/catalog" className="btn-primary flex items-center gap-2">
-                {t("go_to_catalog")} <ChevronRight size={18} />
-              </Link>
+              <Button asChild className="bg-accent hover:bg-accent/90 text-white rounded-2xl h-12 px-8 text-base font-bold shadow-lg shadow-accent/20">
+                <Link href="/catalog" className="flex items-center gap-2">
+                  {t("go_to_catalog")} <ChevronRight size={18} />
+                </Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -143,7 +130,7 @@ export default function HomePage() {
         <div className="flex justify-between items-end mb-8">
           <div>
             <h2 className="text-2xl font-black tracking-tight">{t("categories")}</h2>
-            <p className="text-slate-400 text-sm font-medium mt-1">{t("find_what_you_need")}</p>
+            <p className="text-muted-foreground text-sm font-medium mt-1">{t("find_what_you_need")}</p>
           </div>
         </div>
         <div className="grid grid-cols-3 md:grid-cols-6 gap-4 md:gap-6">
@@ -156,12 +143,12 @@ export default function HomePage() {
               <Link
                 href={`/catalog?category=${cat.id}`}
                 key={cat.id}
-                className="group flex flex-col items-center gap-3 p-6 bg-white rounded-[2rem] border border-slate-100 shadow-premium transition-all hover:shadow-2xl hover:-translate-y-2"
+                className="group flex flex-col items-center gap-3 p-6 bg-card rounded-[2rem] border border-border shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300"
               >
                 <div className={`p-4 rounded-2xl transition-all duration-300 ${colorClass} group-hover:scale-110 group-hover:rotate-6`}>
                   <Icon size={32} strokeWidth={1.5} />
                 </div>
-                <span className="text-xs md:text-sm font-extrabold text-primary tracking-tight">{name}</span>
+                <span className="text-xs md:text-sm font-extrabold text-foreground tracking-tight text-center">{name}</span>
               </Link>
             );
           })}
@@ -172,16 +159,16 @@ export default function HomePage() {
       < section className="container-page !py-0" >
         <div className="flex justify-between items-end mb-8">
           <div>
-            <h2 className="text-2xl font-black tracking-tight">Топ предложений</h2>
-            <p className="text-slate-400 text-sm font-medium mt-1">Отобранные автомобили с высоким рейтингом</p>
+            <h2 className="text-2xl font-black tracking-tight">{t("featured_ads")}</h2>
+            <p className="text-muted-foreground text-sm font-medium mt-1">{t("popular_now")}</p>
           </div>
           <Link href="/catalog" className="text-accent font-bold text-sm hover:underline flex items-center gap-1">
-            Все объявления <ChevronRight size={14} />
+            {t("cat_more")} <ChevronRight size={14} />
           </Link>
         </div>
 
         {
-          loading ? (
+          carsLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-[400px] rounded-3xl bg-slate-100 animate-pulse" />
@@ -193,59 +180,61 @@ export default function HomePage() {
                 <Link
                   key={car.id}
                   href={`/cars/${car.id}`}
-                  className="card-premium group"
+                  className="group block"
                 >
-                  <div className="relative h-64 w-full">
-                    {car.images && car.images.length > 0 ? (
-                      <Image
-                        src={car.images[0].url}
-                        alt={car.name}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
-                        <CarIcon className="w-16 h-16 text-slate-200" />
+                  <Card className="rounded-3xl border-border overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full">
+                    <div className="relative h-64 w-full">
+                      {car.images && car.images.length > 0 ? (
+                        <Image
+                          src={car.images[0].url}
+                          alt={car.name}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
+                          <CarIcon className="w-16 h-16 text-slate-200" />
+                        </div>
+                      )}
+                      <div className="absolute top-4 left-4 flex gap-2">
+                        <span className="px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-primary shadow-sm">
+                          PREMIUM
+                        </span>
                       </div>
-                    )}
-                    <div className="absolute top-4 left-4 flex gap-2">
-                      <span className="px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-primary shadow-sm">
-                        PREMIUM
-                      </span>
-                    </div>
-                    <div className="absolute bottom-4 right-4 h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-lg transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                      <ChevronRight className="text-accent" size={20} />
-                    </div>
-                  </div>
-
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-bold text-xl leading-tight truncate">{car.name}</h3>
-                      <div className="flex items-center gap-1 text-xs font-bold text-slate-400">
-                        <Star size={12} className="text-warning fill-warning" />
-                        <span>4.8</span>
+                      <div className="absolute bottom-4 right-4 h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-lg transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                        <ChevronRight className="text-accent" size={20} />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs font-bold text-slate-400 mb-6">
-                      <div className="flex items-center gap-1">
-                        <MapPin size={12} /> Алматы
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-xl leading-tight truncate">{car.name}</h3>
+                        <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground">
+                          <Star size={12} className="text-warning fill-warning" />
+                          <span>4.8</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Clock size={12} /> {car.release_year || '2022'}г.
-                      </div>
-                    </div>
 
-                    <div className="pt-5 border-t border-slate-50 flex items-center justify-between">
-                      <div>
-                        <span className="text-2xl font-black text-primary">15 000 ₸</span>
-                        <span className="text-xs font-bold text-slate-400"> / день</span>
+                      <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground mb-6">
+                        <div className="flex items-center gap-1">
+                          <MapPin size={12} /> Алматы
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock size={12} /> 2022 г.
+                        </div>
                       </div>
-                      <div className="text-[10px] font-bold text-emerald-500 px-2 py-1 bg-emerald-50 rounded-lg">
-                        ДОСТУПНО
+
+                      <div className="pt-5 border-t border-border flex items-center justify-between">
+                        <div>
+                          <span className="text-2xl font-black text-primary">{car.price} ₸</span>
+                          <span className="text-xs font-bold text-muted-foreground"> / день</span>
+                        </div>
+                        <div className="text-[10px] font-bold text-emerald-500 px-2 py-1 bg-emerald-50 rounded-lg">
+                          ДОСТУПНО
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 </Link>
               ))}
 
@@ -254,8 +243,8 @@ export default function HomePage() {
                   <div className="mx-auto w-20 h-20 bg-slate-50 flex items-center justify-center rounded-3xl mb-4">
                     <CarIcon size={40} className="text-slate-200" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-400 tracking-tight">Пока нет активных объявлений</h3>
-                  <p className="text-slate-300 text-sm mt-1">Они появятся здесь в ближайшее время</p>
+                  <h3 className="text-xl font-bold text-muted-foreground tracking-tight">Пока нет активных объявлений</h3>
+                  <p className="text-muted-foreground text-sm mt-1">Они появятся здесь в ближайшее время</p>
                 </div>
               )}
             </div>
@@ -265,4 +254,3 @@ export default function HomePage() {
     </div >
   );
 }
-

@@ -4,22 +4,18 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
     Car,
-    Truck,
-    Construction,
-    Wrench,
-    Ship,
-    Grid,
     Camera,
-    ChevronLeft,
     CheckCircle2,
     Info,
     ArrowRight,
     X,
     FileText,
-    Settings
+    Settings,
+    Grid
 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { getCachedDictionaries } from "@/lib/dictionaries";
+import { useFullDictionaries } from "@/lib/hooks/useDictionaries";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -48,6 +44,8 @@ export default function AddAnnouncement() {
         tech_passport_date: ""
     });
 
+    const { data: routeDictionaries, isLoading: dictLoading } = useFullDictionaries();
+
     const [dictionaries, setDictionaries] = useState<any>({
         categories: [],
         marks: [],
@@ -66,34 +64,17 @@ export default function AddAnnouncement() {
         const token = window.localStorage.getItem("token");
         if (!token) {
             router.push("/login?redirect=/add");
-            return;
         }
-
-        const fetchAll = async () => {
-            const [categories, marks, transmissions, fuels, colors, cities] = await Promise.all([
-                getCachedDictionaries("CATEGORY"),
-                getCachedDictionaries("MARKA"),
-                getCachedDictionaries("TRANSMISSION"),
-                getCachedDictionaries("FUEL"),
-                getCachedDictionaries("COLOR"),
-                getCachedDictionaries("CITY")
-            ]);
-
-            setDictionaries({
-                categories,
-                marks,
-                transmissions,
-                fuels,
-                colors,
-                cities,
-                models: []
-            });
-        };
-
-        fetchAll();
     }, [router]);
 
-    // Fetch models with cache
+    // Sync when data loads
+    useEffect(() => {
+        if (routeDictionaries) {
+             setDictionaries(prev => ({ ...prev, ...routeDictionaries }));
+        }
+    }, [routeDictionaries]);
+
+    // Fetch models with cache manually when brand changes, or create a hook for it
     useEffect(() => {
         if (formData.brandId) {
             getCachedDictionaries("MODEL", formData.brandId).then(models => {
@@ -185,6 +166,8 @@ export default function AddAnnouncement() {
             setLoading(false);
         }
     };
+    
+    if (dictLoading) return <div className="text-center py-20">Загрузка...</div>;
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-12">
@@ -211,7 +194,7 @@ export default function AddAnnouncement() {
                         <p className="text-slate-400 font-medium">Выберите подходящую категорию транспорта</p>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                        {dictionaries.categories.map((cat: any) => (
+                        {dictionaries.categories?.map((cat: any) => (
                             <button
                                 key={cat.id}
                                 onClick={() => handleCategorySelect(cat.id)}
@@ -244,7 +227,7 @@ export default function AddAnnouncement() {
                                     onChange={(e) => handleSelectChange("brandId", e.target.value, e.target.options[e.target.selectedIndex].text)}
                                 >
                                     <option value="">Выберите марку</option>
-                                    {dictionaries.marks.map((m: any) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    {dictionaries.marks?.map((m: any) => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
                             </div>
 
@@ -257,7 +240,7 @@ export default function AddAnnouncement() {
                                     onChange={(e) => handleSelectChange("modelId", e.target.value, e.target.options[e.target.selectedIndex].text)}
                                 >
                                     <option value="">Выберите модель</option>
-                                    {dictionaries.models.map((m: any) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    {dictionaries.models?.map((m: any) => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
                             </div>
 
@@ -265,7 +248,7 @@ export default function AddAnnouncement() {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Город</label>
                                 <select name="cityId" value={formData.cityId} onChange={handleInputChange} className="input-premium">
                                     <option value="">Выберите город</option>
-                                    {dictionaries.cities.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    {dictionaries.cities?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
 
@@ -297,21 +280,21 @@ export default function AddAnnouncement() {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">КПП</label>
                                 <select name="transmissionId" value={formData.transmissionId} onChange={handleInputChange} className="input-premium">
                                     <option value="">Выберите тип</option>
-                                    {dictionaries.transmissions.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                    {dictionaries.transmissions?.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Топливо</label>
                                 <select name="fuelId" value={formData.fuelId} onChange={handleInputChange} className="input-premium">
                                     <option value="">Выберите топливо</option>
-                                    {dictionaries.fuels.map((f: any) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                    {dictionaries.fuels?.map((f: any) => <option key={f.id} value={f.id}>{f.name}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Цвет</label>
                                 <select name="colorId" value={formData.colorId} onChange={handleInputChange} className="input-premium">
                                     <option value="">Выберите цвет</option>
-                                    {dictionaries.colors.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    {dictionaries.colors?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">
@@ -432,5 +415,5 @@ export default function AddAnnouncement() {
 }
 
 function Loader2({ className }: { className?: string }) {
-    return <Grid className={`animate-pulse ${className}`} />; // Simple fallback icon
+    return <Grid className={`animate-pulse ${className}`} />; 
 }
