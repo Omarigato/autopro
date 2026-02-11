@@ -6,6 +6,37 @@ from app.core.responses import create_response
 
 router = APIRouter()
 
+@router.get("")
+def list_dictionaries(type: str = None, parent_id: int = None, request: Request = None, db: Session = Depends(get_db)):
+    """
+    Универсальный эндпоинт для получения справочников.
+    """
+    lang = getattr(request.state, "lang", "ru")
+    query = db.query(Dictionary).filter(Dictionary.is_active == True)
+    
+    if type:
+        query = query.filter(Dictionary.type == type)
+    if parent_id:
+        query = query.filter(Dictionary.parent_id == parent_id)
+        
+    items = query.all()
+    
+    result = []
+    for item in items:
+        # Find translation
+        trans = next((t for t in item.translations if t.lang == lang), None)
+        name = trans.name if trans else item.name
+        result.append({
+            "id": item.id, 
+            "name": name, 
+            "code": item.code,
+            "icon": item.icon,
+            "color": item.color,
+            "parent_id": item.parent_id
+        })
+        
+    return create_response(data=result, lang=lang)
+
 @router.get("/marka")
 def get_markas(request: Request, db: Session = Depends(get_db)):
     """

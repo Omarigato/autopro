@@ -23,6 +23,8 @@ class Dictionary(Base):
     code: Mapped[str] = mapped_column(String(100), index=True)
     type: Mapped[str] = mapped_column(String(50), index=True)  # MARKA, MODEL, CATEGORY, etc.
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(100), nullable=True) # Lucide icon name
+    color: Mapped[str | None] = mapped_column(String(50), nullable=True) # Tailwind or Hex color
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -61,6 +63,9 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(50), default="owner")  # owner, admin
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    pin_code: Mapped[str | None] = mapped_column(String(4), nullable=True) # 4-значный код
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True) # Адрес арендодателя
     
     otp_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
     otp_expiry: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -69,6 +74,15 @@ class User(Base):
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     owner: Mapped["CarOwner"] = relationship("CarOwner", uselist=False, back_populates="user")
+    
+    avatar_image: Mapped["Image | None"] = relationship(
+        "Image",
+        primaryjoin="and_(Image.entity_id==User.id, Image.entity_type=='USER')",
+        foreign_keys="[Image.entity_id]",
+        uselist=False,
+        overlaps="images",
+        cascade="all, delete-orphan"
+    )
 
 
 class CarOwner(Base):
@@ -91,10 +105,28 @@ class Car(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
-    marka_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
-    model_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    price_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    
+    vehicle_mark_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
+    vehicle_model_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
+    
+    transmission_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
+    fuel_type_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
+    color_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
+    engine_volume: Mapped[str | None] = mapped_column(String(50)) # "2.5", "3.0" итд
+    
+    transport_number: Mapped[str | None] = mapped_column(String(50)) # Гос номер (080ABC01)
+    motor_number: Mapped[str | None] = mapped_column(String(100)) # Номер двигателя
+    body_number: Mapped[str | None] = mapped_column(String(100)) # Номер кузова
+    tech_passport_number: Mapped[str | None] = mapped_column(String(50)) # Номер техпаспорта
+    tech_passport_date: Mapped[datetime | None] = mapped_column(DateTime) # Дата техпаспорта
+    
     bin: Mapped[str | None] = mapped_column(String(50))
     release_year: Mapped[int | None] = mapped_column(Integer)
+    city_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id")) # Город
+    
     is_top: Mapped[bool] = mapped_column(Boolean, default=False)
     views_count: Mapped[int] = mapped_column(Integer, default=0)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
@@ -103,19 +135,43 @@ class Car(Base):
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     author: Mapped[User] = relationship("User")
-    images: Mapped[list["CarImage"]] = relationship("CarImage", back_populates="car", cascade="all, delete-orphan")
+    images: Mapped[list["Image"]] = relationship(
+        "Image", 
+        primaryjoin="and_(Image.entity_id==Car.id, Image.entity_type=='CAR')",
+        foreign_keys="[Image.entity_id]",
+        overlaps="avatar_image",
+        cascade="all, delete-orphan"
+    )
+
+    # Relationships for dictionaries
+    mark: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[vehicle_mark_id])
+    model: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[vehicle_model_id])
+    category: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[category_id])
+    transmission: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[transmission_id])
+    fuel_type: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[fuel_type_id])
+    color: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[color_id])
+    city: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[city_id])
 
 
-class CarImage(Base):
-    __tablename__ = "car_images"
+class Image(Base):
+    __tablename__ = "images"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"))
     url: Mapped[str] = mapped_column(String(500))
     image_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Cloudinary public_id
+    
+    entity_id: Mapped[int] = mapped_column(Integer, index=True)
+    entity_type: Mapped[str] = mapped_column(String(50), index=True)  # 'CAR', 'USER'
     position: Mapped[int] = mapped_column(Integer, default=0)
 
-    car: Mapped[Car] = relationship("Car", back_populates="images")
+
+from sqlalchemy import event
+from app.services.cloudinary_service import CloudinaryService
+
+@event.listens_for(Image, 'after_delete')
+def receive_after_delete(mapper, connection, target):
+    if target.image_id:
+        CloudinaryService.delete_image(target.image_id)
 
 
 class Application(Base):

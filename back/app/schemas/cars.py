@@ -13,7 +13,7 @@ class CarBase(BaseModel):
     is_top: bool = False
 
 
-class CarImageCreate(BaseModel):
+class ImageCreate(BaseModel):
     url: str
     image_id: Optional[str] = None
     position: int = 0
@@ -21,10 +21,10 @@ class CarImageCreate(BaseModel):
 
 class CarCreateRequest(CarBase):
     description: Optional[str] = None
-    images: List[CarImageCreate] = []
+    images: List[ImageCreate] = []
 
 
-class CarImageResponse(BaseModel):
+class ImageResponse(BaseModel):
     id: int
     url: str
     image_id: Optional[str]
@@ -40,7 +40,7 @@ class CarResponse(CarBase):
     is_active: bool
     create_date: datetime
 
-    images: List[CarImageResponse] = []
+    images: List[ImageResponse] = []
 
     class Config:
         from_attributes = True

@@ -4,10 +4,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.db.session import get_db
-from app.models.entities import User, Car, Application, Client, Dictionary, CarOwner
+from app.models.entities import User, Car, Application, Client, Dictionary, CarOwner, PaymentAccount, SubscriptionPlan
 from app.core.security import get_current_user, get_password_hash
 from app.core.responses import create_response
-from app.services.car_data_service import sync_all_makes, sync_models_for_make
+from app.services.dictionary_service import dictionary_service
+from app.services.admin_service import admin_service
+from fastapi.responses import StreamingResponse
+from fastapi import UploadFile, File
 
 router = APIRouter()
 
@@ -19,10 +22,50 @@ def check_admin(current_user: User = Depends(get_current_user)):
         )
     return current_user
 
+@router.post("/sync/defaults")
+async def trigger_sync_defaults(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    success = await dictionary_service.sync_defaults(db)
+    return create_response(data={"success": success})
+
+
 @router.post("/sync/car-data")
 async def trigger_sync(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    makes_count = await sync_all_makes(db)
-    return create_response(data={"makes_synced": makes_count})
+    success = await dictionary_service.sync_from_json(db)
+    return create_response(data={"success": success})
+
+
+# --- Управление справочниками (Dictionaries) ---
+
+@router.get("/dictionaries")
+def list_dictionaries(type: str = None, parent_id: int = None, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    query = db.query(Dictionary)
+    if type: query = query.filter(Dictionary.type == type)
+    if parent_id: query = query.filter(Dictionary.parent_id == parent_id)
+    items = query.all()
+    return create_response(data=items)
+
+@router.patch("/dictionaries/{item_id}")
+def update_dictionary_item(item_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    item = db.query(Dictionary).filter(Dictionary.id == item_id).first()
+    if not item: raise HTTPException(404)
+    
+    for key, value in payload.items():
+        if hasattr(item, key):
+            setattr(item, key, value)
+    
+    db.commit()
+    return create_response(data=item)
+
+@router.delete("/dictionaries/{item_id}")
+def delete_dictionary_item(item_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    item = db.query(Dictionary).filter(Dictionary.id == item_id).first()
+    if not item: raise HTTPException(404)
+    
+    # Удаляем также переводы
+    db.query(DictionaryTranslation).filter(DictionaryTranslation.dictionary_id == item_id).delete()
+    db.delete(item)
+    db.commit()
+    return create_response(data={"success": True})
 
 @router.get("/stats")
 def get_stats(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
@@ -99,3 +142,67 @@ def get_car_detail_admin(car_id: int, db: Session = Depends(get_db), admin: User
         "is_active": car.is_active,
         "views": car.views_count
     })
+
+
+@router.get("/export/excel")
+async def export_data_excel(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    output, filename = await admin_service.export_to_excel(db)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@router.post("/import/excel")
+async def import_data_excel(file: UploadFile = File(...), db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    content = await file.read()
+    success = await admin_service.import_from_excel(content, db)
+    return create_response(data={"success": success})
+
+
+# --- Управление платежными системами ---
+
+@router.get("/payments/accounts")
+def list_payment_accounts(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    accounts = db.query(PaymentAccount).all()
+    return create_response(data=accounts)
+
+@router.patch("/payments/accounts/{account_id}")
+def update_payment_account(account_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    account = db.query(PaymentAccount).filter(PaymentAccount.id == account_id).first()
+    if not account: raise HTTPException(404)
+    
+    for key, value in payload.items():
+        if hasattr(account, key):
+            setattr(account, key, value)
+    
+    db.commit()
+    return create_response(data=account)
+
+
+# --- Управление подписками ---
+
+@router.get("/subscriptions/plans")
+def list_subscription_plans(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    plans = db.query(SubscriptionPlan).all()
+    return create_response(data=plans)
+
+@router.post("/subscriptions/plans")
+def create_subscription_plan(payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    plan = SubscriptionPlan(**payload)
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return create_response(data=plan)
+
+@router.patch("/subscriptions/plans/{plan_id}")
+def update_subscription_plan(plan_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.id == plan_id).first()
+    if not plan: raise HTTPException(404)
+    
+    for key, value in payload.items():
+        if hasattr(plan, key):
+            setattr(plan, key, value)
+            
+    db.commit()
+    return create_response(data=plan)

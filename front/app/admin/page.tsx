@@ -48,7 +48,7 @@ export default function AdminPage() {
       if (activeTab === "apps") endpoint = "/admin/applications";
 
       const res: any = await apiClient.get(endpoint);
-      setData(res.data);
+      setData(res);
     } catch (err) {
       console.error(err);
     } finally {

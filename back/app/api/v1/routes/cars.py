@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_current_owner
 from app.db.session import get_db
-from app.models.entities import Application, Car, CarImage, User
+from app.models.entities import Application, Car, Image, User
 from app.schemas.cars import CarResponse
-from app.services.cloudinary_service import upload_image, delete_image
+from app.services.cloudinary_service import CloudinaryService
 from app.services.subscriptions_service import (
     get_active_subscription_for_owner,
     owner_cars_count,
@@ -22,23 +22,45 @@ router = APIRouter()
 @router.get("")
 def list_cars(request: Request, db: Session = Depends(get_db)):
     cars = db.query(Car).filter(Car.is_active.is_(True), Car.delete_date.is_(None)).all()
-    # Increment views for each car (usually done on single car view, but doing here for demo)
-    for car in cars:
-        car.views_count += 1
-    db.commit()
     
-    # We should return a list of serialized cars
-    # For now returning as is, but create_response will handle JSON serialisation if possible
-    return create_response(data=[{"id": c.id, "name": c.name, "views": c.views_count} for c in cars], lang=request.state.lang)
+    result = []
+    for c in cars:
+        result.append({
+            "id": c.id,
+            "name": c.name,
+            "release_year": c.release_year,
+            "price_per_day": c.price_per_day,
+            "views_count": c.views_count,
+            "images": [{"url": img.url} for img in c.images],
+            "city": c.city.name if c.city else "Алматы",
+            "author": {
+                "name": c.author.name,
+                "address": c.author.address
+            }
+        })
+    
+    return create_response(data=result, lang=request.state.lang)
 
 
 @router.post("")
 def create_car(
     name: str = Form(...),
-    marka_id: int | None = Form(default=None),
-    model_id: int | None = Form(default=None),
+    vehicle_mark_id: int | None = Form(default=None),
+    vehicle_model_id: int | None = Form(default=None),
+    category_id: int | None = Form(default=None),
+    transmission_id: int | None = Form(default=None),
+    fuel_type_id: int | None = Form(default=None),
+    color_id: int | None = Form(default=None),
+    city_id: int | None = Form(default=None),
+    engine_volume: str | None = Form(default=None),
+    price_per_day: int | None = Form(default=None),
     bin: str | None = Form(default=None),
     release_year: int | None = Form(default=None),
+    transport_number: str | None = Form(default=None),
+    motor_number: str | None = Form(default=None),
+    body_number: str | None = Form(default=None),
+    tech_passport_number: str | None = Form(default=None),
+    tech_passport_date: str | None = Form(default=None), # Accepting string for simpler Form handling
     is_top: bool = Form(default=False),
     description: str | None = Form(default=None),
     photos: list[UploadFile] = File(default=[]),
@@ -48,9 +70,6 @@ def create_car(
 ):
     """
     Создание объявления арендодателем.
-    По умолчанию объявление не активно (ждёт модерации администратора).
-    Фотографии загружаются в Cloudinary.
-    Доступность и лимит объявлений определяется активной подпиской (Lite / Premium).
     """
     subscription = get_active_subscription_for_owner(db, current_owner.id)
     if not subscription:
@@ -70,12 +89,34 @@ def create_car(
                 lang=request.state.lang
             )
 
+    # Date conversion if provided
+    from datetime import datetime
+    tp_date = None
+    if tech_passport_date:
+        try:
+            tp_date = datetime.fromisoformat(tech_passport_date.replace("Z", "+00:00"))
+        except:
+            tp_date = None
+
     car = Car(
         name=name,
-        marka_id=marka_id,
-        model_id=model_id,
+        description=description,
+        vehicle_mark_id=vehicle_mark_id,
+        vehicle_model_id=vehicle_model_id,
+        category_id=category_id,
+        transmission_id=transmission_id,
+        fuel_type_id=fuel_type_id,
+        color_id=color_id,
+        city_id=city_id,
+        engine_volume=engine_volume,
+        price_per_day=price_per_day,
         bin=bin,
         release_year=release_year,
+        transport_number=transport_number,
+        motor_number=motor_number,
+        body_number=body_number,
+        tech_passport_number=tech_passport_number,
+        tech_passport_date=tp_date,
         is_top=is_top,
         author_id=current_owner.id,
         is_active=False,
@@ -86,15 +127,16 @@ def create_car(
     # Save photos to Cloudinary
     if photos:
         for idx, photo in enumerate(photos):
-            url, public_id = upload_image(photo.file, folder="autopro/cars")
+            url, public_id = CloudinaryService.upload_image(photo.file, folder="autopro/cars")
             if url:
-                car_image = CarImage(
-                    car_id=car.id,
+                img_record = Image(
+                    entity_id=car.id,
+                    entity_type='CAR',
                     url=url,
                     image_id=public_id,
                     position=idx
                 )
-                db.add(car_image)
+                db.add(img_record)
 
     application = Application(
         car_id=car.id,
@@ -104,18 +146,6 @@ def create_car(
     db.add(application)
     db.commit()
     db.refresh(car)
-
-    # Send Telegram notification
-    from asyncio import create_task
-
-    message = (
-        f"New Announcement #{car.id}\n"
-        f"Owner: {current_owner.name} ({current_owner.phone_number})\n"
-        f"Name: {car.name}\n"
-        f"Description: {description or '-'}\n"
-        f"Link: /admin/cars/{car.id}"
-    )
-    # create_task(send_new_application_message(message)) # Commented out as function import might change or need context
 
     return create_response(
         data={"id": car.id, "name": car.name},

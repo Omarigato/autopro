@@ -25,11 +25,11 @@ apiClient.interceptors.request.use((config) => {
 // Интерцептор для обработки унифицированного ответа
 apiClient.interceptors.response.use(
   (response) => {
-    // Если бэкенд вернул { data, code, message }, пробрасываем data
-    if (response.data && "data" in response.data) {
-      return response.data;
+    // Если бэкенд вернул { data, code, message }, пробрасываем только поле data
+    if (response.data && typeof response.data === 'object' && "data" in response.data) {
+      return response.data.data;
     }
-    return response;
+    return response.data;
   },
   (error) => {
     if (error.response?.data) {

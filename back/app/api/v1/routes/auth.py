@@ -11,7 +11,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db.session import get_db
-from app.models.entities import CarOwner, User, OTPVerification
+from app.models.entities import CarOwner, User, OTPVerification, Image
 from app.schemas.auth import OwnerLoginRequest, OwnerRegisterRequest, Token, UserResponse
 from app.core.responses import create_response
 from pydantic import BaseModel
@@ -42,8 +42,8 @@ class OTPVerifyRequest(BaseModel):
 def check_entrance(payload: EntranceRequest, request: Request, db: Session = Depends(get_db)):
     """
     Проверка существования пользователя для адаптивного входа в систему.
-    Если пользователь существует - предлагаем вход по паролю.
-    Если нет - отправляем OTP для регистрации.
+    - Для Мобильных (ios/android): если есть пин-код -> 'pin'
+    - Для Веб: всегда 'otp' (даже если существует) для беспарольного входа.
     """
     user = db.query(User).filter(
         or_(
@@ -53,27 +53,39 @@ def check_entrance(payload: EntranceRequest, request: Request, db: Session = Dep
         )
     ).first()
 
-    if user:
-        return create_response(
-            data={"exists": True, "type": "password", "login": payload.login},
-            lang=request.state.lang
-        )
-    else:
-        # Если не найден - считаем это регистрацией по номеру телефона/email
+    # Вспомогательная функция для генерации и сохранения OTP
+    def trigger_otp(target: str, flow_type: str):
         otp_code = str(random.randint(100000, 999999))
         
-        # Логируем в таблицу верификации
         verification = OTPVerification(
-            target=payload.login,
+            target=target,
             code=otp_code,
-            type="register",
+            type=flow_type,
             expires_at=datetime.utcnow() + timedelta(minutes=10)
         )
         db.add(verification)
         db.commit()
+        print(f"DEBUG: {flow_type} OTP for {target} is {otp_code}")
+        return otp_code
 
-        print(f"DEBUG: Registration OTP for {payload.login} is {otp_code}")
+    if user:
+        # Если это мобильное приложение и у пользователя установлен ПИН
+        if payload.platform in ["ios", "android"] and user.pin_code:
+            return create_response(
+                data={"exists": True, "type": "pin", "login": payload.login},
+                lang=request.state.lang
+            )
         
+        # Для веб-версии (или мобилки без ПИНа) - отправляем OTP для входа (login)
+        trigger_otp(payload.login, "login")
+        return create_response(
+            data={"exists": True, "type": "otp", "login": payload.login},
+            message_key="otp_sent",
+            lang=request.state.lang
+        )
+    else:
+        # Пользователь не найден - регистрация через OTP
+        trigger_otp(payload.login, "register")
         return create_response(
             data={"exists": False, "type": "otp", "login": payload.login},
             message_key="otp_sent",
@@ -251,11 +263,69 @@ def change_password_auth(
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user), request: Request = None):
+    avatar_url = current_user.avatar_image.url if current_user.avatar_image else current_user.avatar_url
     return create_response(data={
         "id": current_user.id,
         "name": current_user.name,
         "role": current_user.role,
         "email": current_user.email,
-        "phone_number": current_user.phone_number
+        "phone_number": current_user.phone_number,
+        "avatar_url": avatar_url
     }, lang=request.state.lang if request else "ru")
+
+
+class ProfileUpdateRequest(BaseModel):
+    name: str | None = None
+    email: str | None = None
+
+
+@router.put("/me")
+def update_profile(
+    payload: ProfileUpdateRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if payload.name:
+        current_user.name = payload.name
+    if payload.email:
+        current_user.email = payload.email
+    db.commit()
+    return create_response(message="Профиль обновлен", lang=request.state.lang)
+
+
+from fastapi import File, UploadFile
+from app.services.cloudinary_service import CloudinaryService
+
+@router.post("/avatar")
+async def upload_avatar(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Upload to Cloudinary
+    url, public_id = CloudinaryService.upload_image(file.file, folder="avatars")
+    if not url:
+        return create_response(code=500, message="Ошибка загрузки фото", lang=request.state.lang)
+    
+    # Remove old avatar if exists (cascade delete-orphan will handle DB side, 
+    # but we need to ensure the Image record is replaced)
+    if current_user.avatar_image:
+        db.delete(current_user.avatar_image)
+        db.flush()
+
+    new_avatar = Image(
+        entity_id=current_user.id,
+        entity_type='USER',
+        url=url,
+        image_id=public_id
+    )
+    db.add(new_avatar)
+    
+    # Also update the legacy string field for compatibility
+    current_user.avatar_url = url
+    
+    db.commit()
+    return create_response(data={"url": url}, message="Аватар обновлен", lang=request.state.lang)
 

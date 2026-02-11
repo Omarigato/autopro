@@ -1,0 +1,340 @@
+{
+    "cities": [
+        {
+            "code": "ALA",
+            "names": {
+                "ru": "Алматы",
+                "en": "Almaty",
+                "kk": "Алматы"
+            }
+        },
+        {
+            "code": "AST",
+            "names": {
+                "ru": "Астана",
+                "en": "Astana",
+                "kk": "Астана"
+            }
+        },
+        {
+            "code": "SHM",
+            "names": {
+                "ru": "Шымкент",
+                "en": "Shymkent",
+                "kk": "Шымкент"
+            }
+        },
+        {
+            "code": "KRG",
+            "names": {
+                "ru": "Караганда",
+                "en": "Karaganda",
+                "kk": "Қарағанды"
+            }
+        },
+        {
+            "code": "AKT",
+            "names": {
+                "ru": "Актобе",
+                "en": "Aktobe",
+                "kk": "Ақтөбе"
+            }
+        },
+        {
+            "code": "ATR",
+            "names": {
+                "ru": "Атырау",
+                "en": "Atyrau",
+                "kk": "Атырау"
+            }
+        },
+        {
+            "code": "UKO",
+            "names": {
+                "ru": "Усть-Каменогорск",
+                "en": "Ust-Kamenogorsk",
+                "kk": "Өскемен"
+            }
+        },
+        {
+            "code": "PVL",
+            "names": {
+                "ru": "Павлодар",
+                "en": "Pavlodar",
+                "kk": "Павлодар"
+            }
+        },
+        {
+            "code": "TRZ",
+            "names": {
+                "ru": "Тараз",
+                "en": "Taraz",
+                "kk": "Тараз"
+            }
+        },
+        {
+            "code": "URK",
+            "names": {
+                "ru": "Уральск",
+                "en": "Uralsk",
+                "kk": "Орал"
+            }
+        }
+    ],
+    "subscription_plans": [
+        {
+            "code": "FREE",
+            "name": "Free Plan",
+            "price_kzt": 0,
+            "period_days": 30,
+            "max_cars": 1,
+            "description": "Базовый план для одного автомобиля"
+        },
+        {
+            "code": "PREMIUM",
+            "name": "Premium Plan",
+            "price_kzt": 5000,
+            "period_days": 30,
+            "max_cars": null,
+            "description": "Безлимитный план с приоритетным размещением"
+        }
+    ],
+    "car_types": [
+        {
+            "code": "SEDAN",
+            "names": {
+                "ru": "Седан",
+                "en": "Sedan",
+                "kk": "Седан"
+            }
+        },
+        {
+            "code": "SUV",
+            "names": {
+                "ru": "Внедорожник",
+                "en": "SUV",
+                "kk": "Жол талғамайтын көлік"
+            }
+        },
+        {
+            "code": "COUPE",
+            "names": {
+                "ru": "Купе",
+                "en": "Coupe",
+                "kk": "Купе"
+            }
+        },
+        {
+            "code": "MINIVAN",
+            "names": {
+                "ru": "Минивэн",
+                "en": "Minivan",
+                "kk": "Минивэн"
+            }
+        }
+    ],
+    "transmissions": [
+        {
+            "code": "AUTO",
+            "names": {
+                "ru": "Автомат",
+                "en": "Automatic",
+                "kk": "Автомат"
+            }
+        },
+        {
+            "code": "MANUAL",
+            "names": {
+                "ru": "Механика",
+                "en": "Manual",
+                "kk": "Механика"
+            }
+        },
+        {
+            "code": "CVT",
+            "names": {
+                "ru": "Вариатор",
+                "en": "CVT",
+                "kk": "Вариатор"
+            }
+        },
+        {
+            "code": "ROBOT",
+            "names": {
+                "ru": "Робот",
+                "en": "Robot",
+                "kk": "Робот"
+            }
+        }
+    ],
+    "fuel_types": [
+        {
+            "code": "GASOLINE",
+            "names": {
+                "ru": "Бензин",
+                "en": "Gasoline",
+                "kk": "Бензин"
+            }
+        },
+        {
+            "code": "DIESEL",
+            "names": {
+                "ru": "Дизель",
+                "en": "Diesel",
+                "kk": "Дизель"
+            }
+        },
+        {
+            "code": "ELECTRIC",
+            "names": {
+                "ru": "Электро",
+                "en": "Electric",
+                "kk": "Электр"
+            }
+        },
+        {
+            "code": "HYBRID",
+            "names": {
+                "ru": "Гибрид",
+                "en": "Hybrid",
+                "kk": "Гибрид"
+            }
+        },
+        {
+            "code": "GAS",
+            "names": {
+                "ru": "Газ",
+                "en": "Gas",
+                "kk": "Газ"
+            }
+        }
+    ],
+    "colors": [
+        {
+            "code": "WHITE",
+            "names": {
+                "ru": "Белый",
+                "en": "White",
+                "kk": "Ақ"
+            }
+        },
+        {
+            "code": "BLACK",
+            "names": {
+                "ru": "Черный",
+                "en": "Black",
+                "kk": "Қара"
+            }
+        },
+        {
+            "code": "SILVER",
+            "names": {
+                "ru": "Серебристый",
+                "en": "Silver",
+                "kk": "Күміс"
+            }
+        },
+        {
+            "code": "GREY",
+            "names": {
+                "ru": "Серый",
+                "en": "Grey",
+                "kk": "Сұр"
+            }
+        },
+        {
+            "code": "RED",
+            "names": {
+                "ru": "Красный",
+                "en": "Red",
+                "kk": "Қызыл"
+            }
+        },
+        {
+            "code": "BLUE",
+            "names": {
+                "ru": "Синий",
+                "en": "Blue",
+                "kk": "Көк"
+            }
+        }
+    ],
+    "categories": [
+        {
+            "code": "CARS",
+            "icon": "Car",
+            "color": "blue",
+            "names": {
+                "ru": "Авто",
+                "en": "Cars",
+                "kk": "Көліктер"
+            }
+        },
+        {
+            "code": "TRUCKS",
+            "icon": "Truck",
+            "color": "indigo",
+            "names": {
+                "ru": "Грузовые",
+                "en": "Trucks",
+                "kk": "Жүк көліктері"
+            }
+        },
+        {
+            "code": "MACHINERY",
+            "icon": "Construction",
+            "color": "amber",
+            "names": {
+                "ru": "Техника",
+                "en": "Machinery",
+                "kk": "Техника"
+            }
+        },
+        {
+            "code": "EQUIPMENT",
+            "icon": "Wrench",
+            "color": "emerald",
+            "names": {
+                "ru": "Оборудование",
+                "en": "Equipment",
+                "kk": "Жабдықтар"
+            }
+        },
+        {
+            "code": "WATER",
+            "icon": "Ship",
+            "color": "cyan",
+            "names": {
+                "ru": "Водный",
+                "en": "Watercraft",
+                "kk": "Су көлігі"
+            }
+        },
+        {
+            "code": "MORE",
+            "icon": "Grid",
+            "color": "slate",
+            "names": {
+                "ru": "Больше",
+                "en": "More",
+                "kk": "Көбірек"
+            }
+        }
+    ],
+    "payment_accounts": [
+        {
+            "provider": "kassa24",
+            "merchant_id": "demo_merchant",
+            "login": "demo_login",
+            "password": "demo_password",
+            "demo": true
+        },
+        {
+            "provider": "kaspi",
+            "merchant_id": "kaspi_store_id",
+            "login": "kaspi_merchant",
+            "password": "none",
+            "demo": true
+        }
+    ]
+}

@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     const token = window.localStorage.getItem("token");
     if (token) {
       apiClient.get("/auth/me").then((res: any) => {
-        if (res.data.role === "admin") {
+        if (res.role === "admin") {
           setIsAdmin(true);
         }
       }).catch(() => setIsAdmin(false));
@@ -65,7 +65,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               {/* Desktop Nav */}
               <nav className="hidden lg:flex items-center gap-10 font-bold text-sm tracking-wide text-slate-500">
                 <Link href="/" className="hover:text-primary transition-colors py-2 border-b-2 border-transparent hover:border-accent tracking-tight">{t('home')}</Link>
-                <Link href="/catalog" className="hover:text-primary transition-colors py-2 border-b-2 border-transparent hover:border-accent tracking-tight">{t('catalog')}</Link>
                 <Link href="/add" className="hover:text-primary transition-colors py-2 border-b-2 border-transparent hover:border-accent tracking-tight uppercase text-[11px] font-black">{t('add')}</Link>
                 {isAdmin && (
                   <Link href="/admin" className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-accent transition-all shadow-xl shadow-slate-900/20">
@@ -98,7 +97,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
                 <div className="h-8 w-[1px] bg-slate-100 mx-1 hidden sm:block"></div>
 
-                <Link href="/login" className="flex items-center gap-3 p-1.5 md:pr-4 rounded-full border border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 transition-all group">
+                {/* Search Icon in Header */}
+                <button
+                  onClick={() => (window as any).toggleSearch && (window as any).toggleSearch()}
+                  className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-accent rounded-2xl transition-all"
+                >
+                  <Search size={20} />
+                </button>
+
+                <div className="h-8 w-[1px] bg-slate-100 mx-1 hidden sm:block"></div>
+
+                <Link href="/profile" className="flex items-center gap-3 p-1.5 md:pr-4 rounded-full border border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 transition-all group">
                   <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-accent transition-colors">
                     <User className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
                   </div>
@@ -137,14 +146,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Home className="w-6 h-6 transition-transform group-active:scale-90" strokeWidth={2.5} />
               <span className="text-[10px] font-black uppercase tracking-widest">{t('home')}</span>
             </Link>
-            <Link href="/catalog" className="flex flex-col items-center gap-1.5 p-3 text-slate-400 group">
-              <Search className="w-6 h-6 transition-transform group-active:scale-90" strokeWidth={2.5} />
-              <span className="text-[10px] font-black uppercase tracking-widest">{t('search')}</span>
-            </Link>
+            <div className="w-4 lg:hidden"></div>
             <Link href="/add" className="relative -mt-16 bg-accent p-5 rounded-[2rem] shadow-2xl shadow-accent/40 border-4 border-white transform active:scale-90 transition-all">
               <PlusCircle className="w-8 h-8 text-white" />
             </Link>
-            <Link href="/login" className="flex flex-col items-center gap-1.5 p-3 text-slate-400 group">
+            <Link href="/profile" className="flex flex-col items-center gap-1.5 p-3 text-slate-400 group">
               <User className="w-6 h-6 transition-transform group-active:scale-90" strokeWidth={2.5} />
               <span className="text-[10px] font-black uppercase tracking-widest">{t('profile')}</span>
             </Link>

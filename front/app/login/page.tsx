@@ -51,18 +51,30 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res: any = await apiClient.post("/auth/check-entrance", { login: target });
-      const { exists } = res.data;
+      // Отправляем platform: 'web', чтобы бэкенд знал, что нужно слать OTP
+      const res: any = await apiClient.post("/auth/check-entrance", {
+        login: target,
+        platform: "web"
+      });
 
+      const { exists, type } = res.data;
       const lang = (typeof window !== "undefined" ? window.localStorage.getItem("lang") : "ru") || "ru";
       const welcomeMsg = res.message?.[lang] || res.message?.ru;
 
-      if (exists) {
+      if (type === "otp") {
+        setFlow("otp");
+        setMessage(welcomeMsg || "Мы отправили код подтверждения на ваш номер.");
+      } else if (type === "password") {
         setFlow("password");
         setMessage(welcomeMsg || "Пользователь найден. Введите пароль для входа.");
+      } else if (type === "pin") {
+        // На вебе обычно пин не используем, но на всякий случай обработаем
+        setFlow("password");
+        setMessage(welcomeMsg || "Введите ваш код быстрого доступа.");
       } else {
-        setFlow("otp");
-        setMessage(welcomeMsg || "Новый пользователь. Мы отправили код подтверждения.");
+        // Fallback
+        setFlow(exists ? "password" : "otp");
+        setMessage(welcomeMsg || (exists ? "Введите пароль" : "Введите код из SMS"));
       }
     } catch (err: any) {
       setError(getErrorMessage(err));
