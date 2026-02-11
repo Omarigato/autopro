@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getCachedDictionaries } from "@/lib/dictionaries";
+import { DictionaryItem } from "@/types/dictionaries";
 
 export function useDictionaries() {
   return useQuery({
@@ -9,9 +10,12 @@ export function useDictionaries() {
         getCachedDictionaries('CATEGORY'),
         getCachedDictionaries('CITY'),
       ]);
-      return { categories, cities };
+      return { 
+          categories: categories as DictionaryItem[], 
+          cities: cities as DictionaryItem[] 
+      };
     },
-    staleTime: Infinity, // Dictionaries rarely change
+    staleTime: Infinity,
   });
 }
 
@@ -27,7 +31,14 @@ export function useFullDictionaries() {
             getCachedDictionaries("COLOR"),
             getCachedDictionaries("CITY")
         ]);
-        return { categories, marks, transmissions, fuels, colors, cities };
+        return { 
+            categories: categories as DictionaryItem[],
+            marks: marks as DictionaryItem[],
+            transmissions: transmissions as DictionaryItem[],
+            fuels: fuels as DictionaryItem[],
+            colors: colors as DictionaryItem[],
+            cities: cities as DictionaryItem[]
+        };
     },
     staleTime: Infinity
    });
