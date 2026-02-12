@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
-import { UserResponse, OwnerLoginRequest, LoginResponse } from "@/types/auth"; 
+import { UserResponse, OwnerLoginRequest, LoginResponse } from "@/types/auth";
 
 
 export function useAuth() {
@@ -10,17 +10,17 @@ export function useAuth() {
   const { data: user, isLoading, isError } = useQuery<UserResponse | null>({
     queryKey: ['user'],
     queryFn: async () => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        if (!token) return null;
-        try {
-            return await apiClient.get('/auth/me') as UserResponse;
-        } catch (e) {
-            localStorage.removeItem('token');
-            return null;
-        }
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) return null;
+      try {
+        return await apiClient.get('/auth/me') as UserResponse;
+      } catch (e) {
+        localStorage.removeItem('token');
+        return null;
+      }
     },
     retry: false,
-    staleTime: Infinity, 
+    staleTime: Infinity,
   });
 
   const loginMutation = useMutation({
@@ -31,7 +31,7 @@ export function useAuth() {
     onSuccess: (data) => {
       localStorage.setItem('token', data.access_token);
       queryClient.invalidateQueries({ queryKey: ['user'] });
-      toast.success("Вы успешно вошли в систему"); 
+      toast.success("Вы успешно вошли в систему");
     },
     onError: (error: any) => {
       throw error;
@@ -40,15 +40,19 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-       return true;
+      return true;
     },
     onSuccess: () => {
       localStorage.removeItem('token');
       queryClient.setQueryData(['user'], null);
-      queryClient.clear(); 
+      queryClient.clear();
       // toast.info("Вы вышли из системы");
     }
   });
+
+  const refreshUser = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['user'] });
+  };
 
   return {
     user,
@@ -56,6 +60,7 @@ export function useAuth() {
     isAuthenticated: !!user,
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutate,
+    refreshUser,
     isLoginPending: loginMutation.isPending
   };
 }

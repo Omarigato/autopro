@@ -122,7 +122,10 @@ class DictionaryService:
             
         for color in data.get("colors", []):
             self.upsert_item(db, color["code"], color["names"]["en"], "COLOR", translations=color["names"])
-        
+            
+        for body in data.get("car_types", []):
+            self.upsert_item(db, body["code"], body["names"]["en"], "BODY", translations=body["names"])
+
         # Планы и платежи
         for plan in data.get("subscription_plans", []):
             if not db.query(SubscriptionPlan).filter(SubscriptionPlan.code == plan["code"]).first():

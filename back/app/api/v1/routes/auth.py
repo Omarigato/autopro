@@ -14,9 +14,33 @@ from app.db.session import get_db
 from app.models.entities import CarOwner, User, OTPVerification, Image
 from app.schemas.auth import OwnerLoginRequest, OwnerRegisterRequest, Token, UserResponse
 from app.core.responses import create_response
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+import re
 
 router = APIRouter()
+
+def is_password_strong(password: str) -> bool:
+    """
+    Пароль должен содержать минимум 8 символов, заглавную букву, строчную букву, число и спецсимвол.
+    """
+    if len(password) < 8:
+        return False
+    if not re.search("[a-z]", password):
+        return False
+    if not re.search("[A-Z]", password):
+        return False
+    if not re.search("[0-9]", password):
+        return False
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False
+    return True
+
+class RegisterCompleteRequest(BaseModel):
+    name: str
+    target: str
+    otp_code: str
+    password: str
+    confirm_password: str
 
 class EntranceRequest(BaseModel):
     login: str  # Can be phone, email or username
@@ -69,14 +93,7 @@ def check_entrance(payload: EntranceRequest, request: Request, db: Session = Dep
         return otp_code
 
     if user:
-        # Если это мобильное приложение и у пользователя установлен ПИН
-        if payload.platform in ["ios", "android"] and user.pin_code:
-            return create_response(
-                data={"exists": True, "type": "pin", "login": payload.login},
-                lang=request.state.lang
-            )
-        
-        # Для веб-версии (или мобилки без ПИНа) - отправляем OTP для входа (login)
+        # Для веб-версии (и мобайла) - отправляем OTP для входа (login)
         trigger_otp(payload.login, "login")
         return create_response(
             data={"exists": True, "type": "otp", "login": payload.login},
@@ -92,7 +109,7 @@ def check_entrance(payload: EntranceRequest, request: Request, db: Session = Dep
             lang=request.state.lang
         )
 
-@router.post("/login-json")
+@router.post("/login")
 def login_json(
     payload: OwnerLoginRequest, 
     request: Request,
@@ -170,32 +187,92 @@ def verify_otp(
     if not verification:
         return create_response(code=400, message_key="invalid_otp", lang=request.state.lang)
 
-    verification.is_used = True
-    
-    # Пытаемся найти пользователя или создать нового
+    # Пытаемся найти пользователя
     user = db.query(User).filter(
         or_(User.phone_number == target, User.email == target)
     ).first()
 
-    if not user:
-        user = User(
-            name=f"User {target[-4:]}" if payload.phone_number else target.split('@')[0],
-            phone_number=payload.phone_number,
-            email=payload.email,
-            role="owner",
-            is_active=True
+    if user:
+        # Если пользователь есть - это вход
+        verification.is_used = True
+        db.commit()
+        access_token = create_access_token(subject=user.id)
+        return create_response(
+            data={"access_token": access_token, "token_type": "bearer", "user_exists": True},
+            message_key="login_success",
+            lang=request.state.lang
         )
-        db.add(user)
-        db.flush()
-        owner = CarOwner(user_id=user.id)
-        db.add(owner)
+    else:
+        # Если пользователя нет - возвращаем статус верификации для регистрации
+        return create_response(
+            data={"verified": True, "user_exists": False, "target": target, "otp_code": payload.otp_code},
+            message="OTP подтвержден. Пожалуйста, завершите регистрацию.",
+            lang=request.state.lang
+        )
+
+@router.post("/register")
+def register(
+    payload: RegisterCompleteRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Завершение регистрации пользователя с установкой пароля.
+    """
+    if payload.password != payload.confirm_password:
+        return create_response(code=400, message="Пароли не совпадают", lang=request.state.lang)
     
+    if not is_password_strong(payload.password):
+        return create_response(
+            code=400, 
+            message="Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол", 
+            lang=request.state.lang
+        )
+
+    # Повторная проверка OTP
+    verification = db.query(OTPVerification).filter(
+        OTPVerification.target == payload.target,
+        OTPVerification.code == payload.otp_code,
+        OTPVerification.is_used == False,
+        OTPVerification.expires_at > datetime.utcnow()
+    ).first()
+
+    if not verification:
+        return create_response(code=400, message="Срок действия OTP истек или код уже использован", lang=request.state.lang)
+
+    # Проверка на наличие дубликатов
+    existing_user = db.query(User).filter(
+        or_(User.phone_number == payload.target, User.email == payload.target)
+    ).first()
+    
+    if existing_user:
+        return create_response(code=400, message="Пользователь с таким номером/email уже существует", lang=request.state.lang)
+
+    # Создание пользователя
+    is_email = "@" in payload.target
+    new_user = User(
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        name=f"{payload.first_name} {payload.last_name or ''}".strip(),
+        phone_number=None if is_email else payload.target,
+        email=payload.target if is_email else None,
+        password_hash=get_password_hash(payload.password),
+        role="client",
+        is_active=True
+    )
+    db.add(new_user)
+    db.flush()
+    
+    owner = CarOwner(user_id=new_user.id)
+    db.add(owner)
+    
+    verification.is_used = True
     db.commit()
     
-    access_token = create_access_token(subject=user.id)
+    access_token = create_access_token(subject=new_user.id)
     return create_response(
         data={"access_token": access_token, "token_type": "bearer"},
-        message_key="login_success",
+        message="Регистрация успешно завершена",
         lang=request.state.lang
     )
 
@@ -266,17 +343,26 @@ def get_me(current_user: User = Depends(get_current_user), request: Request = No
     avatar_url = current_user.avatar_image.url if current_user.avatar_image else current_user.avatar_url
     return create_response(data={
         "id": current_user.id,
-        "name": current_user.name,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "name": current_user.name or f"{current_user.first_name} {current_user.last_name or ''}".strip(),
         "role": current_user.role,
         "email": current_user.email,
         "phone_number": current_user.phone_number,
+        "gender": current_user.gender,
+        "date_birth": current_user.date_birth.isoformat() if current_user.date_birth else None,
+        "balance": current_user.balance,
         "avatar_url": avatar_url
     }, lang=request.state.lang if request else "ru")
 
 
 class ProfileUpdateRequest(BaseModel):
-    name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     email: str | None = None
+    phone_number: str | None = None
+    gender: str | None = None  # male, female
+    date_birth: str | None = None  # ISO format date string
 
 
 @router.put("/me")
@@ -286,10 +372,23 @@ def update_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if payload.name:
-        current_user.name = payload.name
+    if payload.first_name:
+        current_user.first_name = payload.first_name
+    if payload.last_name:
+        current_user.last_name = payload.last_name
     if payload.email:
         current_user.email = payload.email
+    if payload.phone_number:
+        current_user.phone_number = payload.phone_number
+    if payload.gender:
+        current_user.gender = payload.gender
+    if payload.date_birth:
+        from datetime import datetime as dt
+        current_user.date_birth = dt.fromisoformat(payload.date_birth)
+    
+    # Update name for backwards compatibility
+    current_user.name = f"{current_user.first_name} {current_user.last_name or ''}".strip()
+    
     db.commit()
     return create_response(message="Профиль обновлен", lang=request.state.lang)
 

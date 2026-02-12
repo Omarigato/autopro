@@ -1,17 +1,66 @@
+version: '3.8'
+
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: autopro_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-autopro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autopro123}
+      POSTGRES_DB: ${POSTGRES_DB:-autopro}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autopro}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - autopro_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: autopro_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@autopro.kz}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - autopro_network
+
   back:
     build: ./back
+    container_name: autopro_backend
     ports:
       - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
     env_file:
       - .env
+    environment:
+      - SQLALCHEMY_DATABASE_URI=postgresql://${POSTGRES_USER:-autopro}:${POSTGRES_PASSWORD:-autopro123}@db:5432/${POSTGRES_DB:-autopro}
     command: sh -c "python -m app.init_db && uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000}"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - autopro_network
 
   front:
     build:
       context: ./front
       args:
         - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
+    container_name: autopro_frontend
     ports:
       - "3000:3000"
     env_file:
@@ -20,9 +69,12 @@ services:
       - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
     depends_on:
       - back
+    networks:
+      - autopro_network
       
   nginx:
     image: nginx:alpine
+    container_name: autopro_nginx
     ports:
       - "80:80"
     volumes:
@@ -30,3 +82,15 @@ services:
     depends_on:
       - front
       - back
+    networks:
+      - autopro_network
+
+networks:
+  autopro_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local

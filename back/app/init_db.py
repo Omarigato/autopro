@@ -20,7 +20,8 @@ def init_db(recreate: bool = False) -> None:
         if not admin:
             print("Creating admin...")
             admin = entities.User(
-                name="Admin", login="admin", phone_number="777",
+                first_name="Admin", last_name="System",
+                name="Admin System", login="admin", phone_number="777",
                 password_hash=get_password_hash("admin123"),
                 role="admin", is_active=True
             )
@@ -32,9 +33,9 @@ def init_db(recreate: bool = False) -> None:
         asyncio.run(dictionary_service.sync_defaults(db))
         
         # 3. Синхронизация (cars)
-        if "--sync-cars" in sys.argv:
-            print("Syncing marks/models (this may take 1-2 mins)...")
-            asyncio.run(dictionary_service.sync_from_json(db))
+        # if "--sync-cars" in sys.argv:
+        print("Syncing marks/models (this may take 1-2 mins)...")
+        asyncio.run(dictionary_service.sync_from_json(db))
             
     finally:
         db.close()

@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Request
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_owner
@@ -13,7 +13,6 @@ from app.services.subscriptions_service import (
     owner_cars_count,
 )
 from app.core.responses import create_response
-from fastapi import Request
 from app.services.telegram import send_new_application_message
 
 router = APIRouter()
@@ -57,14 +56,17 @@ def create_car(
     bin: str | None = Form(default=None),
     release_year: int | None = Form(default=None),
     transport_number: str | None = Form(default=None),
-    motor_number: str | None = Form(default=None),
-    body_number: str | None = Form(default=None),
-    tech_passport_number: str | None = Form(default=None),
-    tech_passport_date: str | None = Form(default=None), # Accepting string for simpler Form handling
+    # New fields
+    mileage: int | None = Form(default=None),
+    body_type: str | None = Form(default=None),
+    steering: str | None = Form(default=None),  # LEFT/RIGHT
+    condition: str | None = Form(default=None),  # EXCELLENT/GOOD/FAIR
+    customs_cleared: bool | None = Form(default=None),
+    additional_info: str | None = Form(default=None),
     is_top: bool = Form(default=False),
     description: str | None = Form(default=None),
-    photos: list[UploadFile] = File(default=[]),
-    request: Request = None,
+    images: list[UploadFile] = File(default=[]),
+   request: Request = None,
     db: Session = Depends(get_db),
     current_owner: User = Depends(get_current_owner),
 ):
@@ -89,18 +91,10 @@ def create_car(
                 lang=request.state.lang
             )
 
-    # Date conversion if provided
-    from datetime import datetime
-    tp_date = None
-    if tech_passport_date:
-        try:
-            tp_date = datetime.fromisoformat(tech_passport_date.replace("Z", "+00:00"))
-        except:
-            tp_date = None
-
     car = Car(
         name=name,
         description=description,
+        additional_info=additional_info,
         vehicle_mark_id=vehicle_mark_id,
         vehicle_model_id=vehicle_model_id,
         category_id=category_id,
@@ -113,10 +107,11 @@ def create_car(
         bin=bin,
         release_year=release_year,
         transport_number=transport_number,
-        motor_number=motor_number,
-        body_number=body_number,
-        tech_passport_number=tech_passport_number,
-        tech_passport_date=tp_date,
+        mileage=mileage,
+        body_type=body_type,
+        steering=steering,
+        condition=condition,
+        customs_cleared=customs_cleared,
         is_top=is_top,
         author_id=current_owner.id,
         is_active=False,
@@ -125,8 +120,8 @@ def create_car(
     db.flush()
 
     # Save photos to Cloudinary
-    if photos:
-        for idx, photo in enumerate(photos):
+    if images:
+        for idx, photo in enumerate(images):
             url, public_id = CloudinaryService.upload_image(photo.file, folder="autopro/cars")
             if url:
                 img_record = Image(
@@ -154,6 +149,36 @@ def create_car(
     )
 
 
+@router.get("/my")
+def get_my_cars(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_owner: User = Depends(get_current_owner),
+):
+    """
+    Получить объявления текущего пользователя.
+    """
+    cars = db.query(Car).filter(
+        Car.author_id == current_owner.id,
+        Car.delete_date.is_(None)
+    ).all()
+    
+    result = []
+    for c in cars:
+        result.append({
+            "id": c.id,
+            "name": c.name,
+            "release_year": c.release_year,
+            "price_per_day": c.price_per_day,
+            "is_active": c.is_active,
+            "views_count": c.views_count,
+            "create_date": c.create_date.isoformat(),
+            "images": [{"url": img.url} for img in c.images],
+        })
+    
+    return create_response(data=result, lang=request.state.lang)
+
+
 @router.delete("/{car_id}")
 def delete_car(
     car_id: int,
@@ -175,7 +200,7 @@ def delete_car(
     # Delete images from Cloudinary
     for image in car.images:
         if image.image_id:
-            delete_image(image.image_id)
+            CloudinaryService.delete_image(image.image_id)
     
     db.delete(car)
     db.commit()
@@ -184,4 +209,3 @@ def delete_car(
         message_key="car_deleted",
         lang=request.state.lang
     )
-

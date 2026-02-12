@@ -11,13 +11,11 @@ export function Footer() {
             Ваш надежный партнер в мире аренды автомобилей. Мы предлагаем лучшие условия и широкий выбор транспорта.
           </p>
         </div>
-        
+
         <div>
           <h4 className="font-semibold text-foreground mb-4">Компания</h4>
           <ul className="space-y-2 text-sm">
             <li><Link href="/about" className="hover:text-primary">О нас</Link></li>
-            <li><Link href="/careers" className="hover:text-primary">Вакансии</Link></li>
-            <li><Link href="/blog" className="hover:text-primary">Блог</Link></li>
           </ul>
         </div>
 

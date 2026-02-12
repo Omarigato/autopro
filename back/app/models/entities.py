@@ -25,6 +25,7 @@ class Dictionary(Base):
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)
     icon: Mapped[str | None] = mapped_column(String(100), nullable=True) # Lucide icon name
     color: Mapped[str | None] = mapped_column(String(50), nullable=True) # Tailwind or Hex color
+    display_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -56,16 +57,20 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(255))
+    first_name: Mapped[str] = mapped_column(String(255))
+    last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)  # For backwards compatibility
     login: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(30), unique=True, index=True, nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    role: Mapped[str] = mapped_column(String(50), default="owner")  # owner, admin
+    role: Mapped[str] = mapped_column(String(50), default="client")  # client, owner, admin
+    gender: Mapped[str | None] = mapped_column(String(10), nullable=True)  # male, female
+    date_birth: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    balance: Mapped[int] = mapped_column(Integer, default=0)  # Баланс в тенге
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    pin_code: Mapped[str | None] = mapped_column(String(4), nullable=True) # 4-значный код
-    address: Mapped[str | None] = mapped_column(String(500), nullable=True) # Адрес арендодателя
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     
     otp_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
     otp_expiry: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -74,6 +79,8 @@ class User(Base):
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     owner: Mapped["CarOwner"] = relationship("CarOwner", uselist=False, back_populates="user")
+    likes: Mapped[list["UserLike"]] = relationship("UserLike", back_populates="user", cascade="all, delete-orphan")
+    events: Mapped[list["UserEvent"]] = relationship("UserEvent", back_populates="user", cascade="all, delete-orphan")
     
     avatar_image: Mapped["Image | None"] = relationship(
         "Image",
@@ -106,6 +113,7 @@ class Car(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    additional_info: Mapped[str | None] = mapped_column(Text, nullable=True)  # Дополнительно
     price_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
     
     vehicle_mark_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
@@ -117,14 +125,15 @@ class Car(Base):
     color_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"))
     engine_volume: Mapped[str | None] = mapped_column(String(50)) # "2.5", "3.0" итд
     
+    # Vehicle details
     transport_number: Mapped[str | None] = mapped_column(String(50)) # Гос номер (080ABC01)
-    motor_number: Mapped[str | None] = mapped_column(String(100)) # Номер двигателя
-    body_number: Mapped[str | None] = mapped_column(String(100)) # Номер кузова
-    tech_passport_number: Mapped[str | None] = mapped_column(String(50)) # Номер техпаспорта
-    tech_passport_date: Mapped[datetime | None] = mapped_column(DateTime) # Дата техпаспорта
-    
     bin: Mapped[str | None] = mapped_column(String(50))
-    release_year: Mapped[int | None] = mapped_column(Integer)
+    release_year: Mapped[int | None] = mapped_column(Integer)  # Год выпуска
+    mileage: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Пробег
+    body_type: Mapped[str | None] = mapped_column(String(100), nullable=True)  # Кузов
+    steering: Mapped[str | None] = mapped_column(String(20), nullable=True)  # LEFT/RIGHT Руль
+    condition: Mapped[str | None] = mapped_column(String(50), nullable=True)  # EXCELLENT/GOOD/FAIR
+    customs_cleared: Mapped[bool | None] = mapped_column(Boolean, nullable=True)  # Растаможен
     city_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id")) # Город
     
     is_top: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -324,6 +333,39 @@ class PaymentTransaction(Base):
     subscription: Mapped[OwnerSubscription] = relationship(
         "OwnerSubscription", back_populates="transactions"
     )
+
+
+class UserLike(Base):
+    """
+    Избранные объявления пользователя.
+    """
+    __tablename__ = "user_likes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", back_populates="likes")
+    car: Mapped["Car"] = relationship("Car")
+
+
+class UserEvent(Base):
+    """
+    События пользователя (просмотры объявлений, заявки).
+    """
+    __tablename__ = "user_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"), index=True)
+    application_id: Mapped[int | None] = mapped_column(ForeignKey("applications.id"), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(50))  # view, application
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", back_populates="events")
+    car: Mapped["Car"] = relationship("Car")
+    application: Mapped["Application | None"] = relationship("Application")
 
 
 class OTPVerification(Base):
