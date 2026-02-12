@@ -1,0 +1,46 @@
+services:
+  # ── Backend (FastAPI) ──────────────────────────────
+  - type: web
+    name: autopro-backend
+    runtime: docker
+    dockerfilePath: ./back/Dockerfile
+    dockerContext: ./back
+    envVars:
+      - key: APP_VERSION
+        value: "1.0.0"
+      - key: DEBUG
+        value: "false"
+      - key: ENVIRONMENT
+        value: "production"
+      - key: API_V1_STR
+        value: "/api/v1"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: BACKEND_PORT
+        value: "8000"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SQLALCHEMY_DATABASE_URI
+        sync: false
+      - key: CORS_ORIGINS
+        value: "https://rent-hub.kz,https://www.rent-hub.kz"
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: TELEGRAM_NOTIFICATION_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_CHAT_ID
+        sync: false
+
+  # ── Frontend (Next.js) ─────────────────────────────
+  - type: web
+    name: autopro-frontend
+    runtime: docker
+    dockerfilePath: ./front/Dockerfile
+    dockerContext: ./front
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: "https://api.rent-hub.kz/api/v1"

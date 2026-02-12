@@ -21,4 +21,6 @@ export interface UserResponse {
   phone_number: string;
   role: "owner" | "admin";
   create_date: string; // ISO date string
+  email?: string;
+  login?: string;
 }

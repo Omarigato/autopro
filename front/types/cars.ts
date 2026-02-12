@@ -43,8 +43,8 @@ export interface CarResponse {
   bin?: string;
   release_year?: number;
   is_top: boolean;
-  author_id: int;
-  is_active: bool;
+  author_id: number;
+  is_active: boolean;
   create_date: string;
   description?: string;
   images: ImageResponse[];
