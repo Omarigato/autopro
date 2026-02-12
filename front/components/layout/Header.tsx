@@ -34,12 +34,11 @@ export function Header() {
   const [cities, setCities] = useState<any[]>([]);
 
   useEffect(() => {
-    // Load cities from API
-    apiClient.get('/dictionaries?type=CITY')
+    apiClient.get('/dictionaries', { params: { type: 'CITY' } })
       .then(res => {
-        if (res.data?.data) {
-          setCities(res.data.data);
-        }
+        // Handle both raw response and unwrapped data from interceptor
+        const data = Array.isArray(res) ? res : (res?.data || []);
+        setCities(data);
       })
       .catch(err => console.error('Failed to load cities:', err));
   }, []);
@@ -47,6 +46,7 @@ export function Header() {
   const routes = [
     { href: "/", label: "Главная" },
     { href: "/catalog", label: "Каталог" },
+    { href: "/subscriptions", label: "Тарифы" },
     { href: "/add", label: "Сдать авто" },
   ];
 
@@ -62,28 +62,7 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
-          {/* City Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <MapPin className="h-4 w-4" />
-                {city}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuLabel>Выберите город</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {cities.map((c) => (
-                <DropdownMenuItem
-                  key={c.id}
-                  onClick={() => setCity(c.name)}
-                  className={city === c.name ? "bg-accent" : ""}
-                >
-                  {c.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+
 
           <NavigationMenu>
             <NavigationMenuList>
@@ -102,6 +81,29 @@ export function Header() {
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-4">
+          {/* City Selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                <MapPin className="h-4 w-4" />
+                {city}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {cities.map((c) => (
+                <DropdownMenuItem
+                  key={c.id}
+                  onClick={() => setCity(c.name)}
+                  className={city === c.name ? "bg-accent" : ""}
+                >
+                  {c.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="h-4 w-px bg-border mx-2" />
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

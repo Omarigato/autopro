@@ -17,7 +17,8 @@ export const getCachedDictionaries = async (
     if (cached) {
         try {
             const { data, timestamp } = JSON.parse(cached);
-            if (Date.now() - timestamp < CACHE_DURATION) {
+            // Only use cache if it's not expired AND data is not empty
+            if (Date.now() - timestamp < CACHE_DURATION && Array.isArray(data) && data.length > 0) {
                 return data;
             }
         } catch (e) {
@@ -31,10 +32,22 @@ export const getCachedDictionaries = async (
 
         // Ensure endpoint is correct based on backend. Usually /dictionaries?type=...
         const res: any = await apiClient.get("/dictionaries", { params });
-        // Проверяем структуру ответа: { data: [...], code: 200 }
-        const data = res.data?.data || res.data || [];
 
-        localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
+        // apiClient interceptor already returns response.data.data if it exists
+        // so res should be an array directly in most cases.
+        let data = [];
+        if (Array.isArray(res)) {
+            data = res;
+        } else if (res && res.data && Array.isArray(res.data)) {
+            data = res.data;
+        } else if (res && typeof res === 'object') {
+            // fallback for other formats
+            data = res.data || [];
+        }
+
+        if (Array.isArray(data) && data.length > 0) {
+            localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
+        }
         return data;
     } catch (e) {
         console.error(`Failed to fetch dictionary ${type}`, e);

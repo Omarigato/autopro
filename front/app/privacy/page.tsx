@@ -85,7 +85,7 @@ export default function PrivacyPage() {
                     </p>
                 </section>
 
-                <section className="mt-12 p-6 bg-slate-50 rounded-2xl">
+                <section className="mt-12 p-6 bg-blue-50/50 rounded-2xl">
                     <p className="text-slate-600">
                         По вопросам конфиденциальности обращайтесь:
                         <a href="mailto:privacy@autopro.kz" className="text-primary hover:underline ml-1">
