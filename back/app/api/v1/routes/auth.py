@@ -42,79 +42,35 @@ class RegisterCompleteRequest(BaseModel):
     password: str
     confirm_password: str
 
-class EntranceRequest(BaseModel):
-    login: str  # Can be phone, email or username
-
-class PasswordResetRequest(BaseModel):
-    target: str
+class OTPVerifyRequest(BaseModel):
+    target: str # email or phone
     otp_code: str
-    new_password: str
 
 class PasswordChangeRequest(BaseModel):
-    old_password: str
-    new_password: str
+    target: str
+    password: str
+    otp_code: str | None = None # Required if resetting password via OTP
 
-class PhoneLoginRequest(BaseModel):
-    phone_number: str
+class LoginRequest(BaseModel):
+    login: str # phone or email
+    password: str | None = None
+    otp_code: str | None = None
 
-class OTPVerifyRequest(BaseModel):
+class CheckExistsRequest(BaseModel):
     email: str | None = None
     phone_number: str | None = None
-    otp_code: str
-
-@router.post("/check-entrance")
-def check_entrance(payload: EntranceRequest, request: Request, db: Session = Depends(get_db)):
-    """
-    Проверка существования пользователя для адаптивного входа в систему.
-    - Для Мобильных (ios/android): если есть пин-код -> 'pin'
-    - Для Веб: всегда 'otp' (даже если существует) для беспарольного входа.
-    """
-    user = db.query(User).filter(
-        or_(
-            User.login == payload.login,
-            User.phone_number == payload.login,
-            User.email == payload.login
-        )
-    ).first()
-
-    # Вспомогательная функция для генерации и сохранения OTP
-    def trigger_otp(target: str, flow_type: str):
-        otp_code = str(random.randint(100000, 999999))
-        
-        verification = OTPVerification(
-            target=target,
-            code=otp_code,
-            type=flow_type,
-            expires_at=datetime.utcnow() + timedelta(minutes=10)
-        )
-        db.add(verification)
-        db.commit()
-        print(f"DEBUG: {flow_type} OTP for {target} is {otp_code}")
-        return otp_code
-
-    if user:
-        # Для веб-версии (и мобайла) - отправляем OTP для входа (login)
-        trigger_otp(payload.login, "login")
-        return create_response(
-            data={"exists": True, "type": "otp", "login": payload.login},
-            message_key="otp_sent",
-            lang=request.state.lang
-        )
-    else:
-        # Пользователь не найден - регистрация через OTP
-        trigger_otp(payload.login, "register")
-        return create_response(
-            data={"exists": False, "type": "otp", "login": payload.login},
-            message_key="otp_sent",
-            lang=request.state.lang
-        )
 
 @router.post("/login")
-def login_json(
-    payload: OwnerLoginRequest, 
+def login(
+    payload: LoginRequest, 
     request: Request,
     db: Session = Depends(get_db)
 ):
+    """
+    Login with password OR with OTP code.
+    If otp_code is provided, verifies OTP and logs in.
+    If password is provided, verifies password and logs in.
+    """
     user = db.query(User).filter(
         or_(
             User.login == payload.login,
@@ -123,12 +79,41 @@ def login_json(
         )
     ).first()
 
-    if not user or not verify_password(payload.password, user.password_hash):
-        return create_response(
-            code=400,
-            message_key="auth_failed",
-            lang=request.state.lang
-        )
+    if not user:
+        return create_response(code=404, message_key="user_not_found", lang=request.state.lang)
+
+    # Login via OTP
+    if payload.otp_code:
+        # Verify OTP
+        # We need to find valid verification
+        target = user.phone_number if user.phone_number else user.email
+        # Or better, just check against payload.login as target
+        # But verification usually stored with canonical target.
+        # Let's try matching against payload.login first, if fails try user fields.
+        
+        verification = db.query(OTPVerification).filter(
+            or_(OTPVerification.target == payload.login, OTPVerification.target == user.phone_number, OTPVerification.target == user.email),
+            OTPVerification.code == payload.otp_code,
+            OTPVerification.is_used == False,
+            OTPVerification.expires_at > datetime.utcnow()
+        ).first()
+        
+        if not verification:
+             return create_response(code=400, message_key="invalid_otp", lang=request.state.lang)
+             
+        verification.is_used = True
+        db.commit()
+
+    # Login via Password
+    elif payload.password:
+        if not verify_password(payload.password, user.password_hash):
+            return create_response(
+                code=400,
+                message_key="auth_failed",
+                lang=request.state.lang
+            )
+    else:
+        return create_response(code=400, message="Необходимо указать пароль или код", lang=request.state.lang)
 
     access_token = create_access_token(subject=user.id)
     return create_response(
@@ -136,22 +121,114 @@ def login_json(
         lang=request.state.lang
     )
 
-@router.post("/otp/request")
-def request_otp(
-    payload: PhoneLoginRequest,
+@router.post("/register")
+def register(
+    payload: OwnerRegisterRequest,
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Генерация OTP для входа или сброса пароля"""
-    user = db.query(User).filter(User.phone_number == payload.phone_number).first()
+    """
+    Registration (Owners/Clients).
+    Checks for existing phone/email.
+    """
+    # Check Phone
+    if db.query(User).filter(User.phone_number == payload.phone_number).first():
+        return create_response(code=400, message="Пользователь с таким номером телефона уже существует", lang=request.state.lang)
+        
+    # Check Email
+    target_email = payload.login if "@" in payload.login else None
+    if target_email:
+        if db.query(User).filter(User.email == target_email).first():
+             return create_response(code=400, message="Пользователь с таким email уже существует", lang=request.state.lang)
+    
+    # Password Validation
+    if not is_password_strong(payload.password):
+        return create_response(
+            code=400, 
+            message="Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол", 
+            lang=request.state.lang
+        )
+
+    # Split name into first and last name
+    name_parts = payload.name.strip().split(" ", 1)
+    first_name = name_parts[0]
+    last_name = name_parts[1] if len(name_parts) > 1 else None
+
+    new_user = User(
+        name=payload.name,
+        first_name=first_name,
+        last_name=last_name,
+        phone_number=payload.phone_number,
+        email=target_email,
+        password_hash=get_password_hash(payload.password),
+        role="client", 
+        is_active=True
+    )
+    db.add(new_user)
+    db.flush()
+    
+    owner = CarOwner(user_id=new_user.id)
+    db.add(owner)
+    
+    db.commit()
+    
+    access_token = create_access_token(subject=new_user.id)
+    return create_response(
+        data={"access_token": access_token, "token_type": "bearer"},
+        message="Регистрация успешно завершена",
+        lang=request.state.lang
+    )
+
+class CheckExistsRequest(BaseModel):
+    email: str | None = None
+    phone_number: str | None = None
+
+@router.post("/check-exists")
+def check_user_exists(
+    payload: CheckExistsRequest, 
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    result = {"email_exists": False, "phone_exists": False}
+    
+    if payload.email:
+        if db.query(User).filter(User.email == payload.email).first():
+            result["email_exists"] = True
+            
+    if payload.phone_number:
+        if db.query(User).filter(User.phone_number == payload.phone_number).first():
+            result["phone_exists"] = True
+            
+    return create_response(data=result, lang=request.state.lang)
+
+class OTPRequest(BaseModel):
+    target: str # email or phone
+
+@router.post("/otp/request")
+def request_otp(
+    payload: OTPRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Generates OTP for Login (if user exists) or Forgot Password.
+    Also used for verifying phone/email during generic processes if needed.
+    """
+    user = db.query(User).filter(
+        or_(
+            User.phone_number == payload.target,
+            User.email == payload.target,
+            User.login == payload.target
+        )
+    ).first()
     
     otp = str(random.randint(100000, 999999))
     
-    # Сохраняем в историю верификации
     verification = OTPVerification(
-        target=payload.phone_number,
+        target=payload.target,
         code=otp,
-        type="login" if user else "register",
+        type="login" if user else "register", # Generic type, or refine based on context? 
+        # User said "Forgot password... send otp". 
         expires_at=datetime.utcnow() + timedelta(minutes=5)
     )
     db.add(verification)
@@ -161,7 +238,7 @@ def request_otp(
         user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
     
     db.commit()
-    print(f"DEBUG: OTP for {payload.phone_number} is {otp}")
+    print(f"DEBUG: OTP for {payload.target} is {otp}")
     
     return create_response(
         message_key="otp_sent",
@@ -174,11 +251,15 @@ def verify_otp(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    target = payload.phone_number or payload.email
-    
-    # Проверяем в основной таблице верификации
+    """
+    Verify OTP. 
+    If used for login (and user exists), could potentially login here too, 
+    but user asked for 'Login via code' in the login endpoint. 
+    This endpoint might be for 'Forgot Password' verification step 
+    or just checking if OTP is valid before proceeding.
+    """
     verification = db.query(OTPVerification).filter(
-        OTPVerification.target == target,
+        OTPVerification.target == payload.target,
         OTPVerification.code == payload.otp_code,
         OTPVerification.is_used == False,
         OTPVerification.expires_at > datetime.utcnow()
@@ -187,156 +268,66 @@ def verify_otp(
     if not verification:
         return create_response(code=400, message_key="invalid_otp", lang=request.state.lang)
 
-    # Пытаемся найти пользователя
-    user = db.query(User).filter(
-        or_(User.phone_number == target, User.email == target)
-    ).first()
+    # We mark it used ONLY if this is a final step or we pass a token to next step.
+    # For 'Forgot Password', we might verify here, then 'change-password' checks it again or trusts a token?
+    # Simpler: just return success. 'change-password' will check OTP again and mark used.
+    # OR: mark used here and return a temporary 'reset_token'.
+    # Let's keep it simple: just return Valid. The 'change-password' or 'login' will consume it.
+    
+    return create_response(
+        message="Код верен",
+        data={"verified": True, "target": payload.target, "code": payload.otp_code},
+        lang=request.state.lang
+    )
 
-    if user:
-        # Если пользователь есть - это вход
-        verification.is_used = True
-        db.commit()
-        access_token = create_access_token(subject=user.id)
-        return create_response(
-            data={"access_token": access_token, "token_type": "bearer", "user_exists": True},
-            message_key="login_success",
-            lang=request.state.lang
-        )
-    else:
-        # Если пользователя нет - возвращаем статус верификации для регистрации
-        return create_response(
-            data={"verified": True, "user_exists": False, "target": target, "otp_code": payload.otp_code},
-            message="OTP подтвержден. Пожалуйста, завершите регистрацию.",
-            lang=request.state.lang
-        )
-
-@router.post("/register")
-def register(
-    payload: RegisterCompleteRequest,
+@router.post("/change-password")
+def change_password(
+    payload: PasswordChangeRequest, 
     request: Request,
     db: Session = Depends(get_db)
 ):
     """
-    Завершение регистрации пользователя с установкой пароля.
+    Change password. 
+    If unauthenticated (Forgot Password flow), requires 'target' and 'otp_code'.
+    If authenticated (Change Password flow), we can adapt or use a separate endpoint.
+    User asked for 'change-password' in the context of 'forgot password'.
     """
-    if payload.password != payload.confirm_password:
-        return create_response(code=400, message="Пароли не совпадают", lang=request.state.lang)
+    # Verify OTP
+    verification = db.query(OTPVerification).filter(
+        OTPVerification.target == payload.target,
+        OTPVerification.code == payload.otp_code,
+        OTPVerification.is_used == False,
+        OTPVerification.expires_at > datetime.utcnow()
+    ).first()
     
+    if not verification:
+         return create_response(code=400, message_key="invalid_otp", lang=request.state.lang)
+
+    # Find User
+    user = db.query(User).filter(
+        or_(
+            User.login == payload.target,
+            User.email == payload.target,
+            User.phone_number == payload.target
+        )
+    ).first()
+
+    if not user:
+         return create_response(code=404, message_key="user_not_found", lang=request.state.lang)
+
+    # Update Password
     if not is_password_strong(payload.password):
         return create_response(
             code=400, 
             message="Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол", 
             lang=request.state.lang
         )
-
-    # Повторная проверка OTP
-    verification = db.query(OTPVerification).filter(
-        OTPVerification.target == payload.target,
-        OTPVerification.code == payload.otp_code,
-        OTPVerification.is_used == False,
-        OTPVerification.expires_at > datetime.utcnow()
-    ).first()
-
-    if not verification:
-        return create_response(code=400, message="Срок действия OTP истек или код уже использован", lang=request.state.lang)
-
-    # Проверка на наличие дубликатов
-    existing_user = db.query(User).filter(
-        or_(User.phone_number == payload.target, User.email == payload.target)
-    ).first()
-    
-    if existing_user:
-        return create_response(code=400, message="Пользователь с таким номером/email уже существует", lang=request.state.lang)
-
-    # Создание пользователя
-    is_email = "@" in payload.target
-    new_user = User(
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        name=f"{payload.first_name} {payload.last_name or ''}".strip(),
-        phone_number=None if is_email else payload.target,
-        email=payload.target if is_email else None,
-        password_hash=get_password_hash(payload.password),
-        role="client",
-        is_active=True
-    )
-    db.add(new_user)
-    db.flush()
-    
-    owner = CarOwner(user_id=new_user.id)
-    db.add(owner)
-    
+        
+    user.password_hash = get_password_hash(payload.password)
     verification.is_used = True
     db.commit()
     
-    access_token = create_access_token(subject=new_user.id)
-    return create_response(
-        data={"access_token": access_token, "token_type": "bearer"},
-        message="Регистрация успешно завершена",
-        lang=request.state.lang
-    )
-
-@router.post("/password/reset/request")
-def reset_password_request(payload: EntranceRequest, request: Request, db: Session = Depends(get_db)):
-    user = db.query(User).filter(
-        or_(User.login == payload.login, User.phone_number == payload.login, User.email == payload.login)
-    ).first()
-    
-    if not user:
-        return create_response(code=404, message_key="user_not_found", lang=request.state.lang)
-
-    otp_code = str(random.randint(100000, 999999))
-    verification = OTPVerification(
-        target=payload.login,
-        code=otp_code,
-        type="password_reset",
-        expires_at=datetime.utcnow() + timedelta(minutes=10)
-    )
-    db.add(verification)
-    db.commit()
-    print(f"DEBUG: Password Reset OTP for {payload.login} is {otp_code}")
-    
-    return create_response(message_key="otp_sent", lang=request.state.lang)
-
-@router.post("/password/reset/confirm")
-def reset_password_confirm(payload: PasswordResetRequest, request: Request, db: Session = Depends(get_db)):
-    verification = db.query(OTPVerification).filter(
-        OTPVerification.target == payload.target,
-        OTPVerification.code == payload.otp_code,
-        OTPVerification.type == "password_reset",
-        OTPVerification.is_used == False,
-        OTPVerification.expires_at > datetime.utcnow()
-    ).first()
-
-    if not verification:
-        return create_response(code=400, message_key="invalid_otp", lang=request.state.lang)
-
-    user = db.query(User).filter(
-        or_(User.login == payload.target, User.phone_number == payload.target, User.email == payload.target)
-    ).first()
-
-    if not user:
-        return create_response(code=404, message_key="user_not_found", lang=request.state.lang)
-
-    user.password_hash = get_password_hash(payload.new_password)
-    verification.is_used = True
-    db.commit()
-    
-    return create_response(message_key="password_updated", lang=request.state.lang)
-
-@router.post("/password/change")
-def change_password_auth(
-    payload: PasswordChangeRequest, 
-    request: Request,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    if not verify_password(payload.old_password, current_user.password_hash):
-        return create_response(code=400, message="Неверный старый пароль", lang=request.state.lang)
-    
-    current_user.password_hash = get_password_hash(payload.new_password)
-    db.commit()
-    return create_response(message="Пароль успешно изменен", lang=request.state.lang)
+    return create_response(message="Пароль успешно обновлен", lang=request.state.lang)
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user), request: Request = None):

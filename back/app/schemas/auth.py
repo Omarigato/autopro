@@ -18,7 +18,8 @@ class OwnerRegisterRequest(BaseModel):
 
 class OwnerLoginRequest(BaseModel):
     login: str
-    password: str
+    password: str | None = None
+    otp_code: str | None = None
 
 
 class UserResponse(BaseModel):

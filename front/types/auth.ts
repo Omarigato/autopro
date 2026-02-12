@@ -12,7 +12,8 @@ export interface OwnerRegisterRequest {
 
 export interface OwnerLoginRequest {
   login: string;
-  password: string;
+  password?: string;
+  otp_code?: string;
 }
 
 export interface UserResponse {
