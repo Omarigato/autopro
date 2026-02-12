@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { Facebook, Instagram, Twitter } from "lucide-react";
+import Image from "next/image";
 
 export function Footer() {
   return (
     <footer className="bg-slate-50 border-t border-slate-100 py-12 text-slate-500">
       <div className="container grid grid-cols-1 md:grid-cols-4 gap-8">
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-foreground">AutoPro</h3>
+          <div className="flex items-center gap-2">
+            <Image src="/logo.png" alt="Logo" width={24} height={24} className="h-6 w-6 object-contain" />
+          </div>
           <p className="text-sm">
             Ваш надежный партнер в мире аренды автомобилей. Мы предлагаем лучшие условия и широкий выбор транспорта.
           </p>
@@ -40,7 +43,7 @@ export function Footer() {
         </div>
       </div>
       <div className="container mt-12 pt-8 border-t border-slate-200 text-center text-xs">
-        &copy; {new Date().getFullYear()} AutoPro. All rights reserved.
+        &copy; {new Date().getFullYear()}. All rights reserved.
       </div>
     </footer>
   );

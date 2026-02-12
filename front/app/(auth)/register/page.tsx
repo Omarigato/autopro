@@ -51,7 +51,7 @@ export default function RegisterPage() {
       toast.success("Регистрация успешна! Теперь вы можете войти.");
       router.push("/login");
     } catch (error: any) {
-        console.error(error);
+      console.error(error);
       toast.error(error.detail || "Ошибка регистрации");
     }
   }
@@ -60,7 +60,7 @@ export default function RegisterPage() {
     <div className="space-y-6">
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-bold">Создать аккаунт</h1>
-        <p className="text-muted-foreground">Присоединяйтесь к сообществу AutoPro</p>
+        <p className="text-muted-foreground">Присоединяйтесь к нашему сообществу</p>
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -90,7 +90,7 @@ export default function RegisterPage() {
               </FormItem>
             )}
           />
-           <FormField
+          <FormField
             control={form.control}
             name="login"
             render={({ field }) => (
@@ -116,7 +116,7 @@ export default function RegisterPage() {
               </FormItem>
             )}
           />
-           <FormField
+          <FormField
             control={form.control}
             name="confirmPassword"
             render={({ field }) => (

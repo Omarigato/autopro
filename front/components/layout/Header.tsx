@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -54,10 +55,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
-          <div className="bg-primary rounded-lg p-1.5">
-            <Car className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-xl tracking-tight">AutoPro</span>
+          <Image src="/logo.png" alt="Logo" width={128} height={64} className="h-16 w-16 object-contain" />
         </Link>
 
         {/* Desktop Navigation */}
