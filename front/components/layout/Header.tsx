@@ -34,13 +34,43 @@ export function Header() {
   const [cities, setCities] = useState<any[]>([]);
 
   useEffect(() => {
+    const allCities = [
+      { id: 1, name: 'Алматы' },
+      { id: 2, name: 'Астана' },
+      { id: 3, name: 'Шымкент' },
+      { id: 4, name: 'Караганда' },
+      { id: 5, name: 'Актобе' },
+      { id: 6, name: 'Тараз' },
+      { id: 7, name: 'Павлодар' },
+      { id: 8, name: 'Усть-Каменогорск' },
+      { id: 9, name: 'Семей' },
+      { id: 10, name: 'Атырау' },
+      { id: 11, name: 'Костанай' },
+      { id: 12, name: 'Кызылорда' },
+      { id: 13, name: 'Уральск' },
+      { id: 14, name: 'Петропавловск' },
+      { id: 15, name: 'Актау' },
+      { id: 16, name: 'Темиртау' },
+      { id: 17, name: 'Туркестан' },
+      { id: 18, name: 'Кокшетау' },
+      { id: 19, name: 'Талдыкорган' },
+      { id: 20, name: 'Экибастуз' },
+      { id: 21, name: 'Рудный' }
+    ];
+
     apiClient.get('/dictionaries', { params: { type: 'CITY' } })
       .then(res => {
-        // Handle both raw response and unwrapped data from interceptor
         const data = Array.isArray(res) ? res : (res?.data || []);
-        setCities(data);
+        if (data.length > 0) {
+          setCities(data);
+        } else {
+          setCities(allCities);
+        }
       })
-      .catch(err => console.error('Failed to load cities:', err));
+      .catch(err => {
+        console.error('Failed to load cities:', err);
+        setCities(allCities);
+      });
   }, []);
 
   const routes = [
@@ -84,12 +114,12 @@ export function Header() {
           {/* City Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+              <Button variant="outline" size="sm" className="gap-2 text-muted-foreground hover:text-foreground rounded-xl border-slate-200">
                 <MapPin className="h-4 w-4" />
                 {city}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
               {cities.map((c) => (
                 <DropdownMenuItem
                   key={c.id}

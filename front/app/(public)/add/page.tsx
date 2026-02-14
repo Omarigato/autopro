@@ -51,7 +51,6 @@ export default function AddCarPage() {
     const loadDictionaries = async () => {
         setLoading(true);
         try {
-            // Using getCachedDictionaries for better performance and caching
             const [categoriesData, marksData, citiesData, enginesData, bodiesData, transmissionsData, colorsData] = await Promise.all([
                 getCachedDictionaries("CATEGORY"),
                 getCachedDictionaries("MARKA"),
@@ -62,13 +61,58 @@ export default function AddCarPage() {
                 getCachedDictionaries("COLOR")
             ]);
 
-            setCategories(categoriesData || []);
-            setMarks(marksData || []);
-            setCities(citiesData || []);
-            setEngines(enginesData || []);
-            setBodies(bodiesData || []);
-            setTransmissions(transmissionsData || []);
-            setColors(colorsData || []);
+            const fallbackCategories = [
+                { id: 1, name: 'Легковые' },
+                { id: 2, name: 'Спецтехника' },
+                { id: 3, name: 'Водный транспорт' },
+                { id: 4, name: 'Грузовые' },
+                { id: 5, name: 'Мотоциклы' }
+            ];
+
+            const fallbackMarks = [
+                { id: 1, name: 'Mercedes-Benz' },
+                { id: 2, name: 'Toyota' },
+                { id: 3, name: 'BMW' },
+                { id: 4, name: 'Audi' },
+                { id: 5, name: 'Lexus' },
+                { id: 6, name: 'Tesla' },
+                { id: 7, name: 'Hyundai' }
+            ];
+
+            const fallbackCities = [
+                { id: 1, name: 'Алматы' },
+                { id: 2, name: 'Астана' },
+                { id: 3, name: 'Шымкент' },
+                { id: 4, name: 'Караганда' }
+            ];
+
+            setCategories(categoriesData?.length ? categoriesData : fallbackCategories);
+            setMarks(marksData?.length ? marksData : fallbackMarks);
+            setCities(citiesData?.length ? citiesData : fallbackCities);
+            setEngines(enginesData || [
+                { id: 1, name: 'Бензин' },
+                { id: 2, name: 'Дизель' },
+                { id: 3, name: 'Электро' },
+                { id: 4, name: 'Гибрид' }
+            ]);
+            setBodies(bodiesData || [
+                { id: 1, name: 'Седан' },
+                { id: 2, name: 'Внедорожник' },
+                { id: 3, name: 'Купе' },
+                { id: 4, name: 'Минивэн' }
+            ]);
+            setTransmissions(transmissionsData || [
+                { id: 1, name: 'Автомат' },
+                { id: 2, name: 'Механика' },
+                { id: 3, name: 'Робот' },
+                { id: 4, name: 'Вариатор' }
+            ]);
+            setColors(colorsData || [
+                { id: 1, name: 'Белый' },
+                { id: 2, name: 'Черный' },
+                { id: 3, name: 'Серый' },
+                { id: 4, name: 'Синий' }
+            ]);
         } catch (err) {
             console.error('Failed to load dictionaries:', err);
             toast.error('Ошибка загрузки справочников');
@@ -79,11 +123,43 @@ export default function AddCarPage() {
 
     const loadModels = async (markId: number) => {
         try {
-            const res = await apiClient.get(`/dictionaries/model/${markId}`);
-            setModels(res.data?.data || []);
+            const res = await apiClient.get(`/dictionaries/model/${markId}`) as any;
+            const data = Array.isArray(res) ? res : (res?.data || []);
+
+            if (data.length > 0) {
+                setModels(data);
+                return;
+            }
         } catch (err) {
             console.error('Failed to load models:', err);
         }
+
+        // Fallback models based on markId
+        const fallbackModelsMap: Record<number, any[]> = {
+            1: [ // Mercedes
+                { id: 101, name: 'S-Class' }, { id: 102, name: 'E-Class' }, { id: 103, name: 'G-Class' }, { id: 104, name: 'GLE' }
+            ],
+            2: [ // Toyota
+                { id: 201, name: 'Camry' }, { id: 202, name: 'Corolla' }, { id: 203, name: 'Land Cruiser 300' }, { id: 204, name: 'RAV4' }
+            ],
+            3: [ // BMW
+                { id: 301, name: '5 Series' }, { id: 302, name: '7 Series' }, { id: 303, name: 'X5' }, { id: 304, name: 'M5' }
+            ],
+            4: [ // Audi
+                { id: 401, name: 'A6' }, { id: 402, name: 'Q7' }, { id: 403, name: 'RS7' }
+            ],
+            5: [ // Lexus
+                { id: 501, name: 'ES' }, { id: 502, name: 'RX' }, { id: 503, name: 'LX 570' }
+            ],
+            6: [ // Tesla
+                { id: 601, name: 'Model S' }, { id: 602, name: 'Model 3' }, { id: 603, name: 'Model X' }
+            ],
+            7: [ // Hyundai
+                { id: 701, name: 'Elantra' }, { id: 702, name: 'Santa Fe' }, { id: 703, name: 'Tucson' }
+            ]
+        };
+
+        setModels(fallbackModelsMap[Number(markId)] || []);
     };
 
     const handleChange = (name: string, value: any) => {

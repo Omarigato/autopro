@@ -50,7 +50,15 @@ export interface CarResponse {
   images: ImageResponse[];
   // Include other fields returned by backend that might be dynamically included or joined
   category_id?: number;
-  city?: string; // Often joined in response
+  city?: string;
   price_per_day?: number;
   transmission?: string;
+  body_type?: string;
+  mileage?: number | string;
+  condition?: string;
+  color?: string;
+  fuel_type?: string;
+  steering?: string;
+  customs_cleared?: string | boolean;
+  additional_info?: string;
 }
