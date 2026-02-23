@@ -498,18 +498,7 @@ export default function AddCarPage() {
                                 </Select>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Растаможен</Label>
-                                <Select onValueChange={(val) => handleChange('customs_cleared', val)} value={formData.customs_cleared}>
-                                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Выберите категорию" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="true">Да</SelectItem>
-                                        <SelectItem value="false">Нет</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+
                         </div>
 
                         <div className="space-y-2">

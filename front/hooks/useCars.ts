@@ -176,7 +176,7 @@ export function useCar(id: number) {
           steering: "Слева",
           mileage: "5 000",
           body_type: "Внедорожник",
-          customs_cleared: "Да",
+
           additional_info: "Налог уплачен, Техосмотр пройден, Вложений не требует",
           category_id: 1
         },
@@ -200,7 +200,7 @@ export function useCar(id: number) {
           steering: "Слева",
           mileage: "12 000",
           body_type: "Внедорожник",
-          customs_cleared: "Да",
+
           category_id: 1
         },
         {
@@ -223,7 +223,7 @@ export function useCar(id: number) {
           steering: "Слева",
           mileage: "15 000",
           body_type: "Седан",
-          customs_cleared: "Да",
+
           category_id: 2
         },
         {
@@ -246,7 +246,7 @@ export function useCar(id: number) {
           steering: "Слева",
           mileage: "1 500",
           body_type: "Купе",
-          customs_cleared: "Да",
+
           category_id: 2
         },
         {
@@ -269,7 +269,7 @@ export function useCar(id: number) {
           steering: "Слева",
           mileage: "3 200",
           body_type: "Седан",
-          customs_cleared: "Да",
+
           category_id: 3
         },
         {
@@ -292,7 +292,7 @@ export function useCar(id: number) {
           steering: "Слева",
           mileage: "54 000",
           body_type: "Внедорожник",
-          customs_cleared: "Да",
+
           category_id: 1
         },
         {
@@ -315,7 +315,7 @@ export function useCar(id: number) {
           steering: "Слева",
           mileage: "28 000",
           body_type: "Внедорожник",
-          customs_cleared: "Да",
+
           category_id: 1
         },
         {
@@ -338,7 +338,7 @@ export function useCar(id: number) {
           steering: "Слева",
           mileage: "11 000",
           body_type: "Лифтбек",
-          customs_cleared: "Да",
+
           category_id: 2
         },
         {
@@ -361,7 +361,7 @@ export function useCar(id: number) {
           steering: "Слева",
           mileage: "35 000",
           body_type: "Кроссовер",
-          customs_cleared: "Да",
+
           category_id: 1
         }
       ];

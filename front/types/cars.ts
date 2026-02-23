@@ -59,6 +59,6 @@ export interface CarResponse {
   color?: string;
   fuel_type?: string;
   steering?: string;
-  customs_cleared?: string | boolean;
+
   additional_info?: string;
 }
