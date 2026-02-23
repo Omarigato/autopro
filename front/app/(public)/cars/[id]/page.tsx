@@ -3,16 +3,23 @@
 import { useCar } from "@/hooks/useCars";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { 
-    ChevronLeft, 
-    MapPin, 
-    Calendar, 
-    Settings, 
-    ShieldCheck, 
-    Star, 
-    Share2, 
-    Heart 
+import {
+    ChevronLeft,
+    Heart,
+    MessageCircle,
+    Phone,
+    Share2,
+    Calendar,
+    Settings,
+    MapPin,
+    Car,
+    Fuel,
+    Info,
+    Gauge,
+    ClipboardList,
+    Palette
 } from "lucide-react";
 
 export default function CarDetailsPage() {
@@ -20,118 +27,137 @@ export default function CarDetailsPage() {
     const router = useRouter();
     const id = Number(params?.id);
     const { data: car, isLoading } = useCar(id);
+    const [mainImage, setMainImage] = useState<string | null>(null);
 
     if (isLoading) return <div className="container py-20 text-center animate-pulse">Загрузка данных...</div>;
     if (!car) return <div className="container py-20 text-center text-red-500">Автомобиль не найден</div>;
 
+    const images = car.images && car.images.length > 0 ? car.images : [{ url: "https://via.placeholder.com/800x600?text=No+Image" }];
+    const currentMainImage = mainImage || images[0].url;
+
     return (
-        <div className="pb-20">
-            {/* Header / Nav */}
-            <div className="container py-6 flex justify-between items-center">
-                <Button variant="ghost" className="gap-2 pl-0 hover:bg-transparent hover:text-primary" onClick={() => router.back()}>
-                    <ChevronLeft size={20} /> Назад в каталог
-                </Button>
-                <div className="flex gap-2">
-                    <Button size="icon" variant="outline" className="rounded-full shadow-sm"><Share2 size={18} /></Button>
-                    <Button size="icon" variant="outline" className="rounded-full shadow-sm text-red-500 hover:bg-red-50 border-red-100"><Heart size={18} /></Button>
+        <div className="bg-slate-50 min-h-screen pb-20">
+            {/* Top Bar */}
+            <div className="bg-white border-b mb-8">
+                <div className="container flex h-16 items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.back()}
+                            className="text-slate-500 hover:text-slate-900"
+                        >
+                            <ChevronLeft className="mr-1 h-4 w-4" /> Назад
+                        </Button>
+                        <span className="text-sm font-medium text-slate-400">Объявление</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" className="text-slate-400">
+                            <Heart className="h-5 w-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-slate-400">
+                            <Share2 className="h-5 w-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-slate-400">
+                            <ClipboardList className="h-5 w-5" />
+                        </Button>
+                    </div>
                 </div>
             </div>
 
-            <div className="container grid lg:grid-cols-3 gap-8 md:gap-12">
-                {/* Main Content */}
-                <div className="lg:col-span-2 space-y-8">
-                    {/* Gallery */}
-                    <div className="aspect-video bg-slate-100 rounded-[2.5rem] overflow-hidden relative shadow-md">
-                        {car.images?.[0] ? (
-                             <Image src={car.images[0].url} alt={car.name} fill className="object-cover" />
-                        ) : (
-                             <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50"><Settings size={64} strokeWidth={1} /></div>
-                        )}
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg">
-                            1 / {car.images?.length || 1}
+            <div className="container max-w-6xl">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    {/* Left Column: Images & Description */}
+                    <div className="space-y-8">
+                        {/* Main Image */}
+                        <div className="relative aspect-[4/3] bg-white rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50">
+                            <Image
+                                src={currentMainImage}
+                                alt={car.name}
+                                fill
+                                className="object-cover"
+                            />
+                        </div>
+
+                        {/* Thumbnails */}
+                        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                            {images.map((img, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => setMainImage(img.url)}
+                                    className={`relative w-24 aspect-square rounded-xl overflow-hidden border-2 transition-all ${currentMainImage === img.url ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
+                                        }`}
+                                >
+                                    <Image src={img.url} alt={`${car.name} ${idx + 1}`} fill className="object-cover" />
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Description */}
+                        <div className="space-y-4">
+                            <p className="text-slate-600 leading-relaxed text-sm md:text-base">
+                                {car.description || `${car.name} 2023 года — вершину элегантности, производительности и передовых технологий. Этот роскошный седан органично сочетает в себе вневременной дизайн и современные инновации, создавая столь же утонченный, сколь и захватывающий опыт вождения.`}
+                            </p>
+                            <p className="text-slate-600 leading-relaxed text-sm md:text-base">
+                                {car.additional_info || "Под капотом седана находится целый ряд мощных и эффективных двигателей, обеспечивающих динамические характеристики, в которых легко найти баланс между мощностью и топливной экономичностью. Будь то городские улицы или открытое шоссе, автомобиль обеспечивает плавную и отзывчивую езду, устанавливая новые стандарты комфорта вождения."}
+                            </p>
                         </div>
                     </div>
 
-                    {/* Title & Reviews */}
-                    <div>
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight uppercase leading-none">{car.name}</h1>
-                            <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-sm font-bold w-fit">
-                                <Star size={16} className="fill-current" /> 4.9 (12 reviews)
+                    {/* Right Column: Details & Actions */}
+                    <div className="space-y-8">
+                        {/* Title & Price */}
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h1 className="text-2xl font-bold text-slate-900">{car.name} {car.release_year} г.</h1>
+                                <button className="text-slate-400 hover:text-red-500 transition-colors mt-2">
+                                    <Heart className="h-5 w-5 inline mr-1" />
+                                </button>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-2xl font-black text-slate-900">{car.price_per_day} тг/день</div>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-6 text-slate-500 font-medium">
-                            <span className="flex items-center gap-2"><MapPin size={18} className="text-primary"/> {car.city || 'Алматы'}</span>
-                            <span className="flex items-center gap-2"><Calendar size={18} className="text-primary"/> {car.release_year} год</span>
-                            <span className="flex items-center gap-2"><Settings size={18} className="text-primary"/> {car.transmission || 'Автомат'}</span>
-                        </div>
-                    </div>
 
-                    {/* Description */}
-                    <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-4">
-                        <h3 className="text-xl font-bold">Описание</h3>
-                        <p className="text-slate-600 leading-relaxed">
-                            {car.description || "Владелец не предоставил подробное описание. Пожалуйста, свяжитесь для уточнения деталей."}
-                        </p>
-                    </div>
+                        {/* Specs Table */}
+                        <div className="space-y-3">
+                            {[
+                                { label: 'Город', value: car.city || 'Алматы', icon: MapPin },
+                                { label: 'Год выпуска', value: car.release_year, icon: Calendar },
+                                { label: 'Кузов', value: car.body_type || 'Внедорожник', icon: Car },
+                                { label: 'Пробег', value: `${car.mileage || '23 000'} км`, icon: Gauge },
+                                { label: 'Состояние', value: car.condition || 'Идеальное', icon: Info },
+                                { label: 'Цвет', value: car.color || 'Черный', icon: Palette },
+                                { label: 'Двигатель', value: `${car.fuel_type || 'Бензин'}`, icon: Fuel },
+                                { label: 'Руль', value: car.steering === 'LEFT' ? 'Слева' : 'Справа', icon: Settings },
+                                { label: 'Коробка', value: car.transmission || 'Автомат', icon: Settings },
+                            ].map((spec: any, idx) => (
+                                <div key={idx} className="flex justify-between items-center py-1.5 border-b border-slate-100 last:border-0 group">
+                                    <div className="flex items-center gap-2 text-slate-400 group-hover:text-slate-600 transition-colors">
+                                        <spec.icon className="h-4 w-4" />
+                                        <span className="text-sm">{spec.label}</span>
+                                    </div>
+                                    <span className="text-sm font-semibold text-slate-900">{spec.value}</span>
+                                </div>
+                            ))}
+                        </div>
 
-                    {/* Tech Specs */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-slate-50 p-6 rounded-3xl space-y-2">
-                             <div className="text-xs text-slate-400 uppercase font-black tracking-widest">Двигатель</div>
-                             <div className="text-lg font-bold text-slate-900">2.5 л / Бензин</div>
+                        {/* Additional Info Section */}
+                        <div className="space-y-3 pt-4">
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Дополнительно</h3>
+                            <p className="text-sm text-slate-600 font-medium">
+                                Налог уплачен, Техосмотр пройден, Вложений не требует
+                            </p>
                         </div>
-                        <div className="bg-slate-50 p-6 rounded-3xl space-y-2">
-                             <div className="text-xs text-slate-400 uppercase font-black tracking-widest">Привод</div>
-                             <div className="text-lg font-bold text-slate-900">Полный (AWD)</div>
-                        </div>
-                        <div className="bg-slate-50 p-6 rounded-3xl space-y-2">
-                             <div className="text-xs text-slate-400 uppercase font-black tracking-widest">Расход</div>
-                             <div className="text-lg font-bold text-slate-900">12 л / 100 км</div>
-                        </div>
-                         <div className="bg-slate-50 p-6 rounded-3xl space-y-2">
-                             <div className="text-xs text-slate-400 uppercase font-black tracking-widest">Мест</div>
-                             <div className="text-lg font-bold text-slate-900">5 мест</div>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Sidebar Sticky */}
-                <div className="lg:col-span-1">
-                    <div className="sticky top-24 space-y-6">
-                        <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-xl shadow-slate-200/50 space-y-8">
-                             <div>
-                                 <span className="text-sm text-slate-400 font-bold uppercase tracking-widest">Цена аренды</span>
-                                 <div className="flex items-baseline gap-2 mt-1">
-                                     <span className="text-4xl font-black text-primary">{car.price_per_day} ₸</span>
-                                     <span className="text-slate-400 font-medium">/ сутки</span>
-                                 </div>
-                             </div>
-                             
-                             <div className="space-y-3">
-                                 <Button size="lg" className="w-full text-lg h-14 rounded-2xl shadow-lg shadow-primary/20">
-                                     Забронировать
-                                 </Button>
-                                 <Button variant="outline" size="lg" className="w-full text-lg h-14 rounded-2xl border-2 hover:bg-slate-50">
-                                     Написать сообщение
-                                 </Button>
-                             </div>
-
-                             <div className="pt-6 border-t border-slate-100 flex items-center gap-4">
-                                 <div className="w-12 h-12 rounded-full bg-slate-200" />
-                                 <div>
-                                     <div className="font-bold text-sm">Владелец</div>
-                                     <div className="text-xs text-slate-400 uppercase tracking-wide">Verified Owner <ShieldCheck size={12} className="inline text-green-500" /></div>
-                                 </div>
-                             </div>
-                        </div>
-                        
-                        <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 text-blue-900 text-sm font-medium flex gap-3 items-start">
-                             <ShieldCheck className="shrink-0 text-blue-600" />
-                             <div>
-                                 <p className="font-bold mb-1">Безопасная сделка</p>
-                                 Ваш депозит будет заморожен до успешного завершения аренды.
-                             </div>
+                        {/* Action Buttons Container */}
+                        <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100 flex flex-col gap-3">
+                            <Button className="w-full bg-white text-blue-600 hover:bg-blue-50 border border-blue-100 h-12 rounded-xl font-bold shadow-sm">
+                                Написать сообщение
+                            </Button>
+                            <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white h-12 rounded-xl font-bold shadow-md shadow-blue-500/20">
+                                Показать телефон
+                            </Button>
                         </div>
                     </div>
                 </div>

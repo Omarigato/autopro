@@ -34,19 +34,49 @@ export function Header() {
   const [cities, setCities] = useState<any[]>([]);
 
   useEffect(() => {
-    // Load cities from API
-    apiClient.get('/dictionaries?type=CITY')
+    const allCities = [
+      { id: 1, name: 'Алматы' },
+      { id: 2, name: 'Астана' },
+      { id: 3, name: 'Шымкент' },
+      { id: 4, name: 'Караганда' },
+      { id: 5, name: 'Актобе' },
+      { id: 6, name: 'Тараз' },
+      { id: 7, name: 'Павлодар' },
+      { id: 8, name: 'Усть-Каменогорск' },
+      { id: 9, name: 'Семей' },
+      { id: 10, name: 'Атырау' },
+      { id: 11, name: 'Костанай' },
+      { id: 12, name: 'Кызылорда' },
+      { id: 13, name: 'Уральск' },
+      { id: 14, name: 'Петропавловск' },
+      { id: 15, name: 'Актау' },
+      { id: 16, name: 'Темиртау' },
+      { id: 17, name: 'Туркестан' },
+      { id: 18, name: 'Кокшетау' },
+      { id: 19, name: 'Талдыкорган' },
+      { id: 20, name: 'Экибастуз' },
+      { id: 21, name: 'Рудный' }
+    ];
+
+    apiClient.get('/dictionaries', { params: { type: 'CITY' } })
       .then(res => {
-        if (res.data?.data) {
-          setCities(res.data.data);
+        const data = Array.isArray(res) ? res : (res?.data || []);
+        if (data.length > 0) {
+          setCities(data);
+        } else {
+          setCities(allCities);
         }
       })
-      .catch(err => console.error('Failed to load cities:', err));
+      .catch(err => {
+        console.error('Failed to load cities:', err);
+        setCities(allCities);
+      });
   }, []);
 
   const routes = [
     { href: "/", label: "Главная" },
     { href: "/catalog", label: "Каталог" },
+    { href: "/subscriptions", label: "Тарифы" },
     { href: "/add", label: "Сдать авто" },
   ];
 
@@ -62,28 +92,7 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
-          {/* City Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <MapPin className="h-4 w-4" />
-                {city}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuLabel>Выберите город</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {cities.map((c) => (
-                <DropdownMenuItem
-                  key={c.id}
-                  onClick={() => setCity(c.name)}
-                  className={city === c.name ? "bg-accent" : ""}
-                >
-                  {c.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+
 
           <NavigationMenu>
             <NavigationMenuList>
@@ -102,6 +111,29 @@ export function Header() {
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-4">
+          {/* City Selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 text-muted-foreground hover:text-foreground rounded-xl border-slate-200">
+                <MapPin className="h-4 w-4" />
+                {city}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
+              {cities.map((c) => (
+                <DropdownMenuItem
+                  key={c.id}
+                  onClick={() => setCity(c.name)}
+                  className={city === c.name ? "bg-accent" : ""}
+                >
+                  {c.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="h-4 w-px bg-border mx-2" />
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
