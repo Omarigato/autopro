@@ -20,7 +20,7 @@ export interface UserResponse {
   id: number;
   name: string;
   phone_number: string;
-  role: "owner" | "admin";
+  role: "client" | "admin";
   create_date: string; // ISO date string
   email?: string;
   login?: string;

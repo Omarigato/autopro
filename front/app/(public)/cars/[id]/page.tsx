@@ -3,8 +3,10 @@
 import { useCar } from "@/hooks/useCars";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { apiClient } from "@/lib/api";
 import {
     ChevronLeft,
     Heart,
@@ -26,8 +28,15 @@ export default function CarDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const id = Number(params?.id);
+    const { user } = useAuth();
     const { data: car, isLoading } = useCar(id);
     const [mainImage, setMainImage] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (user && id && car) {
+            apiClient.post(`/users/events/view/${id}`).catch(() => {});
+        }
+    }, [user, id, car]);
 
     if (isLoading) return <div className="container py-20 text-center animate-pulse">Загрузка данных...</div>;
     if (!car) return <div className="container py-20 text-center text-red-500">Автомобиль не найден</div>;
@@ -126,11 +135,12 @@ export default function CarDetailsPage() {
                                 { label: 'Год выпуска', value: car.release_year, icon: Calendar },
                                 { label: 'Кузов', value: car.body_type || 'Внедорожник', icon: Car },
                                 { label: 'Пробег', value: `${car.mileage || '23 000'} км`, icon: Gauge },
-                                { label: 'Состояние', value: car.condition || 'Идеальное', icon: Info },
+                                { label: 'Состояние', value: car.condition || '—', icon: Info },
                                 { label: 'Цвет', value: car.color || 'Черный', icon: Palette },
                                 { label: 'Двигатель', value: `${car.fuel_type || 'Бензин'}`, icon: Fuel },
-                                { label: 'Руль', value: car.steering === 'LEFT' ? 'Слева' : 'Справа', icon: Settings },
-                                { label: 'Коробка', value: car.transmission || 'Автомат', icon: Settings },
+                                { label: 'Руль', value: car.steering || '—', icon: Settings },
+                                { label: 'Класс', value: car.car_class || '—', icon: Car },
+                                { label: 'Коробка', value: car.transmission || '—', icon: Settings },
                             ].map((spec: any, idx) => (
                                 <div key={idx} className="flex justify-between items-center py-1.5 border-b border-slate-100 last:border-0 group">
                                     <div className="flex items-center gap-2 text-slate-400 group-hover:text-slate-600 transition-colors">

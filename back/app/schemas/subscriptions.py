@@ -20,8 +20,8 @@ class SubscriptionPlanResponse(BaseModel):
 
 class BuySubscriptionRequest(BaseModel):
     plan_id: int = Field(..., description="ID тарифа подписки")
-    provider: Literal["kassa24", "kaspi"] = Field(
-        default="kassa24", description="Платёжный провайдер"
+    provider: Literal["tiptoppay"] = Field(
+        default="tiptoppay", description="Платёжный провайдер (TipTopPay)"
     )
 
 

@@ -126,6 +126,15 @@ class DictionaryService:
         for body in data.get("car_types", []):
             self.upsert_item(db, body["code"], body["names"]["en"], "BODY", translations=body["names"])
 
+        for st in data.get("steering", []):
+            self.upsert_item(db, st["code"], st["names"]["en"], "STEERING", translations=st["names"])
+
+        for cond in data.get("condition", []):
+            self.upsert_item(db, cond["code"], cond["names"]["en"], "CONDITION", translations=cond["names"])
+
+        for car_cls in data.get("car_class", []):
+            self.upsert_item(db, car_cls["code"], car_cls["names"]["en"], "CAR_CLASS", translations=car_cls["names"])
+
         # Планы и платежи
         for plan in data.get("subscription_plans", []):
             if not db.query(SubscriptionPlan).filter(SubscriptionPlan.code == plan["code"]).first():

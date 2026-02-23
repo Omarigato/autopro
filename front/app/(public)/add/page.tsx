@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,16 +9,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
-import { Upload, X } from "lucide-react";
+import { Upload, X, CreditCard } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { getCachedDictionaries } from "@/lib/dictionaries";
+import { useAuth } from "@/hooks/useAuth";
+import Link from "next/link";
 
-export default function AddCarPage() {
+function AddCarContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { city } = useAppState();
+    const { user, isLoading: authLoading } = useAuth();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [createdCarId, setCreatedCarId] = useState<number | null>(null);
+    const [subscriptionCheck, setSubscriptionCheck] = useState<{
+        subscriptions_enabled: boolean;
+        first_ad_free: boolean;
+        has_active_subscription: boolean;
+        plans: { id: number; name: string; code: string; price_kzt: number; period_days: number }[];
+    } | null>(null);
 
     // Dictionaries
     const [categories, setCategories] = useState<any[]>([]);
@@ -29,6 +40,9 @@ export default function AddCarPage() {
     const [bodies, setBodies] = useState<any[]>([]);
     const [transmissions, setTransmissions] = useState<any[]>([]);
     const [colors, setColors] = useState<any[]>([]);
+    const [steeringOptions, setSteeringOptions] = useState<any[]>([]);
+    const [conditionOptions, setConditionOptions] = useState<any[]>([]);
+    const [carClassOptions, setCarClassOptions] = useState<any[]>([]);
 
     // Form data
     const [formData, setFormData] = useState<any>({
@@ -36,10 +50,37 @@ export default function AddCarPage() {
         images: []
     });
 
+    // Требуем авторизацию: редирект на логин с returnUrl
     useEffect(() => {
-        // Load initial dictionaries
+        if (authLoading) return;
+        if (!user) {
+            const returnUrl = searchParams.get("returnUrl") || "/add";
+            router.replace(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+            return;
+        }
         loadDictionaries();
-    }, []);
+    }, [user, authLoading, router, searchParams]);
+
+    useEffect(() => {
+        if (user) {
+            apiClient.get("/settings").then((r: any) => {
+                const data = r?.data ?? r;
+                if (data?.subscriptions_enabled) {
+                    apiClient.get("/subscriptions/check").then((c: any) => {
+                        const d = c?.data ?? c;
+                        setSubscriptionCheck({
+                            subscriptions_enabled: true,
+                            first_ad_free: !!d?.first_ad_free,
+                            has_active_subscription: !!d?.has_active_subscription,
+                            plans: d?.plans || [],
+                        });
+                    }).catch(() => setSubscriptionCheck({ subscriptions_enabled: false, first_ad_free: false, has_active_subscription: false, plans: [] }));
+                } else {
+                    setSubscriptionCheck({ subscriptions_enabled: false, first_ad_free: false, has_active_subscription: false, plans: [] });
+                }
+            }).catch(() => setSubscriptionCheck({ subscriptions_enabled: false, first_ad_free: false, has_active_subscription: false, plans: [] }));
+        }
+    }, [user]);
 
     useEffect(() => {
         // Load models when mark changes
@@ -48,17 +89,22 @@ export default function AddCarPage() {
         }
     }, [formData.vehicle_mark_id]);
 
+    const totalSteps = subscriptionCheck?.subscriptions_enabled && !subscriptionCheck?.first_ad_free && !subscriptionCheck?.has_active_subscription ? 3 : 2;
+
     const loadDictionaries = async () => {
         setLoading(true);
         try {
-            const [categoriesData, marksData, citiesData, enginesData, bodiesData, transmissionsData, colorsData] = await Promise.all([
+            const [categoriesData, marksData, citiesData, enginesData, bodiesData, transmissionsData, colorsData, steeringData, conditionData, carClassData] = await Promise.all([
                 getCachedDictionaries("CATEGORY"),
                 getCachedDictionaries("MARKA"),
                 getCachedDictionaries("CITY"),
                 getCachedDictionaries("FUEL"),
                 getCachedDictionaries("BODY"),
                 getCachedDictionaries("TRANSMISSION"),
-                getCachedDictionaries("COLOR")
+                getCachedDictionaries("COLOR"),
+                getCachedDictionaries("STEERING"),
+                getCachedDictionaries("CONDITION"),
+                getCachedDictionaries("CAR_CLASS")
             ]);
 
             const fallbackCategories = [
@@ -112,6 +158,22 @@ export default function AddCarPage() {
                 { id: 2, name: 'Черный' },
                 { id: 3, name: 'Серый' },
                 { id: 4, name: 'Синий' }
+            ]);
+            setSteeringOptions(steeringData?.length ? steeringData : [
+                { id: 1, name: 'Слева', code: 'LEFT' },
+                { id: 2, name: 'Справа', code: 'RIGHT' }
+            ]);
+            setConditionOptions(conditionData?.length ? conditionData : [
+                { id: 1, name: 'Отличное', code: 'EXCELLENT' },
+                { id: 2, name: 'Хорошее', code: 'GOOD' },
+                { id: 3, name: 'Удовлетворительное', code: 'FAIR' }
+            ]);
+            setCarClassOptions(carClassData?.length ? carClassData : [
+                { id: 1, name: 'Эконом', code: 'ECONOMY' },
+                { id: 2, name: 'Комфорт', code: 'COMFORT' },
+                { id: 3, name: 'Бизнес', code: 'BUSINESS' },
+                { id: 4, name: 'Премиум', code: 'PREMIUM' },
+                { id: 5, name: 'Внедорожник', code: 'SUV' }
             ]);
         } catch (err) {
             console.error('Failed to load dictionaries:', err);
@@ -180,19 +242,40 @@ export default function AddCarPage() {
     };
 
     const handleNext = () => {
-        // Validation for step 1
         if (step === 1) {
             if (!formData.name || !formData.price_per_day || !formData.category_id || !formData.vehicle_mark_id) {
                 toast.error('Пожалуйста, заполните все обязательные поля');
                 return;
             }
+            setStep(2);
         }
-        setStep(2);
     };
 
-    const handleSubmit = async () => {
-        // Validation for step 2
-        if (!formData.city_id || !formData.release_year) {
+    const handleBuyPlan = async (planId: number) => {
+        try {
+            const r = await apiClient.post("/subscriptions/buy", { plan_id: planId, provider: "tiptoppay" }) as any;
+            const d = r?.data ?? r;
+            if (d?.payment_url) {
+                window.location.href = d.payment_url;
+            } else {
+                toast.error("Не удалось получить ссылку на оплату");
+            }
+        } catch (e: any) {
+            // e = { data, code, message } с message {ru, kk, en} или строкой
+            const msgObj = e?.message;
+            let msg = "Ошибка при создании платежа";
+            if (typeof msgObj === "string") {
+                msg = msgObj;
+            } else if (msgObj && typeof msgObj === "object") {
+                msg = msgObj.ru || msgObj.en || Object.values(msgObj)[0] || msg;
+            }
+            toast.error(msg);
+        }
+    };
+
+    const handleSubmit = async (saveAsDraft: boolean = false, options?: { stayOnPage?: boolean }) => {
+        // Validation for step 2 (не требуем всё для черновика)
+        if (!saveAsDraft && (!formData.city_id || !formData.release_year)) {
             toast.error('Пожалуйста, заполните все обязательные поля');
             return;
         }
@@ -201,33 +284,58 @@ export default function AddCarPage() {
         try {
             const payload = new FormData();
 
-            // Append all form fields
+            // Append all form fields (except images array)
             Object.entries(formData).forEach(([key, val]: [string, any]) => {
-                if (key !== 'images' && val !== undefined && val !== null && val !== '') {
+                if (key === 'images' || key === 'city') return;
+                if (val !== undefined && val !== null && val !== '') {
                     payload.append(key, val.toString());
                 }
             });
 
+            payload.append('save_as_draft', saveAsDraft ? 'true' : 'false');
+
             // Append images
-            formData.images.forEach((file: File) => {
+            (formData.images || []).forEach((file: File) => {
                 payload.append('images', file);
             });
 
-            await apiClient.post('/cars', payload, {
+            const res = await apiClient.post('/cars', payload, {
                 headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            }) as any;
 
-            toast.success('Объявление отправлено на модерацию!');
-            router.push('/profile');
+            const created = res?.data ?? res;
+            if (created && created.id) {
+                setCreatedCarId(created.id);
+            }
+
+            if (saveAsDraft) {
+                toast.success('Сохранено в черновики');
+            } else {
+                toast.success('Объявление отправлено на модерацию!');
+            }
+
+            if (!options?.stayOnPage) {
+                router.push('/profile');
+            }
         } catch (error: any) {
             console.error(error);
-            toast.error(error.response?.data?.message || 'Ошибка при создании объявления');
+            const msgObj = error?.message || error?.response?.data?.message;
+            let msg = 'Ошибка при создании объявления';
+            if (typeof msgObj === 'string') {
+                msg = msgObj;
+            } else if (msgObj && typeof msgObj === 'object') {
+                msg = msgObj.ru || msgObj.en || Object.values(msgObj)[0] || msg;
+            }
+            toast.error(msg);
         } finally {
             setSubmitting(false);
         }
     };
 
-    if (loading) {
+    if (!user && !authLoading) {
+        return <div className="container py-20 text-center">Перенаправление на вход...</div>;
+    }
+    if (loading && !subscriptionCheck && user) {
         return <div className="container py-20 text-center">Загрузка...</div>;
     }
 
@@ -235,14 +343,16 @@ export default function AddCarPage() {
         <div className="container max-w-3xl py-12">
             <div className="mb-8">
                 <h1 className="text-3xl font-black mb-2">Подать объявление</h1>
-                <div className="flex items-center gap-4 mt-6">
-                    <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 ${step >= 1 ? 'border-primary bg-primary text-white' : 'border-slate-300 text-slate-300'}`}>
-                        1
-                    </div>
-                    <div className={`flex-1 h-1 ${step >= 2 ? 'bg-primary' : 'bg-slate-200'}`}></div>
-                    <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 ${step >= 2 ? 'border-primary bg-primary text-white' : 'border-slate-300 text-slate-300'}`}>
-                        2
-                    </div>
+                <div className="flex items-center gap-2 mt-6">
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${step >= 1 ? 'border-primary bg-primary text-white' : 'border-slate-300 text-slate-300'}`}>1</div>
+                    <div className={`flex-1 h-1 ${step >= 2 ? 'bg-primary' : 'bg-slate-200'}`} />
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${step >= 2 ? 'border-primary bg-primary text-white' : 'border-slate-300 text-slate-300'}`}>2</div>
+                    {totalSteps === 3 && (
+                        <>
+                            <div className={`flex-1 h-1 ${step >= 3 ? 'bg-primary' : 'bg-slate-200'}`} />
+                            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${step >= 3 ? 'border-primary bg-primary text-white' : 'border-slate-300 text-slate-300'}`}>3</div>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -372,7 +482,7 @@ export default function AddCarPage() {
                             Далее
                         </Button>
                     </div>
-                ) : (
+                ) : step === 2 ? (
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -444,13 +554,14 @@ export default function AddCarPage() {
 
                             <div className="space-y-2">
                                 <Label>Руль</Label>
-                                <Select onValueChange={(val) => handleChange('steering', val)} value={formData.steering}>
+                                <Select onValueChange={(val) => handleChange('steering_id', val)} value={formData.steering_id ? String(formData.steering_id) : undefined}>
                                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                         <SelectValue placeholder="Выберите руль" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="LEFT">Левый</SelectItem>
-                                        <SelectItem value="RIGHT">Правый</SelectItem>
+                                        {steeringOptions.map((s) => (
+                                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -486,19 +597,31 @@ export default function AddCarPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Состояние</Label>
-                                <Select onValueChange={(val) => handleChange('condition', val)} value={formData.condition}>
+                                <Select onValueChange={(val) => handleChange('condition_id', val)} value={formData.condition_id ? String(formData.condition_id) : undefined}>
                                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                         <SelectValue placeholder="Выберите состояние" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="EXCELLENT">Отличное</SelectItem>
-                                        <SelectItem value="GOOD">Хорошее</SelectItem>
-                                        <SelectItem value="FAIR">Удовлетворительное</SelectItem>
+                                        {conditionOptions.map((c) => (
+                                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
-
+                            <div className="space-y-2">
+                                <Label>Класс машины</Label>
+                                <Select onValueChange={(val) => handleChange('car_class_id', val)} value={formData.car_class_id ? String(formData.car_class_id) : undefined}>
+                                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
+                                        <SelectValue placeholder="Выберите класс" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {carClassOptions.map((cls) => (
+                                            <SelectItem key={cls.id} value={String(cls.id)}>{cls.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         <div className="space-y-2">
@@ -513,17 +636,70 @@ export default function AddCarPage() {
                             <p className="text-xs text-slate-500 text-right">{formData.additional_info?.length || 0}/100</p>
                         </div>
 
-                        <div className="flex gap-4">
+                        <div className="flex flex-col sm:flex-row gap-4">
                             <Button onClick={() => setStep(1)} variant="outline" size="lg" className="flex-1 rounded-xl h-14 text-lg">
                                 Назад
                             </Button>
-                            <Button onClick={handleSubmit} disabled={submitting} size="lg" className="flex-1 rounded-xl h-14 text-lg">
-                                {submitting ? 'Отправка...' : 'Опубликовать'}
+                            {totalSteps === 3 ? (
+                                <Button
+                                    onClick={async () => {
+                                        // При переходе к оплате сразу сохраняем объявление в черновик
+                                        if (!createdCarId) {
+                                            await handleSubmit(true, { stayOnPage: true });
+                                        }
+                                        setStep(3);
+                                    }}
+                                    disabled={submitting}
+                                    size="lg"
+                                    className="flex-1 rounded-xl h-14 text-lg"
+                                >
+                                    {submitting ? 'Сохранение...' : 'Далее — Оплата'}
+                                </Button>
+                            ) : (
+                                <>
+                                    <Button onClick={() => handleSubmit(true)} disabled={submitting} variant="outline" size="lg" className="flex-1 rounded-xl h-14 text-lg">
+                                        {submitting ? '...' : 'В черновики'}
+                                    </Button>
+                                    <Button onClick={() => handleSubmit(false)} disabled={submitting} size="lg" className="flex-1 rounded-xl h-14 text-lg">
+                                        {submitting ? 'Отправка...' : 'Опубликовать'}
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                ) : step === 3 ? (
+                    <div className="space-y-6">
+                        <h2 className="text-xl font-bold">Подписка</h2>
+                        <p className="text-slate-600">Для размещения объявления выберите тариф и оплатите через TipTopPay.</p>
+                        <div className="space-y-4">
+                            {subscriptionCheck?.plans?.map((plan) => (
+                                <div key={plan.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                                    <div>
+                                        <p className="font-semibold">{plan.name}</p>
+                                        <p className="text-sm text-slate-500">{plan.period_days} дн. · до {plan.price_kzt} ₸</p>
+                                    </div>
+                                    <Button onClick={() => handleBuyPlan(plan.id)} className="gap-2">
+                                        <CreditCard size={18} /> Купить {plan.price_kzt} ₸
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex gap-4">
+                            <Button onClick={() => setStep(2)} variant="outline" size="lg" className="rounded-xl h-14">
+                                Назад
                             </Button>
                         </div>
                     </div>
-                )}
+                ) : null}
             </div>
         </div>
+    );
+}
+
+export default function AddCarPage() {
+    return (
+        <Suspense fallback={<div className="container py-20 text-center text-slate-500">Загрузка...</div>}>
+            <AddCarContent />
+        </Suspense>
     );
 }

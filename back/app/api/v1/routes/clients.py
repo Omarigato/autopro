@@ -13,7 +13,7 @@ def create_client_and_whatsapp_link(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    car = db.query(Car).filter(Car.id == payload.car_id, Car.is_active.is_(True)).first()
+    car = db.query(Car).filter(Car.id == payload.car_id, Car.status == "PUBLISHED").first()
     if not car:
         return create_response(
             code=404,

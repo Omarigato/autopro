@@ -4,6 +4,7 @@ from app.db.session import Base, engine, SessionLocal
 from app.models import entities
 from app.core.security import get_password_hash
 from app.services.dictionary_service import dictionary_service
+from app.models.entities import AppSetting
 
 def init_db(recreate: bool = False) -> None:
     if recreate:
@@ -28,11 +29,16 @@ def init_db(recreate: bool = False) -> None:
             db.add(admin)
             db.commit()
 
-        # 2. Синхронизация (defaults)
+        # 2. Настройки приложения
+        if not db.query(AppSetting).filter(AppSetting.key == "subscriptions_enabled").first():
+            db.add(AppSetting(key="subscriptions_enabled", value="true"))
+            db.commit()
+
+        # 3. Синхронизация (defaults)
         print("Syncing defaults...")
         asyncio.run(dictionary_service.sync_defaults(db))
         
-        # 3. Синхронизация (cars)
+        # 4. Синхронизация (cars)
         # if "--sync-cars" in sys.argv:
         print("Syncing marks/models (this may take 1-2 mins)...")
         asyncio.run(dictionary_service.sync_from_json(db))

@@ -1,10 +1,10 @@
+from datetime import datetime
 from typing import List, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app.db.session import get_db
-from app.models.entities import User, Car, Application, Client, Dictionary, CarOwner, PaymentAccount, SubscriptionPlan
+from app.models.entities import User, Car, Client, Dictionary, DictionaryTranslation, CarOwner, PaymentAccount, PaymentTransaction, SubscriptionPlan, AppSetting, OTPVerification
 from app.core.security import get_current_user, get_password_hash
 from app.core.responses import create_response
 from app.services.dictionary_service import dictionary_service
@@ -22,6 +22,29 @@ def check_admin(current_user: User = Depends(get_current_user)):
         )
     return current_user
 
+# --- Глобальные настройки (подписки вкл/выкл) ---
+
+@router.get("/settings")
+def get_admin_settings(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    items = db.query(AppSetting).all()
+    data = {item.key: item.value for item in items}
+    if "subscriptions_enabled" not in data:
+        data["subscriptions_enabled"] = "true"
+    return create_response(data=data)
+
+@router.patch("/settings")
+def update_admin_settings(payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    for key, value in payload.items():
+        row = db.query(AppSetting).filter(AppSetting.key == key).first()
+        if row:
+            row.value = str(value).lower() if isinstance(value, bool) else str(value)
+        else:
+            db.add(AppSetting(key=key, value=str(value).lower() if isinstance(value, bool) else str(value)))
+    db.commit()
+    items = db.query(AppSetting).all()
+    return create_response(data={item.key: item.value for item in items})
+
+
 @router.post("/sync/defaults")
 async def trigger_sync_defaults(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     success = await dictionary_service.sync_defaults(db)
@@ -37,12 +60,35 @@ async def trigger_sync(db: Session = Depends(get_db), admin: User = Depends(chec
 # --- Управление справочниками (Dictionaries) ---
 
 @router.get("/dictionaries")
-def list_dictionaries(type: str = None, parent_id: int = None, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+def list_dictionaries(
+    type: str | None = None,
+    parent_id: int | None = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(check_admin),
+):
+    """
+    Список элементов словаря для админ‑панели.
+    Отдаём только примитивные поля, чтобы избежать проблем сериализации ORM‑объектов.
+    """
     query = db.query(Dictionary)
-    if type: query = query.filter(Dictionary.type == type)
-    if parent_id: query = query.filter(Dictionary.parent_id == parent_id)
+    if type:
+        query = query.filter(Dictionary.type == type)
+    if parent_id:
+        query = query.filter(Dictionary.parent_id == parent_id)
     items = query.all()
-    return create_response(data=items)
+    data = [
+        {
+            "id": d.id,
+            "name": d.name,
+            "code": d.code,
+            "type": d.type,
+            "parent_id": d.parent_id,
+            "display_order": d.display_order,
+            "is_active": d.is_active,
+        }
+        for d in items
+    ]
+    return create_response(data=data)
 
 @router.patch("/dictionaries/{item_id}")
 def update_dictionary_item(item_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
@@ -70,18 +116,12 @@ def delete_dictionary_item(item_id: int, db: Session = Depends(get_db), admin: U
 @router.get("/stats")
 def get_stats(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     most_viewed = db.query(Car).order_by(Car.views_count.desc()).limit(10).all()
-    most_applied = db.query(
-        Car.id, Car.name, func.count(Application.id).label('app_count')
-    ).join(Application).group_by(Car.id).order_by(func.count(Application.id).desc()).limit(10).all()
-    
     total_users = db.query(User).count()
     total_cars = db.query(Car).count()
-    total_apps = db.query(Application).count()
 
     return create_response(data={
-        "totals": {"users": total_users, "cars": total_cars, "applications": total_apps},
+        "totals": {"users": total_users, "cars": total_cars},
         "most_viewed": [{"id": c.id, "name": c.name, "views": c.views_count} for c in most_viewed],
-        "most_applied": [{"id": a.id, "name": a.name, "applications": a.app_count} for a in most_applied]
     })
 
 @router.get("/users")
@@ -91,32 +131,87 @@ def list_users(role: str = None, db: Session = Depends(get_db), admin: User = De
         query = query.filter(User.role == role)
     users = query.all()
     return create_response(data=[{
-        "id": u.id, "name": u.name, "login": u.login, "email": u.email, 
+        "id": u.id, "name": u.name, "first_name": u.first_name, "last_name": u.last_name,
+        "login": u.login, "email": u.email,
         "phone_number": u.phone_number, "role": u.role, "is_active": u.is_active
     } for u in users])
 
+
+@router.patch("/users/{user_id}")
+def update_user(user_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404)
+    for key in ("first_name", "last_name", "email", "phone_number", "role", "is_active"):
+        if key in payload:
+            if key == "is_active":
+                user.is_active = bool(payload[key])
+            else:
+                setattr(user, key, payload[key])
+    db.commit()
+    db.refresh(user)
+    return create_response(data={"id": user.id, "is_active": user.is_active})
+
 @router.get("/cars")
 def list_cars_admin(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    cars = db.query(Car).all()
+    cars = db.query(Car).filter(Car.delete_date.is_(None)).all()
     return create_response(data=[{
-        "id": c.id, "name": c.name, "is_active": c.is_active, "views": c.views_count,
+        "id": c.id, "name": c.name, "status": c.status, "views": c.views_count,
+        "create_date": c.create_date.isoformat() if c.create_date else None,
+        "update_date": c.update_date.isoformat() if c.update_date else None,
         "author": c.author.name if c.author else "Unknown"
     } for c in cars])
 
-@router.post("/cars/{car_id}/toggle-active")
-def toggle_car_active(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+@router.post("/cars/{car_id}/approve")
+def approve_car(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    """Одобрить объявление — статус PUBLISHED (показывается в каталоге)."""
     car = db.query(Car).filter(Car.id == car_id).first()
-    if not car: raise HTTPException(404)
-    car.is_active = not car.is_active
+    if not car:
+        raise HTTPException(404)
+    car.status = "PUBLISHED"
+    car.update_date = datetime.utcnow()
     db.commit()
-    return create_response(data={"id": car.id, "is_active": car.is_active})
+    return create_response(data={"id": car.id, "status": car.status})
 
-@router.get("/applications")
-def list_applications(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    apps = db.query(Application).all()
-    return create_response(data=[{
-        "id": a.id, "car_id": a.car_id, "owner_id": a.car_owner_id, "create_date": a.create_date
-    } for a in apps])
+@router.post("/cars/{car_id}/reject")
+def reject_car(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    """Отклонить / снять с публикации — статус CREATED (на модерации)."""
+    car = db.query(Car).filter(Car.id == car_id).first()
+    if not car:
+        raise HTTPException(404)
+    car.status = "CREATED"
+    car.update_date = datetime.utcnow()
+    db.commit()
+    return create_response(data={"id": car.id, "status": car.status})
+
+
+@router.patch("/cars/{car_id}")
+def update_car_admin(car_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    """Редактирование объявления админом (статус и др.)."""
+    car = db.query(Car).filter(Car.id == car_id).first()
+    if not car:
+        raise HTTPException(404)
+    for key in ("status", "name", "price_per_day"):
+        if key in payload:
+            setattr(car, key, payload[key])
+    car.update_date = datetime.utcnow()
+    db.commit()
+    return create_response(data={"id": car.id, "status": car.status})
+
+
+@router.delete("/cars/{car_id}")
+def delete_car_admin(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    """Мягкое удаление объявления (status=DELETED или delete_date)."""
+    car = db.query(Car).filter(Car.id == car_id).first()
+    if not car:
+        raise HTTPException(404)
+    car.status = "DELETED"
+    car.update_date = datetime.utcnow()
+    if hasattr(car, "delete_date"):
+        car.delete_date = datetime.utcnow()
+    db.commit()
+    return create_response(data={"id": car.id, "status": "DELETED"})
+
 
 @router.post("/create-admin")
 def create_admin(payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
@@ -131,16 +226,50 @@ def create_admin(payload: dict, db: Session = Depends(get_db), admin: User = Dep
     db.commit()
     return create_response(data={"id": new_admin.id, "login": new_admin.login})
 
+
+@router.get("/otp")
+def list_otp_codes(
+    target: str | None = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    admin: User = Depends(check_admin),
+):
+    """
+    История OTP‑кодов (для поддержки: если код не дошёл, админ может подсказать пользователю).
+    """
+    query = db.query(OTPVerification).order_by(OTPVerification.created_at.desc())
+    if target:
+        query = query.filter(OTPVerification.target == target)
+    if limit:
+        query = query.limit(limit)
+    items = query.all()
+    data = [
+        {
+            "id": o.id,
+            "target": o.target,
+            "code": o.code,
+            "type": o.type,
+            "is_used": o.is_used,
+            "expires_at": o.expires_at.isoformat() if o.expires_at else None,
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+        }
+        for o in items
+    ]
+    return create_response(data=data)
+
 @router.get("/cars/{car_id}")
 def get_car_detail_admin(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     car = db.query(Car).filter(Car.id == car_id).first()
-    if not car: raise HTTPException(404)
+    if not car:
+        raise HTTPException(404)
     return create_response(data={
         "id": car.id,
         "name": car.name,
         "images": [{"url": i.url, "id": i.id} for i in car.images],
-        "is_active": car.is_active,
-        "views": car.views_count
+        "status": car.status,
+        "views": car.views_count,
+        "create_date": car.create_date.isoformat() if car.create_date else None,
+        "update_date": car.update_date.isoformat() if car.update_date else None,
     })
 
 
@@ -160,32 +289,88 @@ async def import_data_excel(file: UploadFile = File(...), db: Session = Depends(
     return create_response(data={"success": success})
 
 
-# --- Управление платежными системами ---
+# --- Платежи (полные данные по транзакциям) ---
+
+@router.get("/payments/transactions")
+def list_payment_transactions(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    """Полный список всех платёжных транзакций."""
+    tx_list = db.query(PaymentTransaction).order_by(PaymentTransaction.create_date.desc()).all()
+    return create_response(data=[{
+        "id": t.id,
+        "provider": t.provider,
+        "order_id": t.order_id,
+        "external_id": t.external_id,
+        "status": t.status,
+        "amount_kzt": t.amount_kzt,
+        "currency": t.currency,
+        "owner_id": t.owner_id,
+        "subscription_id": t.subscription_id,
+        "payment_url": t.payment_url,
+        "create_date": t.create_date.isoformat() if t.create_date else None,
+        "update_date": t.update_date.isoformat() if t.update_date else None,
+        "raw_data": t.raw_data,
+    } for t in tx_list])
+
+
+# --- Управление платёжными аккаунтами ---
 
 @router.get("/payments/accounts")
 def list_payment_accounts(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     accounts = db.query(PaymentAccount).all()
-    return create_response(data=accounts)
+    data = [
+        {
+            "id": a.id,
+            "provider": a.provider,
+            "name": a.name,
+            "is_active": a.is_active,
+            "config": a.config,
+        }
+        for a in accounts
+    ]
+    return create_response(data=data)
 
 @router.patch("/payments/accounts/{account_id}")
 def update_payment_account(account_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     account = db.query(PaymentAccount).filter(PaymentAccount.id == account_id).first()
-    if not account: raise HTTPException(404)
-    
+    if not account:
+        raise HTTPException(404)
+
     for key, value in payload.items():
         if hasattr(account, key):
             setattr(account, key, value)
-    
+
     db.commit()
-    return create_response(data=account)
+    db.refresh(account)
+    return create_response(data={
+        "id": account.id,
+        "provider": account.provider,
+        "name": account.name,
+        "is_active": account.is_active,
+        "config": account.config,
+    })
 
 
 # --- Управление подписками ---
 
+def _plan_to_dict(plan: SubscriptionPlan) -> dict:
+    return {
+        "id": plan.id,
+        "code": plan.code,
+        "name": plan.name,
+        "description": plan.description,
+        "price_kzt": plan.price_kzt,
+        "period_days": plan.period_days,
+        "free_days": plan.free_days,
+        "max_cars": plan.max_cars,
+        "is_active": plan.is_active,
+        "create_date": plan.create_date.isoformat() if plan.create_date else None,
+    }
+
+
 @router.get("/subscriptions/plans")
 def list_subscription_plans(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     plans = db.query(SubscriptionPlan).all()
-    return create_response(data=plans)
+    return create_response(data=[_plan_to_dict(p) for p in plans])
 
 @router.post("/subscriptions/plans")
 def create_subscription_plan(payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
@@ -193,16 +378,26 @@ def create_subscription_plan(payload: dict, db: Session = Depends(get_db), admin
     db.add(plan)
     db.commit()
     db.refresh(plan)
-    return create_response(data=plan)
+    return create_response(data=_plan_to_dict(plan))
 
 @router.patch("/subscriptions/plans/{plan_id}")
 def update_subscription_plan(plan_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.id == plan_id).first()
-    if not plan: raise HTTPException(404)
-    
+    if not plan:
+        raise HTTPException(404)
     for key, value in payload.items():
         if hasattr(plan, key):
             setattr(plan, key, value)
-            
     db.commit()
-    return create_response(data=plan)
+    db.refresh(plan)
+    return create_response(data=_plan_to_dict(plan))
+
+
+@router.delete("/subscriptions/plans/{plan_id}")
+def delete_subscription_plan(plan_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    plan = db.query(SubscriptionPlan).filter(SubscriptionPlan.id == plan_id).first()
+    if not plan:
+        raise HTTPException(404)
+    plan.is_active = False
+    db.commit()
+    return create_response(data={"id": plan_id, "is_active": False})

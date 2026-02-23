@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_owner
@@ -10,10 +10,8 @@ from app.models.entities import (
     PaymentTransaction,
     SubscriptionPlan,
 )
-from app.schemas.subscriptions import (
-    BuySubscriptionRequest,
-)
-from app.services.kassa24_service import Kassa24Error, create_kassa24_payment
+from app.schemas.subscriptions import BuySubscriptionRequest
+from app.services.tiptoppay_service import TipTopPayError, create_tiptoppay_payment
 from app.services.subscriptions_service import (
     activate_subscription_after_success_payment,
     get_active_subscription_for_owner,
@@ -21,6 +19,7 @@ from app.services.subscriptions_service import (
 from app.core.responses import create_response
 
 router = APIRouter()
+
 
 @router.get("/plans")
 def list_plans(request: Request, db: Session = Depends(get_db)):
@@ -34,6 +33,50 @@ def list_plans(request: Request, db: Session = Depends(get_db)):
         "id": p.id, "name": p.name, "price": p.price_kzt, "period": p.period_days
     } for p in plans], lang=request.state.lang)
 
+
+@router.get("/check")
+def subscription_check(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_owner=Depends(get_current_owner),
+):
+    """
+    Для страницы добавления объявления: включены ли подписки, первое ли объявление бесплатно, есть ли активная подписка, список планов.
+    """
+    from app.models.entities import AppSetting
+
+    setting = db.query(AppSetting).filter(AppSetting.key == "subscriptions_enabled").first()
+    subscriptions_enabled = setting and setting.value and setting.value.lower() == "true"
+
+    from app.services.subscriptions_service import owner_cars_count
+    current_cars = owner_cars_count(db, current_owner.id)
+    first_ad_free = subscriptions_enabled and current_cars == 0
+
+    subscription = get_active_subscription_for_owner(db, current_owner.id)
+    has_active_subscription = subscription is not None
+
+    plans = (
+        db.query(SubscriptionPlan)
+        .filter(SubscriptionPlan.is_active.is_(True))
+        .order_by(SubscriptionPlan.price_kzt.asc())
+        .all()
+    )
+    plans_data = [{"id": p.id, "name": p.name, "code": p.code, "price_kzt": p.price_kzt, "period_days": p.period_days, "max_cars": p.max_cars} for p in plans]
+
+    return create_response(data={
+        "subscriptions_enabled": subscriptions_enabled,
+        "first_ad_free": first_ad_free,
+        "has_active_subscription": has_active_subscription,
+        "current_cars_count": current_cars,
+        "my_subscription": {
+            "plan_name": subscription.plan.name,
+            "status": subscription.status,
+            "valid_until": subscription.valid_until.isoformat() if subscription and subscription.valid_until else None,
+        } if subscription else None,
+        "plans": plans_data,
+    }, lang=request.state.lang)
+
+
 @router.get("/me")
 def my_subscription_status(
     request: Request,
@@ -42,12 +85,13 @@ def my_subscription_status(
     subscription = get_active_subscription_for_owner(db, current_owner.id)
     if not subscription:
         return create_response(data=None, lang=request.state.lang)
-    
+
     return create_response(data={
         "plan_name": subscription.plan.name,
         "status": subscription.status,
-        "valid_until": subscription.valid_until,
+        "valid_until": subscription.valid_until.isoformat() if subscription.valid_until else None,
     }, lang=request.state.lang)
+
 
 @router.post("/buy")
 async def buy_subscription(
@@ -56,11 +100,8 @@ async def buy_subscription(
     db: Session = Depends(get_db),
     current_owner=Depends(get_current_owner),
 ):
-    """
-    Покупка подписки (Lite / Premium).
-    Сейчас поддерживается только провайдер Kassa24.
-    """
-    plan: SubscriptionPlan | None = (
+    """Покупка подписки через TipTopPay."""
+    plan = (
         db.query(SubscriptionPlan)
         .filter(SubscriptionPlan.id == payload.plan_id, SubscriptionPlan.is_active.is_(True))
         .first()
@@ -68,8 +109,8 @@ async def buy_subscription(
     if not plan:
         return create_response(code=404, message="Subscription plan not found", lang=request.state.lang)
 
-    if payload.provider != "kassa24":
-        return create_response(code=400, message="Provider not supported", lang=request.state.lang)
+    if payload.provider != "tiptoppay":
+        return create_response(code=400, message="Поддерживается только TipTopPay", lang=request.state.lang)
 
     subscription = OwnerSubscription(
         owner_id=current_owner.id,
@@ -80,7 +121,7 @@ async def buy_subscription(
     db.flush()
 
     transaction = PaymentTransaction(
-        provider="kassa24",
+        provider="tiptoppay",
         external_id=None,
         order_id=str(subscription.id),
         status="created",
@@ -92,10 +133,10 @@ async def buy_subscription(
     db.flush()
 
     try:
-        payment_url, external_id = await create_kassa24_payment(
+        payment_url, external_id = await create_tiptoppay_payment(
             db=db, transaction=transaction, subscription=subscription, plan=plan
         )
-    except Kassa24Error as exc:
+    except TipTopPayError as exc:
         return create_response(code=502, message=str(exc), lang=request.state.lang)
 
     transaction.payment_url = payment_url
@@ -109,68 +150,9 @@ async def buy_subscription(
     }, lang=request.state.lang)
 
 
-@router.post("/payments/kassa24/callback")
-def kassa24_callback(
-    request: Request,
-    payload: dict,
-    db: Session = Depends(get_db),
-):
-    """
-    Callback от Kassa24.
-    По успешному статусу активируем подписку арендодателя.
-    Документация: https://business.kassa24.kz/documentation/payment-methods
-    """
-    data = payload
-
-    external_id = str(data.get("id", ""))
-    status_value = int(data.get("status", 0))
-
-    transaction: PaymentTransaction | None = (
-        db.query(PaymentTransaction)
-        .filter(
-            PaymentTransaction.provider == "kassa24",
-            PaymentTransaction.external_id == external_id,
-        )
-        .first()
-    )
-
-    if not transaction:
-        # Ничего не нашли, но чтобы Kassa24 не спамил, всё равно подтверждаем.
-        return {"accepted": True}
-
-    transaction.raw_data = data
-    now = datetime.utcnow()
-
-    # Базовые статусы Kassa24: 0 - неуспех, 1 - успех, 2 - hold, 3 - cancel
-    if status_value == 1:
-        transaction.status = "success"
-        subscription = transaction.subscription
-        if subscription:
-            # Определяем, первая ли это успешная подписка для арендодателя
-            has_other_success = (
-                db.query(OwnerSubscription)
-                .filter(
-                    OwnerSubscription.owner_id == subscription.owner_id,
-                    OwnerSubscription.id != subscription.id,
-                    OwnerSubscription.status == "active",
-                )
-                .count()
-                > 0
-            )
-            activate_subscription_after_success_payment(
-                db=db,
-                subscription=subscription,
-                is_first_subscription=not has_other_success,
-            )
-    else:
-        transaction.status = "failed"
-        if transaction.subscription:
-            transaction.subscription.status = "failed"
-
-    transaction.update_date = now
-    db.add(transaction)
-    db.commit()
-
-    # Kassa24 ожидает {"accepted": true}, иначе будет ретраить callback
+@router.post("/payments/tiptoppay/callback")
+def tiptoppay_callback(request: Request, payload: dict, db: Session = Depends(get_db)):
+    """Webhook от TipTopPay. По успешному статусу активируем подписку."""
+    from app.services.tiptoppay_service import handle_tiptoppay_callback
+    handle_tiptoppay_callback(db, payload)
     return {"accepted": True}
-

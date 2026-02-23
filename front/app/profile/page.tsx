@@ -17,11 +17,12 @@ import { toast } from "sonner";
 export default function ProfilePage() {
     const { user, refreshUser } = useAuth();
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState("history");
+    const [activeTab, setActiveTab] = useState("ads");
     const [profileData, setProfileData] = useState<any>({});
     const [likes, setLikes] = useState<any[]>([]);
     const [events, setEvents] = useState<any[]>([]);
     const [myCars, setMyCars] = useState<any[]>([]);
+    const [mySubscription, setMySubscription] = useState<any>(null);
 
     useEffect(() => {
         if (user) {
@@ -29,13 +30,14 @@ export default function ProfilePage() {
             loadLikes();
             loadEvents();
             loadMyCars();
+            loadSubscription();
         }
     }, [user]);
 
     const loadProfileData = async () => {
         try {
-            const res = await apiClient.get('/auth/me');
-            setProfileData(res.data.data);
+            const res = await apiClient.get('/auth/me') as any;
+            setProfileData(res?.data ?? res ?? {});
         } catch (err) {
             console.error('Failed to load profile:', err);
         }
@@ -43,8 +45,8 @@ export default function ProfilePage() {
 
     const loadLikes = async () => {
         try {
-            const res = await apiClient.get('/users/likes');
-            setLikes(res.data.data || []);
+            const res = await apiClient.get('/users/likes') as any;
+            setLikes(Array.isArray(res?.data ?? res) ? (res?.data ?? res) : []);
         } catch (err) {
             console.error('Failed to load likes:', err);
         }
@@ -52,8 +54,8 @@ export default function ProfilePage() {
 
     const loadEvents = async () => {
         try {
-            const res = await apiClient.get('/users/events');
-            setEvents(res.data.data || []);
+            const res = await apiClient.get('/users/events') as any;
+            setEvents(Array.isArray(res?.data ?? res) ? (res?.data ?? res) : []);
         } catch (err) {
             console.error('Failed to load events:', err);
         }
@@ -61,10 +63,20 @@ export default function ProfilePage() {
 
     const loadMyCars = async () => {
         try {
-            const res = await apiClient.get('/cars/my');
-            setMyCars(res.data.data || []);
+            const res = await apiClient.get('/cars/my') as any;
+            setMyCars(Array.isArray(res?.data ?? res) ? (res?.data ?? res) : []);
         } catch (err) {
             console.error('Failed to load my cars:', err);
+        }
+    };
+
+    const loadSubscription = async () => {
+        try {
+            const res = await apiClient.get('/subscriptions/me') as any;
+            const d = res?.data ?? res;
+            setMySubscription(d);
+        } catch {
+            setMySubscription(null);
         }
     };
 
@@ -101,12 +113,34 @@ export default function ProfilePage() {
                 <div className="lg:col-span-1">
                     <Card className="p-6 space-y-6">
                         <div className="flex flex-col items-center text-center space-y-4">
-                            <Avatar className="w-24 h-24">
-                                <AvatarImage src={profileData.avatar_url} alt={profileData.first_name} />
-                                <AvatarFallback className="text-2xl">
-                                    {profileData.first_name?.[0]}{profileData.last_name?.[0]}
-                                </AvatarFallback>
-                            </Avatar>
+                            <label className="relative inline-block">
+                                <Avatar className="w-24 h-24 cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all">
+                                    <AvatarImage src={profileData.avatar_url} alt={profileData.first_name} />
+                                    <AvatarFallback className="text-2xl">
+                                        {profileData.first_name?.[0]}{profileData.last_name?.[0]}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        try {
+                                            const fd = new FormData();
+                                            fd.append('file', file);
+                                            await apiClient.post('/auth/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                                            toast.success('Фото обновлено');
+                                            loadProfileData();
+                                            refreshUser();
+                                        } catch (err) {
+                                            toast.error('Ошибка загрузки фото');
+                                        }
+                                    }}
+                                />
+                            </label>
+                            <span className="text-xs text-slate-500">Нажмите, чтобы изменить фото</span>
 
                             <div className="w-full">
                                 <h3 className="font-bold text-lg">Имя</h3>
@@ -119,10 +153,23 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="w-full pt-4 border-t">
-                                <div className="bg-blue-50 p-4 rounded-xl">
-                                    <p className="text-sm text-slate-600">Ваш счет</p>
-                                    <p className="text-2xl font-bold text-blue-600">{profileData.balance || 0} ₸</p>
-                                    <Button className="w-full mt-3">Пополнить счет</Button>
+                                <div className="bg-slate-50 p-4 rounded-xl">
+                                    <p className="text-sm text-slate-600">Подписка</p>
+                                    {mySubscription?.plan_name ? (
+                                        <>
+                                            <p className="font-semibold text-slate-900">{mySubscription.plan_name}</p>
+                                            <p className="text-xs text-slate-500">
+                                                {mySubscription.valid_until ? `до ${new Date(mySubscription.valid_until).toLocaleDateString('ru-RU')}` : ''}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="text-slate-600 text-sm mb-2">Нет активной подписки</p>
+                                            <Link href="/add">
+                                                <Button className="w-full">Купить подписку</Button>
+                                            </Link>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -165,38 +212,43 @@ export default function ProfilePage() {
                 <div className="lg:col-span-3">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="grid w-full grid-cols-4">
-                            <TabsTrigger value="history" className="gap-2">
-                                <History size={16} />
-                                История
-                            </TabsTrigger>
                             <TabsTrigger value="ads" className="gap-2">
                                 <FileText size={16} />
                                 Объявления
-                            </TabsTrigger>
-                            <TabsTrigger value="settings" className="gap-2">
-                                <Settings size={16} />
-                                Настройки
                             </TabsTrigger>
                             <TabsTrigger value="favorites" className="gap-2">
                                 <Heart size={16} />
                                 Избранное
                             </TabsTrigger>
+                            <TabsTrigger value="history" className="gap-2">
+                                <History size={16} />
+                                История
+                            </TabsTrigger>
+                            <TabsTrigger value="settings" className="gap-2">
+                                <Settings size={16} />
+                                Настройки
+                            </TabsTrigger>
                         </TabsList>
 
-                        {/* История */}
+                        {/* История просмотров */}
                         <TabsContent value="history" className="mt-6">
-                            <h2 className="text-2xl font-bold mb-6">История покупок</h2>
+                            <h2 className="text-2xl font-bold mb-6">История просмотров</h2>
                             <div className="space-y-4">
                                 {events.length === 0 ? (
-                                    <p className="text-center text-slate-500 py-12">История пуста</p>
+                                    <p className="text-center text-slate-500 py-12">Вы пока не просматривали объявления</p>
                                 ) : (
                                     events.map((event) => (
-                                        <Card key={event.id} className="p-4 flex gap-4">
-                                            <div className="flex-shrink-0 w-32 h-24 bg-slate-100 rounded-lg"></div>
+                                        <Card key={event.id} className={`p-4 flex gap-4 ${event.car_deleted ? 'opacity-60 bg-slate-50' : ''}`}>
                                             <div className="flex-1">
-                                                <p className="text-sm text-slate-500">{new Date(event.created_at).toLocaleDateString('ru-RU')}</p>
-                                                <h3 className="font-bold text-lg">{event.car_name}</h3>
-                                                <p className="text-slate-600">{event.car_price} ₸/день</p>
+                                                <p className="text-sm text-slate-500">{event.created_at ? new Date(event.created_at).toLocaleDateString('ru-RU') : ''}</p>
+                                                {event.car_deleted ? (
+                                                    <p className="font-medium text-slate-500">{event.car_name || 'Объявление удалено'}</p>
+                                                ) : (
+                                                    <Link href={`/cars/${event.car_id}`} className="font-bold text-lg hover:underline">
+                                                        {event.car_name || 'Объявление'}
+                                                    </Link>
+                                                )}
+                                                {event.car_price != null && <p className="text-slate-600">{event.car_price} ₸/день</p>}
                                             </div>
                                         </Card>
                                     ))
@@ -218,12 +270,34 @@ export default function ProfilePage() {
                                 ) : (
                                     myCars.map((car: any) => (
                                         <Card key={car.id} className="p-4 flex gap-4">
-                                            <div className="flex-shrink-0 w-32 h-24 bg-slate-100 rounded-lg"></div>
-                                            <div className="flex-1">
-                                                <p className="text-sm text-slate-500">{new Date(car.create_date).toLocaleDateString('ru-RU')}</p>
+                                            <div className="flex-shrink-0 w-32 h-24 bg-slate-100 rounded-lg overflow-hidden">
+                                                {car.images?.[0]?.url && (
+                                                    // превью первой картинки
+                                                    <img src={car.images[0].url} alt={car.name} className="w-full h-full object-cover" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 space-y-1">
+                                                <p className="text-sm text-slate-500">
+                                                    {car.create_date ? new Date(car.create_date).toLocaleDateString('ru-RU') : ''}
+                                                </p>
                                                 <h3 className="font-bold text-lg">{car.name}</h3>
                                                 <p className="text-slate-600">{car.price_per_day} ₸/день</p>
-                                                <Button size="sm" className="mt-2">Продлить</Button>
+                                                <p className="text-xs text-slate-500">
+                                                    Статус: <span className="font-medium">{car.status}</span> · Просмотров:{" "}
+                                                    <span className="font-medium">{car.views_count ?? 0}</span>
+                                                </p>
+                                                <div className="flex gap-2 mt-2">
+                                                    {/* Полный просмотр объявления (как оно видно пользователям) */}
+                                                    {car.status === "PUBLISHED" ? (
+                                                        <Link href={`/cars/${car.id}`}>
+                                                            <Button size="sm" variant="outline">
+                                                                Открыть
+                                                            </Button>
+                                                        </Link>
+                                                    ) : null}
+                                                    {/* TODO: отдельная страница/форма редактирования объявления */}
+                                                    {/* <Button size="sm" variant="outline">Редактировать</Button> */}
+                                                </div>
                                             </div>
                                         </Card>
                                     ))

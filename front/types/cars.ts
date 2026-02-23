@@ -40,12 +40,12 @@ export interface CarResponse {
   name: string;
   marka_id?: number;
   model_id?: number;
-  bin?: string;
   release_year?: number;
   is_top: boolean;
   author_id: number;
-  is_active: boolean;
+  status: string;
   create_date: string;
+  update_date?: string | null;
   description?: string;
   images: ImageResponse[];
   // Include other fields returned by backend that might be dynamically included or joined
@@ -56,9 +56,13 @@ export interface CarResponse {
   body_type?: string;
   mileage?: number | string;
   condition?: string;
+  condition_id?: number;
   color?: string;
   fuel_type?: string;
   steering?: string;
+  steering_id?: number;
+  car_class?: string;
+  car_class_id?: number;
 
   additional_info?: string;
 }

@@ -56,7 +56,13 @@ def get_current_user(
 
 
 def get_current_owner(user: User = Depends(get_current_user)) -> User:
-    if user.role != "owner":
-        raise HTTPException(status_code=403, detail="Owner role required")
+    """
+    Раньше использовалась отдельная роль 'owner'.
+    Теперь все авторизованные клиенты могут быть владельцами объявлений.
+    Оставляем проверку только на то, что пользователь не админ‑сервисной учёткой,
+    если такие будут, но в целом допускаем и admin, и client.
+    """
+    if user.role not in ("client", "admin"):
+        raise HTTPException(status_code=403, detail="Client role required")
     return user
 

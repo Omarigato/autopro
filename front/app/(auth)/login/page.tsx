@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -17,13 +17,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+function LoginContent() {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl") || "/";
   const [mode, setMode] = useState<"PASSWORD" | "OTP">("PASSWORD");
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
@@ -54,8 +56,16 @@ export default function LoginPage() {
       setOtpSent(true);
       toast.success("Код отправлен");
     } catch (e: any) {
-      const msg = e?.response?.data?.message || "Ошибка отправки кода";
-      toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      // Клиентский interceptor уже отдаёт payload бэкенда:
+      // { data, code, message: { ru, kk, en } }
+      const msgObj = e?.message;
+      let msg = "Ошибка отправки кода";
+      if (typeof msgObj === "string") {
+        msg = msgObj;
+      } else if (msgObj && typeof msgObj === "object") {
+        msg = msgObj.ru || msgObj.en || Object.values(msgObj)[0] || msg;
+      }
+      toast.error(msg);
     }
   };
 
@@ -76,10 +86,18 @@ export default function LoginPage() {
         otp_code: mode === "OTP" ? values.otp_code : undefined
       });
       toast.success("Вы успешно вошли!");
-      router.push("/");
+      router.push(returnUrl);
     } catch (error: any) {
       console.log(error);
-      toast.error(error.message || "Ошибка входа");
+      // Ошибка логина также приходит как { data, code, message: { ru, kk, en } }
+      const msgObj = error?.message;
+      let msg = "Неверный логин или пароль";
+      if (typeof msgObj === "string") {
+        msg = msgObj;
+      } else if (msgObj && typeof msgObj === "object") {
+        msg = msgObj.ru || msgObj.en || Object.values(msgObj)[0] || msg;
+      }
+      toast.error(msg);
     }
   }
 
@@ -196,6 +214,14 @@ export default function LoginPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center text-slate-500">Загрузка...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
 

@@ -2,6 +2,7 @@ MESSAGES = {
     "ru": {
         "success": "Успешно",
         "client_application_sent": "Заявка успешно отправлена владельцу",
+        "car_saved_draft": "Объявление сохранено в черновики",
         "car_not_found": "Автомобиль не найден",
         "not_authorized": "Нет прав для этого действия",
         "car_deleted": "Автомобиль и фотографии удалены",
@@ -17,6 +18,7 @@ MESSAGES = {
     "kk": {
         "success": "Сәтті",
         "client_application_sent": "Өтінім иесіне сәтті жіберілді",
+        "car_saved_draft": "Жарнама жобаларға сақталды",
         "car_not_found": "Автокөлік табылмады",
         "not_authorized": "Бұл әрекетке құқығыңыз жоқ",
         "car_deleted": "Автокөлік пен фотосуреттер жойылды",
@@ -32,6 +34,7 @@ MESSAGES = {
     "en": {
         "success": "Success",
         "client_application_sent": "Application successfully sent to owner",
+        "car_saved_draft": "Ad saved to drafts",
         "car_not_found": "Car not found",
         "not_authorized": "Not authorized for this action",
         "car_deleted": "Car and images deleted",

@@ -126,21 +126,21 @@ class Car(Base):
     engine_volume: Mapped[str | None] = mapped_column(String(50)) # "2.5", "3.0" итд
     
     # Vehicle details
-    transport_number: Mapped[str | None] = mapped_column(String(50)) # Гос номер (080ABC01)
-    bin: Mapped[str | None] = mapped_column(String(50))
     release_year: Mapped[int | None] = mapped_column(Integer)  # Год выпуска
     mileage: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Пробег
     body_type: Mapped[str | None] = mapped_column(String(100), nullable=True)  # Кузов
-    steering: Mapped[str | None] = mapped_column(String(20), nullable=True)  # LEFT/RIGHT Руль
-    condition: Mapped[str | None] = mapped_column(String(50), nullable=True)  # EXCELLENT/GOOD/FAIR
-    customs_cleared: Mapped[bool | None] = mapped_column(Boolean, nullable=True)  # Растаможен
+    steering_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)  # Руль LEFT/RIGHT из справочника
+    condition_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)  # Состояние из справочника
+    car_class_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)  # Класс машины (Эконом, Бизнес и т.д.)
     city_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id")) # Город
     
     is_top: Mapped[bool] = mapped_column(Boolean, default=False)
     views_count: Mapped[int] = mapped_column(Integer, default=0)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    is_active: Mapped[bool] = mapped_column(Boolean, default=False)  # активирует админ
+    # CREATED — создано, отправлено на модерацию; UPDATED — обновлено, снова на проверку; PUBLISHED — опубликовано; DRAFT — черновик; DELETED — удалено
+    status: Mapped[str] = mapped_column(String(20), default="CREATED", index=True)
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    update_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     author: Mapped[User] = relationship("User")
@@ -159,6 +159,9 @@ class Car(Base):
     transmission: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[transmission_id])
     fuel_type: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[fuel_type_id])
     color: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[color_id])
+    steering: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[steering_id])
+    condition: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[condition_id])
+    car_class: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[car_class_id])
     city: Mapped[Dictionary | None] = relationship("Dictionary", foreign_keys=[city_id])
 
 
@@ -181,16 +184,6 @@ from app.services.cloudinary_service import CloudinaryService
 def receive_after_delete(mapper, connection, target):
     if target.image_id:
         CloudinaryService.delete_image(target.image_id)
-
-
-class Application(Base):
-    __tablename__ = "applications"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"))
-    car_owner_id: Mapped[int] = mapped_column(ForeignKey("car_owners.user_id"))
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class Review(Base):
@@ -359,13 +352,20 @@ class UserEvent(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"), index=True)
-    application_id: Mapped[int | None] = mapped_column(ForeignKey("applications.id"), nullable=True)
     event_type: Mapped[str] = mapped_column(String(50))  # view, application
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship("User", back_populates="events")
     car: Mapped["Car"] = relationship("Car")
-    application: Mapped["Application | None"] = relationship("Application")
+
+
+class AppSetting(Base):
+    """Глобальные настройки приложения (ключ-значение)."""
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(String(500), default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class OTPVerification(Base):

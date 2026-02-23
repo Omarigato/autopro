@@ -259,6 +259,22 @@
             }
         }
     ],
+    "steering": [
+        { "code": "LEFT", "names": { "ru": "Слева", "en": "Left", "kk": "Солда" } },
+        { "code": "RIGHT", "names": { "ru": "Справа", "en": "Right", "kk": "Оңда" } }
+    ],
+    "condition": [
+        { "code": "EXCELLENT", "names": { "ru": "Отличное", "en": "Excellent", "kk": "Жақсы" } },
+        { "code": "GOOD", "names": { "ru": "Хорошее", "en": "Good", "kk": "Жақсы" } },
+        { "code": "FAIR", "names": { "ru": "Удовлетворительное", "en": "Fair", "kk": "Қанағаттанарлық" } }
+    ],
+    "car_class": [
+        { "code": "ECONOMY", "names": { "ru": "Эконом", "en": "Economy", "kk": "Эконом" } },
+        { "code": "COMFORT", "names": { "ru": "Комфорт", "en": "Comfort", "kk": "Комфорт" } },
+        { "code": "BUSINESS", "names": { "ru": "Бизнес", "en": "Business", "kk": "Бизнес" } },
+        { "code": "PREMIUM", "names": { "ru": "Премиум", "en": "Premium", "kk": "Премиум" } },
+        { "code": "SUV", "names": { "ru": "Внедорожник", "en": "SUV", "kk": "ДЖИП" } }
+    ],
     "categories": [
         {
             "code": "CARS",
@@ -323,18 +339,15 @@
     ],
     "payment_accounts": [
         {
-            "provider": "kassa24",
-            "merchant_id": "demo_merchant",
-            "login": "demo_login",
-            "password": "demo_password",
-            "demo": true
-        },
-        {
-            "provider": "kaspi",
-            "merchant_id": "kaspi_store_id",
-            "login": "kaspi_merchant",
-            "password": "none",
-            "demo": true
+            "provider": "tiptoppay",
+            "merchant_id": "",
+            "login": "",
+            "password": "",
+            "callback_url": "",
+            "success_url": "",
+            "fail_url": "",
+            "demo": false,
+            "is_active": true
         }
     ]
 }

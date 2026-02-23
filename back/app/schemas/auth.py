@@ -26,7 +26,7 @@ class UserResponse(BaseModel):
     id: int
     name: str
     phone_number: str
-    role: Literal["owner", "admin"]
+    role: Literal["client", "admin"]
     create_date: datetime
 
     class Config:

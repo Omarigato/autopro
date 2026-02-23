@@ -88,16 +88,18 @@ def get_user_events(
     result = []
     for event in events:
         car = event.car
+        # Машина может быть удалена (delete_date или status DELETED) — отдаём данные для отображения ссылки серым
+        car_deleted = car is None or (car.delete_date is not None) or (getattr(car, "status", None) == "DELETED")
         result.append({
             "id": event.id,
             "event_type": event.event_type,
-            "car_id": car.id,
-            "car_name": car.name,
-            "car_price": car.price_per_day,
-            "application_id": event.application_id,
+            "car_id": event.car_id,
+            "car_name": car.name if car else None,
+            "car_price": car.price_per_day if car else None,
+            "car_deleted": car_deleted,
             "created_at": event.created_at.isoformat()
         })
-    
+
     return create_response(data=result, lang=request.state.lang)
 
 @router.post("/events/view/{car_id}")

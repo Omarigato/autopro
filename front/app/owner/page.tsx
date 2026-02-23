@@ -8,7 +8,7 @@ type UserMe = {
   id: number;
   name: string;
   phone_number: string;
-  role: "owner" | "admin";
+  role: "client" | "admin";
 };
 
 type Car = {
