@@ -90,6 +90,28 @@ def list_dictionaries(
     ]
     return create_response(data=data)
 
+@router.post("/dictionaries")
+def create_dictionary_item(payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    """
+    Создание новой записи в справочнике.
+    """
+    new_item = Dictionary(
+        name=payload.get("name"),
+        code=payload.get("code"),
+        type=payload.get("type"),
+        parent_id=payload.get("parent_id"),
+        is_active=True
+    )
+    db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
+    return create_response(data={
+        "id": new_item.id,
+        "name": new_item.name,
+        "code": new_item.code,
+        "type": new_item.type
+    })
+
 @router.patch("/dictionaries/{item_id}")
 def update_dictionary_item(item_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     item = db.query(Dictionary).filter(Dictionary.id == item_id).first()
