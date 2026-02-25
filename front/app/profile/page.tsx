@@ -146,9 +146,10 @@ export default function ProfilePage() {
                                 <label className="relative group cursor-pointer">
                                     <div className="relative">
                                         <Avatar className="w-32 h-32 border-4 border-white shadow-xl ring-2 ring-indigo-50 transition-all duration-300 group-hover:ring-indigo-200">
-                                            <AvatarImage src={profileData.avatar_url} alt={profileData.first_name} />
+                                            <AvatarImage src={profileData.avatar_url} alt={profileData.name} />
                                             <AvatarFallback className="text-3xl bg-indigo-50 text-indigo-600">
-                                                {profileData.first_name?.[0]}{profileData.last_name?.[0]}
+                                                {profileData.name?.split(' ')?.[0]?.[0]}
+                                                {profileData.name?.split(' ')?.[1]?.[0]}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -180,7 +181,7 @@ export default function ProfilePage() {
 
                                 <div className="mt-6">
                                     <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
-                                        {profileData.first_name} {profileData.last_name || ''}
+                                        {profileData.name}
                                     </h3>
                                     <p className="text-indigo-600 font-medium text-sm mt-1 uppercase tracking-wider">
                                         {user.role === 'admin' ? 'Администратор' : 'Частное лицо'}
@@ -476,20 +477,12 @@ export default function ProfilePage() {
                                         <form onSubmit={handleUpdateProfile} className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div className="space-y-3">
                                                 <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Как вас зовут?</Label>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                    <Input
-                                                        placeholder="Имя"
-                                                        value={profileData.first_name || ''}
-                                                        onChange={(e) => handleChange('first_name', e.target.value)}
-                                                        className="rounded-2xl h-14 bg-slate-50 border-none focus-visible:ring-indigo-600 font-medium"
-                                                    />
-                                                    <Input
-                                                        placeholder="Фамилия"
-                                                        value={profileData.last_name || ''}
-                                                        onChange={(e) => handleChange('last_name', e.target.value)}
-                                                        className="rounded-2xl h-14 bg-slate-50 border-none focus-visible:ring-indigo-600 font-medium"
-                                                    />
-                                                </div>
+                                                <Input
+                                                    placeholder="Имя и фамилия"
+                                                    value={profileData.name || ''}
+                                                    onChange={(e) => handleChange('name', e.target.value)}
+                                                    className="rounded-2xl h-14 bg-slate-50 border-none focus-visible:ring-indigo-600 font-medium"
+                                                />
                                             </div>
 
                                             <div className="space-y-3">

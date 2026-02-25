@@ -59,11 +59,19 @@ export default function AdminCarsPage() {
                   </Link>
                 </td>
                 <td className="p-3">
-                  <span className={`px-2 py-0.5 rounded text-xs ${
-                    c.status === "PUBLISHED" ? "bg-green-100 text-green-800" :
-                    c.status === "CREATED" || c.status === "UPDATED" ? "bg-amber-100 text-amber-800" :
-                    c.status === "DRAFT" ? "bg-slate-100 text-slate-600" : "bg-slate-100"
-                  }`}>
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs ${
+                      c.status === "PUBLISHED"
+                        ? "bg-green-100 text-green-800"
+                        : c.status === "CREATED" || c.status === "UPDATED"
+                        ? "bg-amber-100 text-amber-800"
+                        : c.status === "DRAFT"
+                        ? "bg-slate-100 text-slate-600"
+                        : c.status === "REJECTED"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-slate-100"
+                    }`}
+                  >
                     {c.status}
                   </span>
                 </td>

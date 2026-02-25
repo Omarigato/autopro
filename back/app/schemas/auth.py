@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 
 class Token(BaseModel):
@@ -12,8 +12,10 @@ class Token(BaseModel):
 class OwnerRegisterRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     phone_number: str = Field(..., min_length=5, max_length=30)
-    login: str = Field(..., min_length=3, max_length=255)
-    password: str = Field(..., min_length=6, max_length=255)
+    # Логин как отдельное поле больше не нужен — используем email.
+    email: EmailStr | None = Field(default=None)
+    # Пароль заполняется только если клиент хочет входить по email.
+    password: str | None = Field(default=None, min_length=6, max_length=255)
 
 
 class OwnerLoginRequest(BaseModel):

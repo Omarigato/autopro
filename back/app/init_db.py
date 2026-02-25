@@ -21,10 +21,12 @@ def init_db(recreate: bool = False) -> None:
         if not admin:
             print("Creating admin...")
             admin = entities.User(
-                first_name="Admin", last_name="System",
-                name="Admin System", login="admin", phone_number="777",
+                name="Admin System",
+                phone_number="777",
+                email=adminautopro@autopro.kz,
                 password_hash=get_password_hash("admin123"),
-                role="admin", is_active=True
+                role="admin",
+                is_active=True,
             )
             db.add(admin)
             db.commit()

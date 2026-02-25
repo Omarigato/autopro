@@ -33,48 +33,24 @@ class Dictionary(Base):
     translations: Mapped[list["DictionaryTranslation"]] = relationship("DictionaryTranslation", back_populates="dictionary")
 
 
-class Client(Base):
-    __tablename__ = "clients"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(255))
-    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    phone_number: Mapped[str] = mapped_column(String(30))
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-
-class BlackList(Base):
-    __tablename__ = "blacklist"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), unique=True)
-
-    client: Mapped[Client] = relationship("Client")
-
-
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    first_name: Mapped[str] = mapped_column(String(255))
-    last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    name: Mapped[str | None] = mapped_column(String(255), nullable=True)  # For backwards compatibility
-    login: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    # Храним только одно поле имени, без раздельных first_name / last_name.
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(30), unique=True, index=True, nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    role: Mapped[str] = mapped_column(String(50), default="client")  # client, owner, admin
+    # Роль owner больше не используется — все владельцы являются клиентами.
+    role: Mapped[str] = mapped_column(String(50), default="client")  # client, admin
     gender: Mapped[str | None] = mapped_column(String(10), nullable=True)  # male, female
     date_birth: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     balance: Mapped[int] = mapped_column(Integer, default=0)  # Баланс в тенге
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    
-    otp_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    otp_expiry: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    
+
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -93,7 +69,8 @@ class User(Base):
 
 
 class CarOwner(Base):
-    __tablename__ = "car_owners"
+    # Таблица переименована с car_owners в client_cars.
+    __tablename__ = "client_cars"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
     subscription_id: Mapped[int | None] = mapped_column(
@@ -137,7 +114,7 @@ class Car(Base):
     is_top: Mapped[bool] = mapped_column(Boolean, default=False)
     views_count: Mapped[int] = mapped_column(Integer, default=0)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    # CREATED — создано, отправлено на модерацию; UPDATED — обновлено, снова на проверку; PUBLISHED — опубликовано; DRAFT — черновик; DELETED — удалено
+    # CREATED — создано, отправлено на модерацию; UPDATED — обновлено, снова на проверку; PUBLISHED — опубликовано; DRAFT — черновик;
     status: Mapped[str] = mapped_column(String(20), default="CREATED", index=True)
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     update_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -196,8 +173,10 @@ class Review(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"))
-    car_owner_id: Mapped[int] = mapped_column(ForeignKey("car_owners.user_id"))
-    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id"))
+    # Ссылаемся на переименованную таблицу client_cars.
+    car_owner_id: Mapped[int] = mapped_column(ForeignKey("client_cars.user_id"))
+    # Автор отзыва — пользователь (клиент) из таблицы users.
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     rating: Mapped[int] = mapped_column(Integer)  # 1-5
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -278,7 +257,7 @@ class OwnerSubscription(Base):
     __tablename__ = "owner_subscriptions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    owner_id: Mapped[int] = mapped_column(ForeignKey("car_owners.user_id"))
+    owner_id: Mapped[int] = mapped_column(ForeignKey("client_cars.user_id"))
     plan_id: Mapped[int] = mapped_column(ForeignKey("subscription_plans.id"))
 
     status: Mapped[str] = mapped_column(
@@ -314,7 +293,7 @@ class PaymentTransaction(Base):
     amount_kzt: Mapped[int] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(String(10), default="KZT")
 
-    owner_id: Mapped[int] = mapped_column(ForeignKey("car_owners.user_id"))
+    owner_id: Mapped[int] = mapped_column(ForeignKey("client_cars.user_id"))
     subscription_id: Mapped[int] = mapped_column(ForeignKey("owner_subscriptions.id"))
 
     payment_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

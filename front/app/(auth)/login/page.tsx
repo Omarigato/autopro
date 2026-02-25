@@ -20,18 +20,23 @@ import { apiClient } from "@/lib/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import InputMask from "react-input-mask";
 
 function LoginContent() {
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl") || "/";
-  const [mode, setMode] = useState<"PASSWORD" | "OTP">("PASSWORD");
+  // Основные вкладки: вход по телефону (OTP) и по email
+  const [mode, setMode] = useState<"PHONE" | "EMAIL">("PHONE");
+  // Для email‑вкладки: режим по паролю или по коду
+  const [emailMode, setEmailMode] = useState<"PASSWORD" | "OTP">("PASSWORD");
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
 
   const formSchema = z.object({
-    login: z.string().min(1, "Введите логин"),
+    phone_number: z.string().optional(),
+    email: z.string().email("Введите корректный email").optional().or(z.literal("")),
     password: z.string().optional(),
     otp_code: z.string().optional(),
   });
@@ -39,20 +44,22 @@ function LoginContent() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      login: "",
+      phone_number: "",
+      email: "",
       password: "",
       otp_code: "",
     },
   });
 
   const handleRequestOtp = async () => {
-    const loginVal = form.getValues("login");
-    if (!loginVal) {
-      toast.error("Введите логин");
+    const values = form.getValues();
+    const target = mode === "PHONE" ? values.phone_number : values.email;
+    if (!target) {
+      toast.error(mode === "PHONE" ? "Введите номер телефона" : "Введите email");
       return;
     }
     try {
-      await apiClient.post("/auth/otp/request", { target: loginVal });
+      await apiClient.post("/auth/otp/request", { target });
       setOtpSent(true);
       toast.success("Код отправлен");
     } catch (e: any) {
@@ -71,19 +78,32 @@ function LoginContent() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      if (mode === "PASSWORD" && !values.password) {
+      // Валидация по режимам
+      if (mode === "EMAIL" && emailMode === "PASSWORD" && !values.password) {
         form.setError("password", { message: "Введите пароль" });
         return;
       }
-      if (mode === "OTP" && !values.otp_code) {
+      if ((mode === "PHONE" || (mode === "EMAIL" && emailMode === "OTP")) && !values.otp_code) {
         form.setError("otp_code", { message: "Введите код" });
         return;
       }
 
+      let loginIdentifier: string | undefined;
+      if (mode === "PHONE") {
+        loginIdentifier = values.phone_number || undefined;
+      } else {
+        loginIdentifier = values.email || undefined;
+      }
+
+      if (!loginIdentifier) {
+        toast.error(mode === "PHONE" ? "Укажите номер телефона" : "Укажите email");
+        return;
+      }
+
       await login({
-        login: values.login,
-        password: mode === "PASSWORD" ? values.password : undefined,
-        otp_code: mode === "OTP" ? values.otp_code : undefined
+        login: loginIdentifier,
+        password: mode === "EMAIL" && emailMode === "PASSWORD" ? values.password : undefined,
+        otp_code: (mode === "PHONE" || (mode === "EMAIL" && emailMode === "OTP")) ? values.otp_code : undefined
       });
       toast.success("Вы успешно вошли!");
       router.push(returnUrl);
@@ -109,71 +129,121 @@ function LoginContent() {
       </div>
 
       <div className="space-y-4">
-        <Tabs value={mode} onValueChange={(val) => setMode(val as "PASSWORD" | "OTP")} className="w-full">
+        <Tabs
+          value={mode}
+          onValueChange={(val) => {
+            setMode(val as "PHONE" | "EMAIL");
+            setOtpSent(false);
+          }}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="PASSWORD">Пароль</TabsTrigger>
-            <TabsTrigger value="OTP">Код</TabsTrigger>
+            <TabsTrigger value="PHONE">Телефон</TabsTrigger>
+            <TabsTrigger value="EMAIL">Email</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="login"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Логин</FormLabel>
-                <FormControl>
-                  <Input placeholder="username" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {mode === "PASSWORD" ? (
+          {mode === "PHONE" && (
             <FormField
               control={form.control}
-              name="password"
+              name="phone_number"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Пароль</FormLabel>
-                    <Link
-                      href="/forgot-password"
-                      className="text-sm font-medium text-primary hover:underline"
-                      tabIndex={-1}
-                    >
-                      Забыли пароль?
-                    </Link>
-                  </div>
+                  <FormLabel>Номер телефона</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="******"
-                        {...field}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? (
-                          <EyeOffIcon className="h-4 w-4" />
-                        ) : (
-                          <EyeIcon className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
+                    <InputMask
+                      mask="+7 (999) 999-99-99"
+                      value={field.value}
+                      onChange={field.onChange}
+                    >
+                      {(inputProps: any) => (
+                        <Input
+                          {...inputProps}
+                          placeholder="+7 (777) 000-00-00"
+                          type="tel"
+                        />
+                      )}
+                    </InputMask>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          ) : (
+          )}
+
+          {mode === "EMAIL" && (
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="user@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {mode === "EMAIL" && emailMode === "PASSWORD" && (
+            <>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Пароль</FormLabel>
+                      <Link
+                        href="/forgot-password"
+                        className="text-sm font-medium text-primary hover:underline"
+                        tabIndex={-1}
+                      >
+                        Забыли пароль?
+                      </Link>
+                    </div>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="******"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? (
+                            <EyeOffIcon className="h-4 w-4" />
+                          ) : (
+                            <EyeIcon className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="text-center text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setEmailMode("OTP"); setOtpSent(false); }}
+                  className="text-primary hover:underline"
+                >
+                  Войти по коду
+                </button>
+              </div>
+            </>
+          )}
+
+          {(mode === "PHONE" || (mode === "EMAIL" && emailMode === "OTP")) && (
             <div className="space-y-4">
               {!otpSent ? (
                 <Button type="button" variant="secondary" onClick={handleRequestOtp} className="w-full">
@@ -195,8 +265,34 @@ function LoginContent() {
                 />
               )}
               {otpSent && (
+                <div className="flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setOtpSent(false)}
+                    className="text-primary hover:underline"
+                  >
+                    Отправить повторно
+                  </button>
+                  {mode === "EMAIL" && (
+                    <button
+                      type="button"
+                      onClick={() => setEmailMode("PASSWORD")}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      Войти по паролю
+                    </button>
+                  )}
+                </div>
+              )}
+              {mode === "EMAIL" && !otpSent && (
                 <div className="text-center text-xs">
-                  <button type="button" onClick={() => setOtpSent(false)} className="text-primary hover:underline">Отправить повторно</button>
+                  <button
+                    type="button"
+                    onClick={() => setEmailMode("PASSWORD")}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Войти по паролю
+                  </button>
                 </div>
               )}
             </div>

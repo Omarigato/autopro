@@ -4,7 +4,18 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.entities import User, Car, Client, Dictionary, DictionaryTranslation, CarOwner, PaymentAccount, PaymentTransaction, SubscriptionPlan, AppSetting, OTPVerification
+from app.models.entities import (
+    User,
+    Car,
+    Dictionary,
+    DictionaryTranslation,
+    CarOwner,
+    PaymentAccount,
+    PaymentTransaction,
+    SubscriptionPlan,
+    AppSetting,
+    OTPVerification,
+)
 from app.core.security import get_current_user, get_password_hash
 from app.core.responses import create_response
 from app.services.dictionary_service import dictionary_service
@@ -152,11 +163,19 @@ def list_users(role: str = None, db: Session = Depends(get_db), admin: User = De
     if role:
         query = query.filter(User.role == role)
     users = query.all()
-    return create_response(data=[{
-        "id": u.id, "name": u.name, "first_name": u.first_name, "last_name": u.last_name,
-        "login": u.login, "email": u.email,
-        "phone_number": u.phone_number, "role": u.role, "is_active": u.is_active
-    } for u in users])
+    return create_response(
+        data=[
+            {
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "phone_number": u.phone_number,
+                "role": u.role,
+                "is_active": u.is_active,
+            }
+            for u in users
+        ]
+    )
 
 
 @router.patch("/users/{user_id}")
@@ -164,7 +183,7 @@ def update_user(user_id: int, payload: dict, db: Session = Depends(get_db), admi
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404)
-    for key in ("first_name", "last_name", "email", "phone_number", "role", "is_active"):
+    for key in ("name", "email", "phone_number", "role", "is_active"):
         if key in payload:
             if key == "is_active":
                 user.is_active = bool(payload[key])
@@ -197,11 +216,11 @@ def approve_car(car_id: int, db: Session = Depends(get_db), admin: User = Depend
 
 @router.post("/cars/{car_id}/reject")
 def reject_car(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    """Отклонить / снять с публикации — статус CREATED (на модерации)."""
+    """Отклонить объявление — статус REJECTED (отказано)."""
     car = db.query(Car).filter(Car.id == car_id).first()
     if not car:
         raise HTTPException(404)
-    car.status = "CREATED"
+    car.status = "REJECTED"
     car.update_date = datetime.utcnow()
     db.commit()
     return create_response(data={"id": car.id, "status": car.status})
@@ -237,16 +256,25 @@ def delete_car_admin(car_id: int, db: Session = Depends(get_db), admin: User = D
 
 @router.post("/create-admin")
 def create_admin(payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    existing = db.query(User).filter(User.login == payload.get("login")).first()
-    if existing: raise HTTPException(400, "User exists")
+    # Проверяем по email или телефону, чтобы не дублировать админа.
+    existing = db.query(User).filter(
+        (User.email == payload.get("email"))
+        | (User.phone_number == payload.get("phone_number"))
+    ).first()
+    if existing:
+        raise HTTPException(400, "User exists")
+
     new_admin = User(
-        name=payload.get("name"), login=payload.get("login"),
-        phone_number=payload.get("phone_number"), email=payload.get("email"),
-        password_hash=get_password_hash(payload.get("password")), role="admin"
+        name=payload.get("name"),
+        phone_number=payload.get("phone_number"),
+        email=payload.get("email"),
+        password_hash=get_password_hash(payload.get("password")),
+        role="admin",
+        is_active=True,
     )
     db.add(new_admin)
     db.commit()
-    return create_response(data={"id": new_admin.id, "login": new_admin.login})
+    return create_response(data={"id": new_admin.id})
 
 
 @router.get("/otp")

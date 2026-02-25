@@ -40,6 +40,21 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str | None = None
     CLOUDINARY_API_SECRET: str | None = None
 
+    # Email (SMTP)
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int | None = None
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_USE_TLS: bool = True
+    EMAIL_FROM: str | None = None  # от кого отправляем письма
+
+    # WhatsApp API (внешний провайдер / собственный шлюз)
+    WHATSAPP_API_URL: str | None = None
+    WHATSAPP_API_TOKEN: str | None = None
+
+    # Базовый URL фронтенда (для ссылок в Telegram)
+    FRONTEND_BASE_URL: str | None = None  # например, https://autopro.kz или http://localhost:3000
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):

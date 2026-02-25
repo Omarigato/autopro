@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Request
 from sqlalchemy.orm import Session
@@ -13,9 +14,8 @@ from app.services.subscriptions_service import (
     owner_cars_count,
 )
 from app.services.telegram import send_new_application_message
-import asyncio
 from app.core.responses import create_response
-from app.services.telegram import send_new_application_message
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -48,7 +48,7 @@ def list_cars(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("")
-def create_car(
+async def create_car(
     name: str = Form(...),
     vehicle_mark_id: int | None = Form(default=None),
     vehicle_model_id: int | None = Form(default=None),
@@ -152,19 +152,37 @@ def create_car(
 
     # Уведомление в Telegram о новом объявлении (для админов)
     if not save_as_draft:
-        try:
-            text = (
-                f"🆕 Новое объявление #{car.id}\n"
-                f"<b>{car.name}</b>\n"
-                f"Статус: {car.status}\n"
-                f"Автор: {current_owner.name or current_owner.first_name}\n"
-                f"Проверьте и одобрите в админ‑панели."
-            )
-            # Запускаем отправку в фоновом таске, чтобы не блокировать ответ
-            asyncio.create_task(send_new_application_message(text))
-        except RuntimeError:
-            # Если нет текущего event loop (например, в sync‑контексте) — игнорируем
-            pass
+        # Формируем красивое сообщение
+        created_at = car.create_date or datetime.utcnow()
+        dt_str = created_at.strftime("%d.%m.%Y %H:%M:%S")
+
+        # Марка / модель / цвет из справочников
+        def dict_name(d):
+            return d.name if d else ""
+
+        mark_name = dict_name(car.mark)
+        model_name = dict_name(car.model)
+        color_name = dict_name(car.color)
+
+        frontend_base = (settings.FRONTEND_BASE_URL or "http://localhost:3000").rstrip("/")
+        admin_url = f"{frontend_base}/dashboard/cars/{car.id}"
+
+        text_lines = [
+            f"🆕 <b>Новое объявление #{car.id}</b>",
+            "",
+            f"Дата: <b>{dt_str}</b>",
+            f"Автор: <b>{current_owner.name or ''}</b> {current_owner.phone_number or ''}",
+            "",
+            "<b>Объявление</b>",
+            f"Заголовок: <b>{car.name}</b>",
+            f"Цена: <b>{car.price_per_day or 0} ₸/день</b>",
+            f"Машина: <b>{mark_name} {model_name}</b>{', ' + color_name if color_name else ''}",
+            "",
+            f"Админ‑панель: {admin_url}",
+        ]
+        text = "\n".join(text_lines)
+
+        await send_new_application_message(text)
 
     message_key = "car_saved_draft" if save_as_draft else "client_application_sent"
     return create_response(

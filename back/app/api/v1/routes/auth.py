@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import random
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -16,6 +17,9 @@ from app.schemas.auth import OwnerLoginRequest, OwnerRegisterRequest, Token, Use
 from app.core.responses import create_response
 from pydantic import BaseModel, EmailStr
 import re
+
+from app.services.whatsapp_service import whatsapp_service
+from app.services.email_service import email_service
 
 router = APIRouter()
 
@@ -52,7 +56,8 @@ class PasswordChangeRequest(BaseModel):
     otp_code: str | None = None # Required if resetting password via OTP
 
 class LoginRequest(BaseModel):
-    login: str # phone or email
+    # Идентификатор для входа — номер телефона или email.
+    login: str
     password: str | None = None
     otp_code: str | None = None
 
@@ -67,32 +72,28 @@ def login(
     db: Session = Depends(get_db)
 ):
     """
-    Login with password OR with OTP code.
-    If otp_code is provided, verifies OTP and logs in.
-    If password is provided, verifies password and logs in.
+    Вход по паролю ИЛИ по одноразовому коду (OTP).
+    Идентификатором может быть номер телефона или email.
     """
     user = db.query(User).filter(
         or_(
-            User.login == payload.login,
             User.phone_number == payload.login,
-            User.email == payload.login
+            User.email == payload.login,
         )
     ).first()
 
     if not user:
         return create_response(code=404, message_key="user_not_found", lang=request.state.lang)
 
-    # Login via OTP
+    # Вход по OTP
     if payload.otp_code:
-        # Verify OTP
-        # We need to find valid verification
-        target = user.phone_number if user.phone_number else user.email
-        # Or better, just check against payload.login as target
-        # But verification usually stored with canonical target.
-        # Let's try matching against payload.login first, if fails try user fields.
-        
+        # Проверяем код для указанного идентификатора (телефон или email).
         verification = db.query(OTPVerification).filter(
-            or_(OTPVerification.target == payload.login, OTPVerification.target == user.phone_number, OTPVerification.target == user.email),
+            or_(
+                OTPVerification.target == payload.login,
+                OTPVerification.target == user.phone_number,
+                OTPVerification.target == user.email,
+            ),
             OTPVerification.code == payload.otp_code,
             OTPVerification.is_used == False,
             OTPVerification.expires_at > datetime.utcnow()
@@ -104,7 +105,7 @@ def login(
         verification.is_used = True
         db.commit()
 
-    # Login via Password
+    # Вход по паролю
     elif payload.password:
         if not verify_password(payload.password, user.password_hash):
             return create_response(
@@ -128,39 +129,35 @@ def register(
     db: Session = Depends(get_db)
 ):
     """
-    Registration (Owners/Clients).
-    Checks for existing phone/email.
+    Регистрация клиента.
+    Проверяем уникальность телефона и (опционально) email.
     """
-    # Check Phone
+    # Проверяем телефон
     if db.query(User).filter(User.phone_number == payload.phone_number).first():
         return create_response(code=400, message="Пользователь с таким номером телефона уже существует", lang=request.state.lang)
-        
-    # Check Email
-    target_email = payload.login if "@" in payload.login else None
+
+    # Проверяем email (если указан)
+    target_email = payload.email
     if target_email:
         if db.query(User).filter(User.email == target_email).first():
              return create_response(code=400, message="Пользователь с таким email уже существует", lang=request.state.lang)
     
-    # Password Validation
-    if not is_password_strong(payload.password):
-        return create_response(
-            code=400, 
-            message="Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол", 
-            lang=request.state.lang
-        )
-
-    # Split name into first and last name
-    name_parts = payload.name.strip().split(" ", 1)
-    first_name = name_parts[0]
-    last_name = name_parts[1] if len(name_parts) > 1 else None
+    # Если клиент хочет пароль (для входа по email) — проверяем сложность.
+    password_hash = None
+    if payload.password:
+        if not is_password_strong(payload.password):
+            return create_response(
+                code=400,
+                message="Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол",
+                lang=request.state.lang,
+            )
+        password_hash = get_password_hash(payload.password)
 
     new_user = User(
         name=payload.name,
-        first_name=first_name,
-        last_name=last_name,
         phone_number=payload.phone_number,
         email=target_email,
-        password_hash=get_password_hash(payload.password),
+        password_hash=password_hash,
         role="client", 
         is_active=True
     )
@@ -202,47 +199,58 @@ def check_user_exists(
     return create_response(data=result, lang=request.state.lang)
 
 class OTPRequest(BaseModel):
-    target: str # email or phone
+    target: str  # email or phone
 
 @router.post("/otp/request")
-def request_otp(
+async def request_otp(
     payload: OTPRequest,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
-    Generates OTP for Login (if user exists) or Forgot Password.
-    Also used for verifying phone/email during generic processes if needed.
+    Отправка одноразового кода (OTP) для входа или восстановления пароля.
+    Используется с телефоном или email.
     """
     user = db.query(User).filter(
         or_(
             User.phone_number == payload.target,
             User.email == payload.target,
-            User.login == payload.target
         )
     ).first()
-    
+
+    # Если пользователь не найден, просим сначала зарегистрироваться.
+    if not user:
+        return create_response(
+            code=404,
+            message="Пользователь с такими данными не найден. Пожалуйста, зарегистрируйтесь.",
+            lang=request.state.lang,
+        )
+
     otp = str(random.randint(100000, 999999))
-    
+
     verification = OTPVerification(
         target=payload.target,
         code=otp,
-        type="login" if user else "register", # Generic type, or refine based on context? 
-        # User said "Forgot password... send otp". 
-        expires_at=datetime.utcnow() + timedelta(minutes=5)
+        type="login" if user else "register",
+        expires_at=datetime.utcnow() + timedelta(minutes=5),
     )
     db.add(verification)
-    
-    if user:
-        user.otp_code = otp
-        user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
-    
     db.commit()
+
+    # Отправка кода пользователю
+    if "@" in payload.target and user.email:
+        # Отправка на email
+        await email_service.send_otp(user.email, otp)
+    else:
+        # Отправка в WhatsApp/SMS по номеру телефона
+        phone = user.phone_number or payload.target
+        await whatsapp_service.send_otp(phone, otp)
+
     print(f"DEBUG: OTP for {payload.target} is {otp}")
-    
+
     return create_response(
         message_key="otp_sent",
-        lang=request.state.lang
+        lang=request.state.lang,
     )
 
 @router.post("/otp/verify")
@@ -303,14 +311,15 @@ def change_password(
     if not verification:
          return create_response(code=400, message_key="invalid_otp", lang=request.state.lang)
 
-    # Find User
-    user = db.query(User).filter(
-        or_(
-            User.login == payload.target,
-            User.email == payload.target,
-            User.phone_number == payload.target
+    # Find User — сброс пароля разрешён только по email.
+    if "@" not in payload.target:
+        return create_response(
+            code=400,
+            message="Сброс пароля возможен только по email",
+            lang=request.state.lang,
         )
-    ).first()
+
+    user = db.query(User).filter(User.email == payload.target).first()
 
     if not user:
          return create_response(code=404, message_key="user_not_found", lang=request.state.lang)
@@ -334,9 +343,7 @@ def get_me(current_user: User = Depends(get_current_user), request: Request = No
     avatar_url = current_user.avatar_image.url if current_user.avatar_image else current_user.avatar_url
     return create_response(data={
         "id": current_user.id,
-        "first_name": current_user.first_name,
-        "last_name": current_user.last_name,
-        "name": current_user.name or f"{current_user.first_name} {current_user.last_name or ''}".strip(),
+        "name": current_user.name or "",
         "role": current_user.role,
         "email": current_user.email,
         "phone_number": current_user.phone_number,
@@ -348,8 +355,8 @@ def get_me(current_user: User = Depends(get_current_user), request: Request = No
 
 
 class ProfileUpdateRequest(BaseModel):
-    first_name: str | None = None
-    last_name: str | None = None
+    # Полное имя одним полем
+    name: str | None = None
     email: str | None = None
     phone_number: str | None = None
     gender: str | None = None  # male, female
@@ -363,10 +370,8 @@ def update_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if payload.first_name:
-        current_user.first_name = payload.first_name
-    if payload.last_name:
-        current_user.last_name = payload.last_name
+    if payload.name:
+        current_user.name = payload.name
     if payload.email:
         current_user.email = payload.email
     if payload.phone_number:
@@ -376,10 +381,7 @@ def update_profile(
     if payload.date_birth:
         from datetime import datetime as dt
         current_user.date_birth = dt.fromisoformat(payload.date_birth)
-    
-    # Update name for backwards compatibility
-    current_user.name = f"{current_user.first_name} {current_user.last_name or ''}".strip()
-    
+
     db.commit()
     return create_response(message="Профиль обновлен", lang=request.state.lang)
 

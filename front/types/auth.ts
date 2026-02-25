@@ -6,7 +6,7 @@ export interface LoginResponse {
 export interface OwnerRegisterRequest {
   name: string;
   phone_number: string;
-  login: string;
+  email?: string | null;
   password: string;
 }
 
