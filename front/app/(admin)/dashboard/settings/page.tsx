@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { PUBLIC_SETTINGS_QUERY_KEY } from "@/hooks/usePublicSettings";
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     apiClient.get("/admin/settings")
@@ -28,6 +31,7 @@ export default function AdminSettingsPage() {
       .then((r: any) => {
         const d = r?.data ?? r;
         setSettings(d || {});
+        queryClient.invalidateQueries({ queryKey: PUBLIC_SETTINGS_QUERY_KEY });
       })
       .finally(() => setLoading(false));
   };
@@ -42,7 +46,9 @@ export default function AdminSettingsPage() {
       <div className="bg-white rounded-xl border border-slate-100 p-6 max-w-lg">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Label className="text-base font-medium">Подписки включены</Label>
+            <Label className="text-base font-medium">
+              {subscriptionsEnabled ? "Подписки включены" : "Подписки выключены"}
+            </Label>
             <p className="text-sm text-slate-500 mt-1">
               Если включено: первое объявление бесплатно, далее нужна подписка. Если выключено — всем бесплатно.
             </p>

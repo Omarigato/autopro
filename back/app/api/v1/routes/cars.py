@@ -233,7 +233,7 @@ def get_car(
     """Публичное получение объявления по id. Только со статусом PUBLISHED."""
     car = db.query(Car).filter(
         Car.id == car_id,
-        Car.status == "PUBLISHED",
+        Car.status.in_(["PUBLISHED", "DRAFT"]),
         Car.delete_date.is_(None),
     ).first()
     if not car:

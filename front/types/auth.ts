@@ -23,5 +23,5 @@ export interface UserResponse {
   role: "client" | "admin";
   create_date: string; // ISO date string
   email?: string;
-  login?: string;
+  avatar_url?: string;
 }

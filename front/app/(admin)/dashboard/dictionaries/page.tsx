@@ -85,16 +85,16 @@ export default function AdminDictionariesPage() {
           </div>
           <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
             <div className="relative group min-w-0">
-              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors pointer-events-none" />
+              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-slate-600 transition-colors pointer-events-none" />
               <Input
                 placeholder="Поиск..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 sm:pl-11 pr-4 h-11 sm:h-12 w-full sm:w-72 bg-white border-slate-100 rounded-xl sm:rounded-2xl shadow-sm focus-visible:ring-indigo-600 font-medium transition-all text-base"
+                className="pl-10 sm:pl-11 pr-4 h-11 sm:h-12 w-full sm:w-72 bg-white border-slate-100 rounded-xl sm:rounded-2xl shadow-sm focus-visible:ring-slate-400 font-medium transition-all text-base"
               />
             </div>
             <DictDialog type={activeTab} onUpdate={() => load(activeTab)}>
-              <Button className="h-11 sm:h-12 px-5 sm:px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl sm:rounded-2xl font-black shadow-lg shadow-indigo-100 gap-2 text-sm sm:text-base">
+              <Button className="h-11 sm:h-12 px-5 sm:px-6 bg-slate-800 hover:bg-slate-700 text-white rounded-xl sm:rounded-2xl font-black shadow-lg shadow-slate-200 gap-2 text-sm sm:text-base">
                 <Plus className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                 Добавить
               </Button>
@@ -113,7 +113,7 @@ export default function AdminDictionariesPage() {
               {DICT_TYPES.map(({ value, label, icon: Icon }) => (
                 <SelectItem key={value} value={value} className="py-3 rounded-lg font-medium">
                   <span className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 shrink-0 text-indigo-500" />
+                    <Icon className="h-4 w-4 shrink-0 text-slate-600" />
                     {label}
                   </span>
                 </SelectItem>
@@ -132,7 +132,7 @@ export default function AdminDictionariesPage() {
               <TabsTrigger
                 key={value}
                 value={value}
-                className="flex-shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-md text-slate-500 hover:text-indigo-600"
+                className="flex-shrink-0 inline-flex items-center justify-center whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md text-slate-500 hover:text-slate-700"
               >
                 <Icon className="h-4 w-4 mr-2 shrink-0" />
                 {label}
@@ -145,7 +145,7 @@ export default function AdminDictionariesPage() {
           <TabsContent key={value} value={value} className="mt-0 ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2">
             {loading[value] ? (
               <div className="flex flex-col items-center justify-center py-16 sm:py-20 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all">
-                <div className="h-9 w-9 sm:h-10 sm:w-10 animate-spin rounded-full border-4 border-indigo-50 border-t-indigo-600" />
+                <div className="h-9 w-9 sm:h-10 sm:w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-600" />
                 <p className="mt-4 text-slate-500 font-bold text-sm sm:text-base">Загрузка...</p>
               </div>
             ) : (
@@ -205,10 +205,10 @@ function DictTable({ type, items, onUpdate }: { type: string; items: any[]; onUp
           </thead>
           <tbody className="divide-y divide-slate-50">
             {items.map((item) => (
-              <tr key={item.id} className="hover:bg-indigo-50/30 transition-colors group">
+              <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
                 <td className="px-4 lg:px-6 py-3.5 text-xs font-bold text-slate-400">#{item.id}</td>
                 <td className="px-4 lg:px-6 py-3.5">
-                  <code className="text-[10px] font-mono bg-slate-100 text-indigo-600 px-2 py-1 rounded-lg border border-slate-200/50">
+                  <code className="text-[10px] font-mono bg-slate-100 text-slate-800 px-2 py-1 rounded-lg border border-slate-200/50">
                     {item.code}
                   </code>
                 </td>
@@ -221,7 +221,7 @@ function DictTable({ type, items, onUpdate }: { type: string; items: any[]; onUp
                 <td className="px-4 lg:px-6 py-3.5">
                   <div className="flex items-center justify-end gap-2 text-right">
                     <DictDialog type={type} item={item} onUpdate={onUpdate}>
-                      <Button variant="ghost" size="sm" className="h-9 px-3 rounded-xl text-indigo-600 hover:bg-indigo-50 font-bold gap-1.5 text-xs">
+                      <Button variant="ghost" size="sm" className="h-9 px-3 rounded-xl text-slate-700 hover:bg-slate-100 font-bold gap-1.5 text-xs">
                         <Pencil className="h-3.5 w-3.5 shrink-0" />
                         Изменить
                       </Button>
@@ -255,13 +255,13 @@ function DictTable({ type, items, onUpdate }: { type: string; items: any[]; onUp
             </div>
             <div className="space-y-1 min-w-0">
               <h4 className="text-base font-bold text-slate-900 break-words">{item.name}</h4>
-              <code className="inline-block text-[10px] font-mono text-indigo-600 bg-indigo-50/50 px-2 py-0.5 rounded-lg break-all">
+              <code className="inline-block text-[10px] font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg break-all">
                 {item.code}
               </code>
             </div>
             <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
               <DictDialog type={type} item={item} onUpdate={onUpdate}>
-                <Button className="flex-1 h-11 min-h-[44px] rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm font-bold gap-2 shadow-md">
+                <Button className="flex-1 h-11 min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-bold gap-2 shadow-md">
                   <Pencil className="h-4 w-4 shrink-0" />
                   Изменить
                 </Button>
@@ -350,7 +350,7 @@ function DictDialog({ type, item, onUpdate, children }: { type: string; item?: a
           </div>
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Отмена</Button>
-            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">Сохранить</Button>
+            <Button type="submit" className="bg-slate-800 hover:bg-slate-700">Сохранить</Button>
           </DialogFooter>
         </form>
       </DialogContent>

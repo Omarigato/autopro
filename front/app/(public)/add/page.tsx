@@ -89,7 +89,8 @@ function AddCarContent() {
         }
     }, [formData.vehicle_mark_id]);
 
-    const totalSteps = subscriptionCheck?.subscriptions_enabled && !subscriptionCheck?.first_ad_free && !subscriptionCheck?.has_active_subscription ? 3 : 2;
+    //const totalSteps = subscriptionCheck?.subscriptions_enabled && !subscriptionCheck?.first_ad_free && !subscriptionCheck?.has_active_subscription ? 3 : 2;
+    const totalSteps = subscriptionCheck?.subscriptions_enabled ? 3 : 2;
 
     const loadDictionaries = async () => {
         setLoading(true);
@@ -107,76 +108,18 @@ function AddCarContent() {
                 getCachedDictionaries("CAR_CLASS")
             ]);
 
-            const fallbackCategories = [
-                { id: 1, name: 'Легковые' },
-                { id: 2, name: 'Спецтехника' },
-                { id: 3, name: 'Водный транспорт' },
-                { id: 4, name: 'Грузовые' },
-                { id: 5, name: 'Мотоциклы' }
-            ];
-
-            const fallbackMarks = [
-                { id: 1, name: 'Mercedes-Benz' },
-                { id: 2, name: 'Toyota' },
-                { id: 3, name: 'BMW' },
-                { id: 4, name: 'Audi' },
-                { id: 5, name: 'Lexus' },
-                { id: 6, name: 'Tesla' },
-                { id: 7, name: 'Hyundai' }
-            ];
-
-            const fallbackCities = [
-                { id: 1, name: 'Алматы' },
-                { id: 2, name: 'Астана' },
-                { id: 3, name: 'Шымкент' },
-                { id: 4, name: 'Караганда' }
-            ];
-
-            setCategories(categoriesData?.length ? categoriesData : fallbackCategories);
-            setMarks(marksData?.length ? marksData : fallbackMarks);
-            setCities(citiesData?.length ? citiesData : fallbackCities);
-            setEngines(enginesData || [
-                { id: 1, name: 'Бензин' },
-                { id: 2, name: 'Дизель' },
-                { id: 3, name: 'Электро' },
-                { id: 4, name: 'Гибрид' }
-            ]);
-            setBodies(bodiesData || [
-                { id: 1, name: 'Седан' },
-                { id: 2, name: 'Внедорожник' },
-                { id: 3, name: 'Купе' },
-                { id: 4, name: 'Минивэн' }
-            ]);
-            setTransmissions(transmissionsData || [
-                { id: 1, name: 'Автомат' },
-                { id: 2, name: 'Механика' },
-                { id: 3, name: 'Робот' },
-                { id: 4, name: 'Вариатор' }
-            ]);
-            setColors(colorsData || [
-                { id: 1, name: 'Белый' },
-                { id: 2, name: 'Черный' },
-                { id: 3, name: 'Серый' },
-                { id: 4, name: 'Синий' }
-            ]);
-            setSteeringOptions(steeringData?.length ? steeringData : [
-                { id: 1, name: 'Слева', code: 'LEFT' },
-                { id: 2, name: 'Справа', code: 'RIGHT' }
-            ]);
-            setConditionOptions(conditionData?.length ? conditionData : [
-                { id: 1, name: 'Отличное', code: 'EXCELLENT' },
-                { id: 2, name: 'Хорошее', code: 'GOOD' },
-                { id: 3, name: 'Удовлетворительное', code: 'FAIR' }
-            ]);
-            setCarClassOptions(carClassData?.length ? carClassData : [
-                { id: 1, name: 'Эконом', code: 'ECONOMY' },
-                { id: 2, name: 'Комфорт', code: 'COMFORT' },
-                { id: 3, name: 'Бизнес', code: 'BUSINESS' },
-                { id: 4, name: 'Премиум', code: 'PREMIUM' },
-                { id: 5, name: 'Внедорожник', code: 'SUV' }
-            ]);
+            // Все справочники берём только из бэка. Если что‑то не вернулось — показываем пустой список.
+            setCategories(categoriesData || []);
+            setMarks(marksData || []);
+            setCities(citiesData || []);
+            setEngines(enginesData || []);
+            setBodies(bodiesData || []);
+            setTransmissions(transmissionsData || []);
+            setColors(colorsData || []);
+            setSteeringOptions(steeringData || []);
+            setConditionOptions(conditionData || []);
+            setCarClassOptions(carClassData || []);
         } catch (err) {
-            console.error('Failed to load dictionaries:', err);
             toast.error('Ошибка загрузки справочников');
         } finally {
             setLoading(false);
@@ -196,32 +139,9 @@ function AddCarContent() {
             console.error('Failed to load models:', err);
         }
 
-        // Fallback models based on markId
-        const fallbackModelsMap: Record<number, any[]> = {
-            1: [ // Mercedes
-                { id: 101, name: 'S-Class' }, { id: 102, name: 'E-Class' }, { id: 103, name: 'G-Class' }, { id: 104, name: 'GLE' }
-            ],
-            2: [ // Toyota
-                { id: 201, name: 'Camry' }, { id: 202, name: 'Corolla' }, { id: 203, name: 'Land Cruiser 300' }, { id: 204, name: 'RAV4' }
-            ],
-            3: [ // BMW
-                { id: 301, name: '5 Series' }, { id: 302, name: '7 Series' }, { id: 303, name: 'X5' }, { id: 304, name: 'M5' }
-            ],
-            4: [ // Audi
-                { id: 401, name: 'A6' }, { id: 402, name: 'Q7' }, { id: 403, name: 'RS7' }
-            ],
-            5: [ // Lexus
-                { id: 501, name: 'ES' }, { id: 502, name: 'RX' }, { id: 503, name: 'LX 570' }
-            ],
-            6: [ // Tesla
-                { id: 601, name: 'Model S' }, { id: 602, name: 'Model 3' }, { id: 603, name: 'Model X' }
-            ],
-            7: [ // Hyundai
-                { id: 701, name: 'Elantra' }, { id: 702, name: 'Santa Fe' }, { id: 703, name: 'Tucson' }
-            ]
-        };
-
-        setModels(fallbackModelsMap[Number(markId)] || []);
+        // Всегда используем только данные из бэка; если их нет — оставляем список пустым.
+        // Это сигнал, что словари не настроены.
+        // (UI покажет пустой список моделей.)
     };
 
     const handleChange = (name: string, value: any) => {

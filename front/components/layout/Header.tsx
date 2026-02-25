@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAppState } from "@/lib/store";
 import { apiClient } from "@/lib/api";
+import { usePublicSettings } from "@/hooks/usePublicSettings";
 
 export function Header() {
   const pathname = usePathname();
@@ -32,51 +33,24 @@ export function Header() {
   const { user, logout } = useAuth();
   const { city, setCity } = useAppState();
   const [cities, setCities] = useState<any[]>([]);
+  const { subscriptionsEnabled } = usePublicSettings();
 
   useEffect(() => {
-    const allCities = [
-      { id: 1, name: 'Алматы' },
-      { id: 2, name: 'Астана' },
-      { id: 3, name: 'Шымкент' },
-      { id: 4, name: 'Караганда' },
-      { id: 5, name: 'Актобе' },
-      { id: 6, name: 'Тараз' },
-      { id: 7, name: 'Павлодар' },
-      { id: 8, name: 'Усть-Каменогорск' },
-      { id: 9, name: 'Семей' },
-      { id: 10, name: 'Атырау' },
-      { id: 11, name: 'Костанай' },
-      { id: 12, name: 'Кызылорда' },
-      { id: 13, name: 'Уральск' },
-      { id: 14, name: 'Петропавловск' },
-      { id: 15, name: 'Актау' },
-      { id: 16, name: 'Темиртау' },
-      { id: 17, name: 'Туркестан' },
-      { id: 18, name: 'Кокшетау' },
-      { id: 19, name: 'Талдыкорган' },
-      { id: 20, name: 'Экибастуз' },
-      { id: 21, name: 'Рудный' }
-    ];
-
     apiClient.get('/dictionaries', { params: { type: 'CITY' } })
       .then(res => {
         const data = Array.isArray(res) ? res : (res?.data || []);
-        if (data.length > 0) {
-          setCities(data);
-        } else {
-          setCities(allCities);
-        }
+        setCities(data || []);
       })
       .catch(err => {
         console.error('Failed to load cities:', err);
-        setCities(allCities);
+        setCities([]);
       });
   }, []);
 
   const routes = [
     { href: "/", label: "Главная" },
     { href: "/catalog", label: "Каталог" },
-    { href: "/subscriptions", label: "Тарифы" },
+    ...(subscriptionsEnabled ? [{ href: "/subscriptions", label: "Тарифы" }] : []),
     { href: "/add", label: "Сдать авто" },
   ];
 
@@ -139,7 +113,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9 border border-border">
-                    <AvatarImage src="/avatars/01.png" alt={user.name} />
+                    <AvatarImage src={user.avatar_url || ""} alt={user.name || ""} />
                     <AvatarFallback>{user.name?.[0] || "U"}</AvatarFallback>
                   </Avatar>
                 </Button>

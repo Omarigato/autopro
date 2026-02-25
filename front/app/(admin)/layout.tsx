@@ -2,8 +2,9 @@
 
 import { Car, LayoutDashboard, Users, FileText, Settings, LogOut, CreditCard, BookOpen, Package, Menu, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sheet,
   SheetContent,
@@ -55,6 +56,15 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    setMobileOpen(false);
+    router.push("/");
+  };
+
   return (
     <div className="min-h-screen flex">
       {/* Desktop Sidebar */}
@@ -66,7 +76,11 @@ export default function AdminLayout({
           <NavLinks />
         </nav>
         <div className="p-4 border-t border-zinc-800">
-          <button className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors"
+          >
             <LogOut size={20} /> Выйти
           </button>
         </div>
@@ -92,7 +106,11 @@ export default function AdminLayout({
                   <NavLinks onLinkClick={() => setMobileOpen(false)} />
                 </nav>
                 <div className="p-4 border-t border-zinc-800">
-                  <button className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors"
+                  >
                     <LogOut size={20} /> Выйти
                   </button>
                 </div>
