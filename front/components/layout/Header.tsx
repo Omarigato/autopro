@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAppState } from "@/lib/store";
 import { apiClient } from "@/lib/api";
+import { usePublicSettings } from "@/hooks/usePublicSettings";
 
 export function Header() {
   const pathname = usePathname();
@@ -32,6 +33,7 @@ export function Header() {
   const { user, logout } = useAuth();
   const { city, setCity } = useAppState();
   const [cities, setCities] = useState<any[]>([]);
+  const { subscriptionsEnabled } = usePublicSettings();
 
   useEffect(() => {
     const allCities = [
@@ -76,7 +78,7 @@ export function Header() {
   const routes = [
     { href: "/", label: "Главная" },
     { href: "/catalog", label: "Каталог" },
-    { href: "/subscriptions", label: "Тарифы" },
+    ...(subscriptionsEnabled ? [{ href: "/subscriptions", label: "Тарифы" }] : []),
     { href: "/add", label: "Сдать авто" },
   ];
 
