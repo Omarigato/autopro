@@ -34,7 +34,7 @@ export default function CarDetailsPage() {
 
     useEffect(() => {
         if (user && id && car) {
-            apiClient.post(`/users/events/view/${id}`).catch(() => {});
+            apiClient.post(`/users/events/view/${id}`).catch(() => { });
         }
     }, [user, id, car]);
 
@@ -162,12 +162,24 @@ export default function CarDetailsPage() {
 
                         {/* Action Buttons Container */}
                         <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100 flex flex-col gap-3">
-                            <Button className="w-full bg-white text-blue-600 hover:bg-blue-50 border border-blue-100 h-12 rounded-xl font-bold shadow-sm">
-                                Написать сообщение
-                            </Button>
-                            <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white h-12 rounded-xl font-bold shadow-md shadow-blue-500/20">
-                                Показать телефон
-                            </Button>
+                            {car.author?.phone_number ? (
+                                <>
+                                    <Button asChild className="w-full bg-white text-green-600 hover:bg-green-50 border border-green-200 h-12 rounded-xl font-bold shadow-sm">
+                                        <a href={`https://wa.me/${car.author.phone_number.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
+                                            Написать в WhatsApp
+                                        </a>
+                                    </Button>
+                                    <Button asChild className="w-full bg-blue-500 hover:bg-blue-600 text-white h-12 rounded-xl font-bold shadow-md shadow-blue-500/20">
+                                        <a href={`tel:${car.author.phone_number}`}>
+                                            Позвонить {car.author.phone_number}
+                                        </a>
+                                    </Button>
+                                </>
+                            ) : (
+                                <p className="text-center text-sm font-medium text-slate-500 py-3">
+                                    Автор не указал контакты
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>

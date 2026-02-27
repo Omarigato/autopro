@@ -12,7 +12,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db.session import get_db
-from app.models.entities import CarOwner, User, OTPVerification, Image
+from app.models.entities import CarOwner, User, OTPVerification, Image, Dictionary
 from app.schemas.auth import OwnerLoginRequest, OwnerRegisterRequest, Token, UserResponse
 from app.core.responses import create_response
 from pydantic import BaseModel, EmailStr
@@ -163,7 +163,12 @@ def register(
     )
     db.add(new_user)
     db.flush()
-    
+
+    # Дефолтный город — Алматы
+    almaty = db.query(Dictionary).filter(Dictionary.type == "CITY", Dictionary.code == "ALA").first()
+    if almaty:
+        new_user.city_id = almaty.id
+
     owner = CarOwner(user_id=new_user.id)
     db.add(owner)
     
@@ -350,7 +355,10 @@ def get_me(current_user: User = Depends(get_current_user), request: Request = No
         "gender": current_user.gender,
         "date_birth": current_user.date_birth.isoformat() if current_user.date_birth else None,
         "balance": current_user.balance,
-        "avatar_url": avatar_url
+        "avatar_url": avatar_url,
+        "city_id": getattr(current_user, "city_id", None),
+        "notify_by_email": getattr(current_user, "notify_by_email", True),
+        "notify_by_whatsapp": getattr(current_user, "notify_by_whatsapp", True),
     }, lang=request.state.lang if request else "ru")
 
 
@@ -361,6 +369,9 @@ class ProfileUpdateRequest(BaseModel):
     phone_number: str | None = None
     gender: str | None = None  # male, female
     date_birth: str | None = None  # ISO format date string
+    city_id: int | None = None
+    notify_by_email: bool | None = None
+    notify_by_whatsapp: bool | None = None
 
 
 @router.put("/me")
@@ -381,6 +392,12 @@ def update_profile(
     if payload.date_birth:
         from datetime import datetime as dt
         current_user.date_birth = dt.fromisoformat(payload.date_birth)
+    if payload.city_id is not None:
+        current_user.city_id = payload.city_id
+    if payload.notify_by_email is not None:
+        current_user.notify_by_email = payload.notify_by_email
+    if payload.notify_by_whatsapp is not None:
+        current_user.notify_by_whatsapp = payload.notify_by_whatsapp
 
     db.commit()
     return create_response(message="Профиль обновлен", lang=request.state.lang)

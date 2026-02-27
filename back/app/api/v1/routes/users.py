@@ -77,13 +77,15 @@ def remove_from_likes(
 @router.get("/events")
 def get_user_events(
     request: Request,
+    skip: int = 0,
+    limit: int = 10,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Получить историю событий пользователя"""
     events = db.query(UserEvent).filter(
         UserEvent.user_id == current_user.id
-    ).order_by(UserEvent.created_at.desc()).limit(50).all()
+    ).order_by(UserEvent.created_at.desc()).offset(skip).limit(limit).all()
     
     result = []
     for event in events:

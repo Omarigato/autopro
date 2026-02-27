@@ -11,7 +11,7 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle
 } from "@/components/ui/navigation-menu";
-import { Car, User, Menu, X, MapPin } from "lucide-react";
+import { Car, User, Menu, X, MapPin, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,9 +30,10 @@ import { usePublicSettings } from "@/hooks/usePublicSettings";
 export function Header() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { city, setCity } = useAppState();
   const [cities, setCities] = useState<any[]>([]);
+  const [applicationsCount, setApplicationsCount] = useState<number>(0);
   const { subscriptionsEnabled } = usePublicSettings();
 
   useEffect(() => {
@@ -41,18 +42,43 @@ export function Header() {
         const data = Array.isArray(res) ? res : (res?.data || []);
         setCities(data || []);
       })
-      .catch(err => {
-        console.error('Failed to load cities:', err);
-        setCities([]);
-      });
+      .catch(() => setCities([]));
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setApplicationsCount(0);
+      return;
+    }
+    apiClient.get('/applications/to-my-ads/count')
+      .then((res: any) => {
+        const d = res?.data ?? res;
+        setApplicationsCount(typeof d?.count === 'number' ? d.count : 0);
+      })
+      .catch(() => setApplicationsCount(0));
+  }, [user]);
+
+  useEffect(() => {
+    if (user && cities.length > 0 && (user as any).city_id != null) {
+      const c = cities.find((x: any) => x.id === (user as any).city_id);
+      if (c?.name && city !== c.name) setCity(c.name);
+    }
+  }, [user, cities]);
 
   const routes = [
     { href: "/", label: "Главная" },
     { href: "/catalog", label: "Каталог" },
-    ...(subscriptionsEnabled ? [{ href: "/subscriptions", label: "Тарифы" }] : []),
+    { href: "/find", label: "Найти авто" },
     { href: "/add", label: "Сдать авто" },
+    ...(subscriptionsEnabled ? [{ href: "/subscriptions", label: "Тарифы" }] : []),
   ];
+
+  const handleCitySelect = (c: { id: number; name: string }) => {
+    setCity(c.name);
+    if (user) {
+      apiClient.put('/auth/me', { city_id: c.id }).then(() => refreshUser()).catch(() => { });
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
@@ -97,7 +123,7 @@ export function Header() {
               {cities.map((c) => (
                 <DropdownMenuItem
                   key={c.id}
-                  onClick={() => setCity(c.name)}
+                  onClick={() => handleCitySelect(c)}
                   className={city === c.name ? "bg-accent" : ""}
                 >
                   {c.name}
@@ -127,8 +153,18 @@ export function Header() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href="/profile">Профиль</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/applications" className="flex items-center justify-between">
+                    Заявки
+                    {applicationsCount > 0 && (
+                      <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                        +{applicationsCount}
+                      </span>
+                    )}
+                  </Link>
+                </DropdownMenuItem>
                 {user.role === 'admin' && (
-                  <DropdownMenuItem asChild><Link href="/dashboard">Админ панель</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/admin-supersecret">Админ панель</Link></DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => logout()} className="text-red-600 focus:text-red-600">
@@ -180,6 +216,12 @@ export function Header() {
               <>
                 <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-sm font-medium hover:bg-accent rounded-md">
                   <User size={16} /> Профиль
+                </Link>
+                <Link href="/applications" className="flex items-center gap-2 px-4 py-2 text-sm font-medium hover:bg-accent rounded-md">
+                  <FileText size={16} /> Заявки
+                  {applicationsCount > 0 && (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">+{applicationsCount}</span>
+                  )}
                 </Link>
                 <button onClick={() => logout()} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md text-left">
                   Выйти

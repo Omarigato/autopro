@@ -55,6 +55,25 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    if auth is None:
+        return None
+    try:
+        payload = jwt.decode(auth.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        subject = payload.get("sub")
+        if subject is None:
+            return None
+        user = db.query(User).filter(User.id == int(subject)).first()
+        if user is None or not user.is_active:
+            return None
+        return user
+    except JWTError:
+        return None
+
+
 def get_current_owner(user: User = Depends(get_current_user)) -> User:
     """
     Раньше использовалась отдельная роль 'owner'.

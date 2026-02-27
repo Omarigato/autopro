@@ -1,56 +1,74 @@
 import { apiClient } from "@/lib/api";
 
-const CACHE_DURATION = 1000 * 60 * 60; // 1 час
+const CACHE_DURATION = 1000 * 60 * 60 * 12; // 12 hours
 const CACHE_KEY_PREFIX = "dict_";
+
+const memoryCache = new Map<string, { data: any[]; timestamp: number }>();
+const pendingRequests = new Map<string, Promise<any[]>>();
 
 export const getCachedDictionaries = async (
     type: string,
     parentId?: number
-) => {
-    // Only run on client
-    if (typeof window === 'undefined') return [];
-
+): Promise<any[]> => {
     let cacheKey = `${CACHE_KEY_PREFIX}${type}`;
     if (parentId) cacheKey += `_${parentId}`;
 
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-        try {
-            const { data, timestamp } = JSON.parse(cached);
-            // Only use cache if it's not expired AND data is not empty
-            if (Date.now() - timestamp < CACHE_DURATION && Array.isArray(data) && data.length > 0) {
-                return data;
+    const memMatch = memoryCache.get(cacheKey);
+    if (memMatch && Date.now() - memMatch.timestamp < CACHE_DURATION) {
+        return memMatch.data;
+    }
+
+    if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            try {
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < CACHE_DURATION && Array.isArray(data) && data.length > 0) {
+                    memoryCache.set(cacheKey, { data, timestamp });
+                    return data;
+                }
+            } catch (e) {
+                localStorage.removeItem(cacheKey);
             }
+        }
+    }
+
+    if (pendingRequests.has(cacheKey)) {
+        return pendingRequests.get(cacheKey)!;
+    }
+
+    const fetchPromise = (async () => {
+        try {
+            const params: any = { type };
+            if (parentId) params.parent_id = parentId;
+
+            const res: any = await apiClient.get("/dictionaries", { params });
+
+            let data: any[] = [];
+            if (Array.isArray(res)) data = res;
+            else if (res && res.data && Array.isArray(res.data)) data = res.data;
+            else if (res && typeof res === 'object') data = res.data || [];
+
+            if (data.length > 0) {
+                const payload = { data, timestamp: Date.now() };
+                memoryCache.set(cacheKey, payload);
+                if (typeof window !== 'undefined') {
+                    try {
+                        localStorage.setItem(cacheKey, JSON.stringify(payload));
+                    } catch (e) {
+                        console.warn("LocalStorage space limit reached for dictionaries");
+                    }
+                }
+            }
+            return data;
         } catch (e) {
-            localStorage.removeItem(cacheKey);
+            console.error(`Failed to fetch dictionary ${type}`, e);
+            return [];
+        } finally {
+            pendingRequests.delete(cacheKey);
         }
-    }
+    })();
 
-    try {
-        const params: any = { type };
-        if (parentId) params.parent_id = parentId;
-
-        // Ensure endpoint is correct based on backend. Usually /dictionaries?type=...
-        const res: any = await apiClient.get("/dictionaries", { params });
-
-        // apiClient interceptor already returns response.data.data if it exists
-        // so res should be an array directly in most cases.
-        let data = [];
-        if (Array.isArray(res)) {
-            data = res;
-        } else if (res && res.data && Array.isArray(res.data)) {
-            data = res.data;
-        } else if (res && typeof res === 'object') {
-            // fallback for other formats
-            data = res.data || [];
-        }
-
-        if (Array.isArray(data) && data.length > 0) {
-            localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
-        }
-        return data;
-    } catch (e) {
-        console.error(`Failed to fetch dictionary ${type}`, e);
-        return [];
-    }
+    pendingRequests.set(cacheKey, fetchPromise);
+    return fetchPromise;
 };

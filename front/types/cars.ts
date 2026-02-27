@@ -65,4 +65,9 @@ export interface CarResponse {
   car_class_id?: number;
 
   additional_info?: string;
+  author?: {
+    name?: string;
+    address?: string;
+    phone_number?: string;
+  };
 }

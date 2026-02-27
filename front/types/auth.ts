@@ -24,4 +24,7 @@ export interface UserResponse {
   create_date: string; // ISO date string
   email?: string;
   avatar_url?: string;
+  city_id?: number;
+  notify_by_email?: boolean;
+  notify_by_whatsapp?: boolean;
 }

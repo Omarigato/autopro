@@ -36,3 +36,6 @@ back/.env
 back/.pytest_cache/
 back/.coverage
 back/htmlcov/
+
+**/__pycache__/*
+__pycache__/

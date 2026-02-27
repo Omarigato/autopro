@@ -7,12 +7,13 @@ import Image from "next/image";
 import { Car, Search } from "lucide-react";
 
 export default function HomePage() {
-  const { data: cars = [], isLoading } = useCars();
+  const { data, isLoading } = useCars();
+  const cars = data?.items || [];
 
   return (
     <div className="space-y-20 pb-20">
       {/* Hero Section */}
-      <section className="relative bg-zinc-900 text-white py-20 lg:py-32 overflow-hidden">
+      <section className="relative bg-zinc-900 text-white py-8 lg:py-10 overflow-hidden">
         <div className="absolute inset-0 z-0 opacity-20">
           {/* Abstract background pattern or image could go here */}
           <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary/20 to-transparent" />
@@ -29,7 +30,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border-none" asChild>
-                <Link href="/catalog">Выбрать авто</Link>
+                <Link href="/find">Найти авто</Link>
               </Button>
               <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-zinc-700 bg-transparent text-zinc-400 hover:bg-white hover:text-zinc-900 transition-colors" asChild>
                 <Link href="/add">Сдать своё авто</Link>
@@ -37,11 +38,19 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="relative aspect-video rounded-3xl bg-zinc-800/50 border border-zinc-700 p-2 shadow-2xl skew-y-1">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Car size={100} className="text-zinc-600 opacity-50" />
-              {/* This would be a hero image */}
-            </div>
+          <div className="relative w-full h-[250px] sm:h-[300px] lg:h-[400px] flex items-center justify-center">
+            {/* Эффект свечения на заднем плане, чтобы выделить авто */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[70%] bg-zinc-400/10 rounded-full blur-[100px] pointer-events-none" />
+
+            {/* Само изображение машины с тенью */}
+            <Image
+              src="/car.png"
+              alt="Premium Car Rental"
+              fill
+              className="object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.8)] z-10 scale-110 lg:scale-[1.45] lg:translate-x-2 lg:translate-y-[8%]"
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
           </div>
         </div>
       </section>

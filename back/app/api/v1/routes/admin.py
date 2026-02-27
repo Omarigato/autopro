@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import List, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.entities import (
     User,
     Car,
+    Application,
+    ApplicationCar,
     Dictionary,
     DictionaryTranslation,
     CarOwner,
@@ -252,6 +254,67 @@ def delete_car_admin(car_id: int, db: Session = Depends(get_db), admin: User = D
         car.delete_date = datetime.utcnow()
     db.commit()
     return create_response(data={"id": car.id, "status": "DELETED"})
+
+@router.get("/applications")
+def list_applications_admin(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    q: str | None = None,
+    db: Session = Depends(get_db), 
+    admin: User = Depends(check_admin)
+):
+    from sqlalchemy import or_
+    query = db.query(Application).filter(Application.status != "DELETED")
+    
+    if q:
+        query = query.join(User, Application.user_id == User.id).filter(
+            or_(
+                User.name.ilike(f"%{q}%"),
+                Application.message.ilike(f"%{q}%")
+            )
+        )
+        
+    total = query.count()
+    apps = query.order_by(Application.create_date.desc()).offset(skip).limit(limit).all()
+    
+    result = []
+    for app in apps:
+        ac_count = db.query(ApplicationCar).filter(ApplicationCar.application_id == app.id).count()
+        result.append({
+            "id": app.id,
+            "user": app.user.name if app.user else "Unknown",
+            "user_email": app.user.email if app.user else "",
+            "message": app.message,
+            "status": app.status,
+            "create_date": app.create_date.isoformat() if app.create_date else None,
+            "views_count": app.views_count,
+            "matching_cars_count": ac_count,
+            "images": [{"url": img.url} for img in app.images]
+        })
+    return create_response(data={"items": result, "total": total})
+
+@router.patch("/applications/{app_id}")
+def update_application_admin(app_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    app = db.query(Application).filter(Application.id == app_id).first()
+    if not app:
+        raise HTTPException(404)
+    for key in ("status", "message"):
+        if key in payload:
+            setattr(app, key, payload[key])
+    app.update_date = datetime.utcnow()
+    db.commit()
+    return create_response(data={"id": app.id, "status": app.status})
+
+@router.delete("/applications/{app_id}")
+def delete_application_admin(app_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    app = db.query(Application).filter(Application.id == app_id).first()
+    if not app:
+        raise HTTPException(404)
+    app.status = "DELETED"
+    app.update_date = datetime.utcnow()
+    db.commit()
+    return create_response(data={"id": app.id, "status": "DELETED"})
+
 
 
 @router.post("/create-admin")

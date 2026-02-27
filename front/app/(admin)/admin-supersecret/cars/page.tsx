@@ -11,6 +11,8 @@ export default function AdminCarsPage() {
   const [cars, setCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const load = () => {
     apiClient.get("/admin/cars")
@@ -31,6 +33,9 @@ export default function AdminCarsPage() {
       (c.author || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const totalPages = Math.ceil(filteredCars.length / ITEMS_PER_PAGE) || 1;
+  const paginatedCars = filteredCars.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   const approve = (carId: number) => {
     apiClient.post(`/admin/cars/${carId}/approve`).then(() => load());
   };
@@ -43,9 +48,9 @@ export default function AdminCarsPage() {
 
   const statusClass = (status: string) =>
     status === "PUBLISHED" ? "bg-green-100 text-green-800" :
-    status === "CREATED" || status === "UPDATED" ? "bg-amber-100 text-amber-800" :
-    status === "DRAFT" ? "bg-slate-100 text-slate-600" : "bg-slate-100 text-slate-600";
-    status === "REJECTED" ? "bg-slate-100 text-slate-600" : "bg-slate-100 text-slate-600";
+      status === "CREATED" || status === "UPDATED" ? "bg-amber-100 text-amber-800" :
+        status === "DRAFT" ? "bg-slate-100 text-slate-600" : "bg-slate-100 text-slate-600";
+  status === "REJECTED" ? "bg-slate-100 text-slate-600" : "bg-slate-100 text-slate-600";
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -60,7 +65,7 @@ export default function AdminCarsPage() {
             <Input
               placeholder="Поиск..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="pl-10 sm:pl-11 pr-4 h-11 w-full sm:w-72 bg-white border-slate-200 rounded-xl sm:rounded-2xl shadow-sm focus-visible:ring-slate-400 font-medium text-base"
             />
           </div>
@@ -75,10 +80,10 @@ export default function AdminCarsPage() {
 
       {/* Мобильная версия: карточки */}
       <div className="md:hidden space-y-3">
-        {filteredCars.length === 0 ? (
+        {paginatedCars.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-500 font-medium">Нет объявлений</div>
         ) : (
-          filteredCars.map((c) => (
+          paginatedCars.map((c) => (
             <div key={c.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <Link href={`/dashboard/cars/${c.id}`} className="text-base font-bold text-slate-900 truncate hover:underline">
@@ -122,7 +127,7 @@ export default function AdminCarsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredCars.map((c) => (
+              {paginatedCars.map((c) => (
                 <tr key={c.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <td className="p-4 text-slate-600 font-medium">{c.id}</td>
                   <td className="p-4">
@@ -143,8 +148,30 @@ export default function AdminCarsPage() {
             </tbody>
           </table>
         </div>
-        {filteredCars.length === 0 && <div className="p-8 text-center text-slate-500 font-medium">Нет объявлений</div>}
+        {paginatedCars.length === 0 && <div className="p-8 text-center text-slate-500 font-medium">Нет объявлений</div>}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-8">
+          <Button
+            variant="outline"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          >
+            Назад
+          </Button>
+          <span className="text-sm font-medium text-slate-500">
+            Страница {currentPage} из {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          >
+            Вперед
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,8 +3,8 @@
 import { Car, LayoutDashboard, Users, FileText, Settings, LogOut, CreditCard, BookOpen, Package, Menu, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -21,13 +21,14 @@ const navLink = (href: string, label: string, Icon: LucideIcon) => ({
 });
 
 const nav = [
-  navLink("/dashboard", "Обзор", LayoutDashboard),
-  navLink("/dashboard/users", "Пользователи", Users),
-  navLink("/dashboard/cars", "Объявления", FileText),
-  navLink("/dashboard/payments", "Платежи", CreditCard),
-  navLink("/dashboard/subscriptions", "Подписки", Package),
-  navLink("/dashboard/dictionaries", "Словари", BookOpen),
-  navLink("/dashboard/settings", "Настройки", Settings),
+  navLink("/admin-supersecret", "Обзор", LayoutDashboard),
+  navLink("/admin-supersecret/users", "Пользователи", Users),
+  navLink("/admin-supersecret/cars", "Объявления", FileText),
+  navLink("/admin-supersecret/applications", "Заявки", FileText),
+  navLink("/admin-supersecret/payments", "Платежи", CreditCard),
+  navLink("/admin-supersecret/subscriptions", "Подписки", Package),
+  navLink("/admin-supersecret/dictionaries", "Словари", BookOpen),
+  navLink("/admin-supersecret/settings", "Настройки", Settings),
 ];
 
 function NavLinks({ onLinkClick }: { onLinkClick?: () => void }) {
@@ -39,9 +40,8 @@ function NavLinks({ onLinkClick }: { onLinkClick?: () => void }) {
           key={href}
           href={href}
           onClick={onLinkClick}
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-            pathname === href ? "bg-zinc-800/50 text-white" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
-          }`}
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${pathname === href ? "bg-zinc-800/50 text-white" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
+            }`}
         >
           <Icon size={22} /> {label}
         </Link>
@@ -56,14 +56,24 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { logout } = useAuth();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && (!user || user.role !== "admin")) {
+      router.push("/login");
+    }
+  }, [user, authLoading, router]);
 
   const handleLogout = () => {
     logout();
     setMobileOpen(false);
     router.push("/");
   };
+
+  if (authLoading || !user || user.role !== "admin") {
+    return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+  }
 
   return (
     <div className="min-h-screen flex">

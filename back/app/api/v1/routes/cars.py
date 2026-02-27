@@ -4,10 +4,11 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Request
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_owner
+from app.core.security import get_current_owner, get_current_user_optional
 from app.db.session import get_db
-from app.models.entities import Car, Image, User, AppSetting
+from app.models.entities import Car, Image, User, AppSetting, Dictionary, City
 from app.schemas.cars import CarResponse
+from sqlalchemy import or_, String, cast
 from app.services.cloudinary_service import CloudinaryService
 from app.services.subscriptions_service import (
     get_active_subscription_for_owner,
@@ -21,12 +22,53 @@ router = APIRouter()
 
 
 @router.get("")
-def list_cars(request: Request, db: Session = Depends(get_db)):
+def list_cars(
+    request: Request,
+    skip: int = 0,
+    limit: int = 15,
+    q: str = None,
+    marka_id: int = None,
+    model_id: int = None,
+    release_year: int = None,
+    category_id: int = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_optional),
+):
     # Показываем только опубликованные объявления
-    cars = db.query(Car).filter(
+    query = db.query(Car).filter(
         Car.status == "PUBLISHED",
-        Car.delete_date.is_(None)
-    ).all()
+        Car.delete_date.is_(None),
+    )
+    if current_user and getattr(current_user, "city_id", None) is not None:
+        query = query.filter(Car.city_id == current_user.city_id)
+        
+    if marka_id:
+        query = query.filter(Car.marka_id == marka_id)
+        
+    if model_id:
+        query = query.filter(Car.model_id == model_id)
+        
+    if release_year:
+        query = query.filter(Car.release_year == release_year)
+        
+    if category_id:
+        query = query.filter(Car.category_id == category_id)
+        
+    if q:
+        search_term = f"%{q.lower()}%"
+        query = query.outerjoin(Dictionary, Car.marka_id == Dictionary.id).outerjoin(City, Car.city_id == City.id)
+        query = query.filter(
+            or_(
+                Car.name.ilike(search_term),
+                Car.description.ilike(search_term),
+                Dictionary.name.ilike(search_term),
+                City.name.ilike(search_term),
+                cast(Car.release_year, String).ilike(search_term),
+            )
+        )
+        
+    total = query.count()
+    cars = query.offset(skip).limit(limit).all()
 
     result = []
     for c in cars:
@@ -39,12 +81,12 @@ def list_cars(request: Request, db: Session = Depends(get_db)):
             "images": [{"url": img.url} for img in c.images],
             "city": c.city.name if c.city else "Алматы",
             "author": {
-                "name": c.author.name,
-                "address": c.author.address
+                "name": c.author.name if c.author else "Без имени",
+                "address": c.author.address if c.author else None
             }
         })
 
-    return create_response(data=result, lang=request.state.lang)
+    return create_response(data={"items": result, "total": total}, lang=request.state.lang)
 
 
 @router.post("")
@@ -272,7 +314,11 @@ def get_car(
         "model": dict_name(car.model),
         "category": dict_name(car.category),
         "views_count": car.views_count,
-        "author": {"name": car.author.name if car.author else None, "address": car.author.address if car.author else None},
+        "author": {
+            "name": car.author.name if car.author else None, 
+            "address": car.author.address if car.author else None,
+            "phone_number": car.author.phone_number if car.author else None,
+        },
         "images": [{"url": img.url, "id": img.id} for img in car.images],
         "create_date": car.create_date.isoformat() if car.create_date else None,
         "update_date": car.update_date.isoformat() if car.update_date else None,
