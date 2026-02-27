@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -83,11 +84,19 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="bg-primary rounded-lg p-1.5">
-            <Car className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-xl tracking-tight">AutoPro</span>
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/logo-light.png"
+            alt=""
+            width={220}
+            height={60}
+            className="h-10 w-auto sm:h-12"
+            priority
+          />
+          <span className="inline-flex items-baseline gap-0">
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-black">Auto</span>
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Pro</span>
+          </span>
         </Link>
 
         {/* Desktop Navigation */}

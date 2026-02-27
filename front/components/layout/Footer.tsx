@@ -11,8 +11,11 @@ export function Footer() {
       <div className="container grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
         <div className="space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 h-6 mb-4">
-            <Image src="/logo.png" alt="Logo" width={24} height={24} className="h-6 w-6 object-contain" />
-            <span className="font-bold text-xl tracking-tight text-foreground leading-none">AutoPro</span>
+            <Image src="/logo-light.png" alt="Logo" width={220} height={60}  className="h-10 w-auto sm:h-12" />
+            <span className="inline-flex items-baseline gap-0">
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-black">Auto</span>
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Pro</span>
+          </span>
           </div>
           <p className="text-sm max-w-sm leading-relaxed">
             Ваш надежный партнер в мире аренды автомобилей. Мы предлагаем лучшие условия и широкий выбор транспорта.

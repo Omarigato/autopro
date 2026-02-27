@@ -2,6 +2,7 @@
 
 import { Car, LayoutDashboard, Users, FileText, Settings, LogOut, CreditCard, BookOpen, Package, Menu, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
@@ -80,7 +81,14 @@ export default function AdminLayout({
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-zinc-900 text-white hidden md:flex flex-col flex-shrink-0">
         <div className="p-6 flex items-center gap-2 font-bold text-xl border-b border-zinc-800">
-          <Car className="h-6 w-6 text-primary" /> AutoPro Admin
+          <Image
+            src="/logo-dark.png"
+            alt="AutoPro Admin"
+            width={140}
+            height={40}
+            className="h-8 w-auto"
+            priority
+          />
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <NavLinks />
@@ -109,7 +117,14 @@ export default function AdminLayout({
               <SheetContent side="left" className="w-[280px] max-w-[85vw] p-0 bg-zinc-900 text-white border-zinc-800">
                 <SheetHeader className="p-4 border-b border-zinc-800 text-left">
                   <SheetTitle className="flex items-center gap-2 font-bold text-white">
-                    <Car className="h-6 w-6" /> AutoPro Admin
+                    <Image
+                      src="/logo-dark.png"
+                      alt="AutoPro Admin"
+                      width={140}
+                      height={40}
+                      className="h-8 w-auto"
+                      priority
+                    />
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="p-4 space-y-1">

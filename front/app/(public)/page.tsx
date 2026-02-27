@@ -94,21 +94,6 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Call to Action */}
-      <section className="container">
-        <div className="bg-primary rounded-3xl p-12 text-white relative overflow-hidden">
-          <div className="relative z-10 max-w-2xl space-y-6">
-            <h2 className="text-3xl font-black">Зарабатывайте на своём авто</h2>
-            <p className="text-primary-foreground/80 text-lg">
-              У вас есть автомобиль, который простаивает? Сдайте его в аренду через AutoPro и получайте стабильный пассивный доход. Мы берем на себя проверку клиентов и страховку.
-            </p>
-            <Button variant="secondary" size="lg" className="rounded-full font-bold shadow-lg" asChild>
-              <Link href="/add">Начать зарабатывать</Link>
-            </Button>
-          </div>
-          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-white/10 skew-x-12 translate-x-10" />
-        </div>
-      </section>
     </div>
   );
 }

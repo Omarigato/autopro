@@ -141,21 +141,77 @@ export default function AdminSubscriptionsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-slate-700 font-semibold">Цена (₸)</Label>
-                <Input type="number" value={form.price_kzt ?? ""} onChange={(e) => setForm({ ...form, price_kzt: Number(e.target.value) || 0 })} placeholder="0" className="h-11 rounded-xl border-slate-200 focus-visible:ring-slate-400 bg-slate-50/50" />
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={form.price_kzt === undefined || form.price_kzt === null ? "" : form.price_kzt}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") setForm((f) => ({ ...f, price_kzt: undefined }));
+                    else {
+                      const n = Number(raw);
+                      if (!Number.isNaN(n)) setForm((f) => ({ ...f, price_kzt: n }));
+                    }
+                  }}
+                  placeholder="0"
+                  className="h-11 rounded-xl border-slate-200 focus-visible:ring-slate-400 bg-slate-50/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-700 font-semibold">Дней</Label>
-                <Input type="number" value={form.period_days ?? ""} onChange={(e) => setForm({ ...form, period_days: Number(e.target.value) || 30 })} placeholder="30" className="h-11 rounded-xl border-slate-200 focus-visible:ring-slate-400 bg-slate-50/50" />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.period_days === undefined || form.period_days === null ? "" : form.period_days}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") setForm((f) => ({ ...f, period_days: undefined }));
+                    else {
+                      const n = Number(raw);
+                      if (!Number.isNaN(n)) setForm((f) => ({ ...f, period_days: n }));
+                    }
+                  }}
+                  placeholder="30"
+                  className="h-11 rounded-xl border-slate-200 focus-visible:ring-slate-400 bg-slate-50/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-slate-700 font-semibold">Бесплатных дней</Label>
-                <Input type="number" value={form.free_days ?? ""} onChange={(e) => setForm({ ...form, free_days: Number(e.target.value) || 0 })} placeholder="0" className="h-11 rounded-xl border-slate-200 focus-visible:ring-slate-400 bg-slate-50/50" />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.free_days === undefined || form.free_days === null ? "" : form.free_days}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") setForm((f) => ({ ...f, free_days: undefined }));
+                    else {
+                      const n = Number(raw);
+                      if (!Number.isNaN(n)) setForm((f) => ({ ...f, free_days: n }));
+                    }
+                  }}
+                  placeholder="0"
+                  className="h-11 rounded-xl border-slate-200 focus-visible:ring-slate-400 bg-slate-50/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-700 font-semibold">Макс. объявлений</Label>
-                <Input type="number" value={form.max_cars ?? ""} onChange={(e) => setForm({ ...form, max_cars: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder="Пусто = безлимит" className="h-11 rounded-xl border-slate-200 focus-visible:ring-slate-400 bg-slate-50/50" />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.max_cars === undefined || form.max_cars === null ? "" : form.max_cars}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") setForm((f) => ({ ...f, max_cars: undefined }));
+                    else {
+                      const n = Number(raw);
+                      if (!Number.isNaN(n)) setForm((f) => ({ ...f, max_cars: n }));
+                    }
+                  }}
+                  placeholder="Пусто = безлимит"
+                  className="h-11 rounded-xl border-slate-200 focus-visible:ring-slate-400 bg-slate-50/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
               </div>
             </div>
             {editing !== null && (
