@@ -20,11 +20,22 @@ def get_user_likes(
     result = []
     for like in likes:
         car = like.car
+        car_image = car.images[0].url if car and hasattr(car, 'images') and len(car.images) > 0 else None
+        
         result.append({
             "id": like.id,
-            "car_id": car.id,
-            "car_name": car.name,
-            "car_price": car.price_per_day,
+            "car": {
+                "id": car.id if car else None,
+                "name": car.name if car else None,
+                "price_per_day": car.price_per_day if car else None,
+                "release_year": car.release_year if car else None,
+                "mark": car.mark.name if car and car.mark else None,
+                "model": car.model.name if car and car.model else None,
+                "images": [{"url": car_image}] if car_image else []
+            },
+            "car_id": car.id if car else None,
+            "car_name": car.name if car else None,
+            "car_price": car.price_per_day if car else None,
             "created_at": like.created_at.isoformat()
         })
     
@@ -91,15 +102,27 @@ def get_user_events(
     for event in events:
         car = event.car
         # Машина может быть удалена (delete_date или status DELETED) — отдаём данные для отображения ссылки серым
-        car_deleted = car is None or (car.delete_date is not None) or (getattr(car, "status", None) == "DELETED")
+        car_deleted = car is None or (getattr(car, "delete_date", None) is not None) or (getattr(car, "status", None) == "DELETED")
+        car_image = car.images[0].url if car and hasattr(car, 'images') and len(car.images) > 0 else None
+
         result.append({
             "id": event.id,
             "event_type": event.event_type,
+            "car": {
+                "id": car.id if car else None,
+                "name": car.name if car else None,
+                "price_per_day": car.price_per_day if car else None,
+                "release_year": car.release_year if car else None,
+                "mark": car.mark.name if car and car.mark else None,
+                "model": car.model.name if car and car.model else None,
+                "delete_date": car.delete_date.isoformat() if car and getattr(car, "delete_date", None) else None,
+                "images": [{"url": car_image}] if car_image else []
+            } if car else None,
             "car_id": event.car_id,
             "car_name": car.name if car else None,
             "car_price": car.price_per_day if car else None,
             "car_deleted": car_deleted,
-            "created_at": event.created_at.isoformat()
+            "created_at": event.created_at.isoformat() if event.created_at else None
         })
 
     return create_response(data=result, lang=request.state.lang)

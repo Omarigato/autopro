@@ -18,7 +18,8 @@ import {
     LayoutGrid,
     Info,
     ChevronDown,
-    Layers
+    Layers,
+    Flame
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,9 @@ export default function CatalogPage() {
     const [filterMarka, setFilterMarka] = useState<string | null>(null);
     const [filterModel, setFilterModel] = useState<string | null>(null);
     const [filterYear, setFilterYear] = useState<string | null>(null);
+    const [filterColor, setFilterColor] = useState<string | null>(null);
+    const [filterClass, setFilterClass] = useState<string | null>(null);
+    const [filterSort, setFilterSort] = useState<string>("new");
 
     const [page, setPage] = useState(1);
     const limit = 12;
@@ -60,6 +64,9 @@ export default function CatalogPage() {
         marka_id: filterMarka || undefined,
         model_id: filterModel || undefined,
         release_year: filterYear || undefined,
+        color_id: filterColor || undefined,
+        car_class_id: filterClass || undefined,
+        sort: filterSort,
         q: debouncedQuery || undefined,
     });
     const filteredCars = data?.items || [];
@@ -204,6 +211,50 @@ export default function CatalogPage() {
                                     )}
 
                                     <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Класс машины</label>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button className="flex items-center justify-between w-full px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-50 border border-slate-200">
+                                                    <span className="truncate">
+                                                        {filterClass === null ? "Любой" : (dictionaries?.car_classes?.find((c: any) => c.id.toString() === filterClass)?.name ?? "Выбрано")}
+                                                    </span>
+                                                    <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent className="w-56 max-h-64 overflow-y-auto rounded-xl">
+                                                <DropdownMenuRadioGroup value={filterClass ?? "all"} onValueChange={(v) => handleFilterChange(setFilterClass, v === "all" ? null : v)}>
+                                                    <DropdownMenuRadioItem value="all">Любой</DropdownMenuRadioItem>
+                                                    {dictionaries?.car_classes?.map((c: any) => (
+                                                        <DropdownMenuRadioItem key={c.id} value={c.id.toString()}>{c.name}</DropdownMenuRadioItem>
+                                                    ))}
+                                                </DropdownMenuRadioGroup>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Цвет</label>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button className="flex items-center justify-between w-full px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-50 border border-slate-200">
+                                                    <span className="truncate">
+                                                        {filterColor === null ? "Любой" : (dictionaries?.colors?.find((c: any) => c.id.toString() === filterColor)?.name ?? "Выбрано")}
+                                                    </span>
+                                                    <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent className="w-56 max-h-64 overflow-y-auto rounded-xl">
+                                                <DropdownMenuRadioGroup value={filterColor ?? "all"} onValueChange={(v) => handleFilterChange(setFilterColor, v === "all" ? null : v)}>
+                                                    <DropdownMenuRadioItem value="all">Любой</DropdownMenuRadioItem>
+                                                    {dictionaries?.colors?.map((c: any) => (
+                                                        <DropdownMenuRadioItem key={c.id} value={c.id.toString()}>{c.name}</DropdownMenuRadioItem>
+                                                    ))}
+                                                </DropdownMenuRadioGroup>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+
+                                    <div>
                                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Год выпуска</label>
                                         <Input
                                             type="number"
@@ -222,6 +273,8 @@ export default function CatalogPage() {
                                             setFilterMarka(null);
                                             setFilterModel(null);
                                             setFilterYear(null);
+                                            setFilterColor(null);
+                                            setFilterClass(null);
                                             setSearchQuery("");
                                             setPage(1);
                                         }}
@@ -242,7 +295,20 @@ export default function CatalogPage() {
                                 </div>
                                 <div className="hidden sm:flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                     <span>Сортировать:</span>
-                                    <button className="text-slate-700 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">Сначала дешевые</button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <button className="text-slate-700 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 flex items-center gap-1">
+                                                {filterSort === "new" ? "Сначала новые" : "Сначала дешевые"}
+                                                <ChevronDown size={14} />
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuRadioGroup value={filterSort} onValueChange={(val) => { setFilterSort(val); setPage(1); }}>
+                                                <DropdownMenuRadioItem value="new">Сначала новые</DropdownMenuRadioItem>
+                                                <DropdownMenuRadioItem value="cheap">Сначала дешевые</DropdownMenuRadioItem>
+                                            </DropdownMenuRadioGroup>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
                             </div>
 
@@ -267,10 +333,20 @@ export default function CatalogPage() {
 
                                             {/* Badge */}
                                             <div className="absolute top-5 left-5">
-                                                <span className="bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg text-slate-900 border border-white/20">
-                                                    {car.category_name || "Premium"}
+                                                <span className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg text-slate-900 border border-white/20">
+                                                    <Car size={12} className="text-slate-600" />
+                                                    {car.car_class || "Premium"}
                                                 </span>
                                             </div>
+
+                                            {/* Top Badge */}
+                                            {car.is_top && (
+                                                <div className="absolute top-5 right-5">
+                                                    <span className="flex items-center justify-center bg-orange-500 text-white w-8 h-8 rounded-full shadow-lg">
+                                                        <Flame size={16} />
+                                                    </span>
+                                                </div>
+                                            )}
 
                                             {/* Price Overlay */}
                                             <div className="absolute bottom-4 right-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
@@ -284,6 +360,9 @@ export default function CatalogPage() {
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="min-w-0 pr-4">
                                                     <h3 className="font-black text-xl text-slate-900 leading-tight group-hover:text-slate-700 transition-colors truncate">{car.name}</h3>
+                                                    <div className="text-sm text-slate-500 font-medium mt-1 truncate">
+                                                        {[car.mark, car.model].filter(Boolean).join(" ")}
+                                                    </div>
                                                     <div className="flex items-center gap-1.5 mt-2">
                                                         <MapPin size={12} className="text-slate-400 shrink-0" />
                                                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{car.city || 'Алматы'}</p>
@@ -295,14 +374,10 @@ export default function CatalogPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="mt-auto pt-6 border-t border-slate-50 grid grid-cols-3 gap-2">
+                                            <div className="mt-auto pt-6 border-t border-slate-50 grid grid-cols-2 gap-2">
                                                 <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-50">
                                                     <Calendar size={14} className="text-slate-400 mb-1" />
                                                     <span className="text-[10px] font-black text-slate-900">{car.release_year}</span>
-                                                </div>
-                                                <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-50">
-                                                    <Gauge size={14} className="text-slate-400 mb-1" />
-                                                    <span className="text-[10px] font-black text-slate-900">{car.mileage || '23к'} км</span>
                                                 </div>
                                                 <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-50">
                                                     <Settings size={14} className="text-slate-400 mb-1" />

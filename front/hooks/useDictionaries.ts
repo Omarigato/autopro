@@ -10,9 +10,9 @@ export function useDictionaries() {
         getCachedDictionaries('CATEGORY'),
         getCachedDictionaries('CITY'),
       ]);
-      return { 
-          categories: categories as DictionaryItem[], 
-          cities: cities as DictionaryItem[] 
+      return {
+        categories: categories as DictionaryItem[],
+        cities: cities as DictionaryItem[]
       };
     },
     staleTime: Infinity,
@@ -20,26 +20,28 @@ export function useDictionaries() {
 }
 
 export function useFullDictionaries() {
-   return useQuery({
+  return useQuery({
     queryKey: ['full_dictionaries'],
     queryFn: async () => {
-        const [categories, marks, transmissions, fuels, colors, cities] = await Promise.all([
-            getCachedDictionaries("CATEGORY"),
-            getCachedDictionaries("MARKA"),
-            getCachedDictionaries("TRANSMISSION"),
-            getCachedDictionaries("FUEL"),
-            getCachedDictionaries("COLOR"),
-            getCachedDictionaries("CITY")
-        ]);
-        return { 
-            categories: categories as DictionaryItem[],
-            marks: marks as DictionaryItem[],
-            transmissions: transmissions as DictionaryItem[],
-            fuels: fuels as DictionaryItem[],
-            colors: colors as DictionaryItem[],
-            cities: cities as DictionaryItem[]
-        };
+      const [categories, marks, transmissions, fuels, colors, cities, car_classes] = await Promise.all([
+        getCachedDictionaries("CATEGORY"),
+        getCachedDictionaries("MARKA"),
+        getCachedDictionaries("TRANSMISSION"),
+        getCachedDictionaries("FUEL"),
+        getCachedDictionaries("COLOR"),
+        getCachedDictionaries("CITY"),
+        getCachedDictionaries("CAR_CLASS")
+      ]);
+      return {
+        categories: categories as DictionaryItem[],
+        marks: marks as DictionaryItem[],
+        transmissions: transmissions as DictionaryItem[],
+        fuels: fuels as DictionaryItem[],
+        colors: colors as DictionaryItem[],
+        cities: cities as DictionaryItem[],
+        car_classes: car_classes as DictionaryItem[]
+      };
     },
     staleTime: Infinity
-   });
+  });
 }

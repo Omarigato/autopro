@@ -48,8 +48,14 @@ class EmailService:
         """
         Отправка OTP‑кода на email.
         """
-        subject = "Код для входа в AutoPro"
-        body = f"Ваш код для входа в AutoPro: {otp_code}. Не сообщайте его никому."
+        subject = "Ваш код подтверждения AutoPro"
+        body = (
+            f"Здравствуйте!\n\n"
+            f"Ваш код для входа в приложение AutoPro: {otp_code}\n\n"
+            f"Никому не сообщайте этот код. Если вы не запрашивали код, просто проигнорируйте это сообщение.\n\n"
+            f"С уважением,\n"
+            f"Команда AutoPro"
+        )
         return await self._send(email, subject, body)
 
     async def send_notification(self, email: str, subject: str, text: str) -> bool:

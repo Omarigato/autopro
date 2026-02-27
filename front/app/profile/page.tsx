@@ -41,7 +41,10 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState("ads");
     const [profileData, setProfileData] = useState<any>({});
+    const [initialProfileData, setInitialProfileData] = useState<any>({});
     const [likes, setLikes] = useState<any[]>([]);
+    const [showOtp, setShowOtp] = useState(false);
+    const [otpCode, setOtpCode] = useState("");
     const [events, setEvents] = useState<any[]>([]);
     const [eventsPage, setEventsPage] = useState(1);
     const [hasMoreEvents, setHasMoreEvents] = useState(true);
@@ -62,7 +65,9 @@ export default function ProfilePage() {
     const loadProfileData = async () => {
         try {
             const res = await apiClient.get('/auth/me') as any;
-            setProfileData(res?.data ?? res ?? {});
+            const data = res?.data ?? res ?? {};
+            setProfileData(data);
+            setInitialProfileData(data);
         } catch (err) {
             console.error('Failed to load profile:', err);
         }
@@ -123,13 +128,46 @@ export default function ProfilePage() {
         }
     };
 
+    const hasChanges = JSON.stringify(profileData) !== JSON.stringify(initialProfileData);
+
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!hasChanges) return;
+
+        const contactChanged = profileData.phone_number !== initialProfileData.phone_number || profileData.email !== initialProfileData.email;
+        if (contactChanged && !showOtp) {
+            setLoading(true);
+            try {
+                const target = profileData.phone_number !== initialProfileData.phone_number ? profileData.phone_number : profileData.email;
+                await apiClient.post('/auth/otp/request', { target, type: 'update' });
+                setShowOtp(true);
+                toast.success('Код подтверждения отправлен на новый контакт');
+            } catch (err: any) {
+                toast.error(err.response?.data?.message || 'Ошибка отправки кода');
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
+        if (showOtp && !otpCode) {
+            toast.error('Введите код подтверждения');
+            return;
+        }
+
         setLoading(true);
         try {
+            if (showOtp && otpCode) {
+                const target = profileData.phone_number !== initialProfileData.phone_number ? profileData.phone_number : profileData.email;
+                await apiClient.post('/auth/otp/verify', { target, otp_code: otpCode });
+            }
+
             await apiClient.put('/auth/me', profileData);
             toast.success('Профиль успешно обновлен');
             await refreshUser();
+            setInitialProfileData({ ...profileData });
+            setShowOtp(false);
+            setOtpCode("");
         } catch (err: any) {
             toast.error(err.response?.data?.message || 'Ошибка обновления профиля');
         } finally {
@@ -239,9 +277,11 @@ export default function ProfilePage() {
                                         <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
                                             {profileData.name}
                                         </h3>
-                                        <p className="text-slate-700 font-medium text-sm mt-1 uppercase tracking-wider">
-                                            {user.role === 'admin' ? 'Администратор' : 'Частное лицо'}
-                                        </p>
+                                        {user.role === 'admin' && (
+                                            <p className="text-slate-700 font-medium text-sm mt-1 uppercase tracking-wider">
+                                                Администратор
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Subscription Status Area — показываем только если подписки включены в настройках */}
@@ -386,9 +426,9 @@ export default function ProfilePage() {
                                                         <div className="absolute top-4 left-4">
                                                             <span className={cn(
                                                                 "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg",
-                                                                car.status === "PUBLISHED" ? "bg-green-500 text-white" : "bg-amber-500 text-white"
+                                                                car.status === "ACTIVE" ? "bg-green-500 text-white" : car.status === "DRAFT" ? "bg-slate-500 text-white" : car.status === "REJECT" ? "bg-red-500 text-white" : "bg-amber-500 text-white"
                                                             )}>
-                                                                {car.status === "PUBLISHED" ? "Активно" : "Модерация"}
+                                                                {car.status === "ACTIVE" ? "Активно" : car.status === "DRAFT" ? "Черновик" : car.status === "REJECT" ? "Отклонено" : "Модерация"}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -397,7 +437,7 @@ export default function ProfilePage() {
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <Clock size={12} className="text-slate-400" />
                                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                                                                    {car.create_date ? new Date(car.create_date).toLocaleDateString('ru-RU') : ''}
+                                                                    {car.create_date ? new Date(car.create_date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                                                                 </span>
                                                             </div>
                                                             <h3 className="font-black text-xl text-slate-900 group-hover:text-slate-700 transition-colors">{car.name}</h3>
@@ -442,17 +482,24 @@ export default function ProfilePage() {
                                             likes.map((like) => (
                                                 <Card key={like.id} className="p-4 flex gap-4 items-center bg-white border-none shadow-md rounded-[2rem] group hover:shadow-xl transition-all h-28">
                                                     <div className="flex-shrink-0 w-28 h-20 bg-slate-100 rounded-2xl overflow-hidden group-hover:scale-95 transition-transform">
-                                                        {like.car_image ? (
-                                                            <img src={like.car_image} alt={like.car_name} className="w-full h-full object-cover" />
+                                                        {like.car?.images?.[0]?.url ? (
+                                                            <img src={like.car.images[0].url} alt={like.car?.name} className="w-full h-full object-cover" />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center text-slate-200"><Heart /></div>
                                                         )}
                                                     </div>
                                                     <div className="flex-1 min-w-0 pr-4">
-                                                        <h3 className="font-bold text-slate-900 truncate">{like.car_name}</h3>
-                                                        <p className="text-slate-900 font-black text-sm">{like.car_price} ₸/день</p>
+                                                        <h3 className="font-bold text-slate-900 truncate">
+                                                            {like.car?.name} {like.car?.release_year ? `${like.car.release_year} г.` : ''}
+                                                        </h3>
+                                                        {like.car?.mark && like.car?.model && (
+                                                            <p className="text-xs text-slate-500 font-medium mb-1">
+                                                                {like.car.mark} • {like.car.model}
+                                                            </p>
+                                                        )}
+                                                        <p className="text-slate-900 font-black text-sm">{like.car?.price_per_day} ₸ <span className="text-slate-400 font-medium text-xs">/ день</span></p>
                                                     </div>
-                                                    <Link href={`/cars/${like.car_id}`}>
+                                                    <Link href={`/cars/${like.car?.id}`}>
                                                         <Button variant="ghost" size="icon" className="rounded-2xl text-slate-300 hover:text-slate-700 hover:bg-slate-100 transition-colors">
                                                             <ExternalLink size={20} />
                                                         </Button>
@@ -493,9 +540,14 @@ export default function ProfilePage() {
                                                             {event.car_deleted ? (
                                                                 <h4 className="font-bold text-slate-400">{event.car_name || 'Объявление удалено'}</h4>
                                                             ) : (
-                                                                <Link href={`/cars/${event.car_id}`} className="font-bold text-slate-900 hover:text-slate-700 transition-colors flex items-center gap-2">
-                                                                    {event.car_name || 'Просмотр объявления'}
-                                                                    <ChevronRight size={16} className="text-slate-600 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                                                                <Link href={`/cars/${event.car_id}`} className="font-bold text-slate-900 hover:text-slate-700 transition-colors flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                                                    <span>
+                                                                        {event.car_name} {event.car_release_year ? `${event.car_release_year} г.` : ''}
+                                                                    </span>
+                                                                    {event.car_mark && event.car_model && (
+                                                                        <span className="text-xs text-slate-500 font-medium hidden sm:inline-block">({event.car_mark} • {event.car_model})</span>
+                                                                    )}
+                                                                    <ChevronRight size={16} className="text-slate-600 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all hidden sm:block" />
                                                                 </Link>
                                                             )}
                                                         </div>
@@ -531,7 +583,7 @@ export default function ProfilePage() {
                                             <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-8">Настройки</h2>
                                             <form onSubmit={handleUpdateProfile} className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                                 <div className="space-y-3">
-                                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Как вас зовут?</Label>
+                                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Имя</Label>
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                         <Input
                                                             placeholder="Имя и фамилия"
@@ -627,8 +679,26 @@ export default function ProfilePage() {
                                                 </div>
 
                                                 <div className="md:col-span-2 pt-4">
-                                                    <Button type="submit" disabled={loading} className="w-full h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 text-lg font-black shadow-lg shadow-slate-200">
-                                                        {loading ? 'Обновляем данные...' : 'Сохранить изменения'}
+                                                    {showOtp && (
+                                                        <div className="mb-6 bg-slate-50 p-6 rounded-2xl border border-indigo-100 flex flex-col items-center">
+                                                            <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-4 text-indigo-500">
+                                                                <Phone className="w-6 h-6" />
+                                                            </div>
+                                                            <Label className="text-sm font-black uppercase tracking-widest text-slate-700 text-center mb-2">
+                                                                Введите код подтверждения
+                                                            </Label>
+                                                            <p className="text-slate-500 text-sm text-center mb-4 max-w-sm">Мы отправили одноразовый код на ваш новый номер телефона или Email.</p>
+                                                            <Input
+                                                                placeholder="Реб6Е"
+                                                                value={otpCode}
+                                                                onChange={(e) => setOtpCode(e.target.value)}
+                                                                className="rounded-xl h-14 bg-white border border-slate-200 focus-visible:ring-indigo-600 focus-visible:border-indigo-600 font-medium text-center tracking-[0.5em] text-xl mt-2 w-full max-w-xs uppercase"
+                                                                maxLength={6}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <Button type="submit" disabled={loading || !hasChanges} className="w-full h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:bg-slate-200 disabled:text-slate-400 text-lg font-black shadow-lg shadow-slate-200/50 transition-all">
+                                                        {loading ? 'Обработка...' : showOtp ? 'Подтвердить и сохранить' : 'Сохранить изменения'}
                                                     </Button>
                                                 </div>
                                             </form>
@@ -639,7 +709,7 @@ export default function ProfilePage() {
                         </div>
                     </div>
                 </div>
-            </div>
-        </Tabs>
+            </div >
+        </Tabs >
     );
 }

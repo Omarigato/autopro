@@ -82,7 +82,9 @@ export default function HomePage() {
                 </div>
                 <div className="px-2 pb-2">
                   <h3 className="font-bold text-lg">{car.name}</h3>
-                  <p className="text-sm text-slate-400 mb-4">{car.release_year} • {car.transmission || 'Автомат'}</p>
+                  <p className="text-sm text-slate-400 mb-4">
+                    {[car.mark, car.model].filter(Boolean).join(" ")} {car.release_year ? `• ${car.release_year}` : ''}
+                  </p>
                   <div className="flex items-center justify-between">
                     <span className="text-primary font-black text-xl">{car.price_per_day} ₸</span>
                     <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">/ сутки</span>

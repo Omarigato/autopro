@@ -46,7 +46,11 @@ class WhatsAppService:
         """
         Отправка OTP-кода пользователю.
         """
-        message = f"Ваш код для входа в AutoPro: {otp_code}. Не сообщайте его никому."
+        message = (
+            f"🔑 *Код подтверждения AutoPro*\n\n"
+            f"Ваш код: *{otp_code}*\n\n"
+            f"⚠️ Пожалуйста, никому не сообщайте этот код."
+        )
         return await self._post_message(phone_number, message)
 
     async def send_notification(self, phone_number: str, text: str) -> bool:

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { usePublicSettings } from "@/hooks/usePublicSettings";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,10 +40,12 @@ function ProfileRequestsContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const tabFromUrl = searchParams.get("tab") || "my";
+  const { subscriptionsEnabled } = usePublicSettings();
   const [activeTab, setActiveTab] = useState(tabFromUrl === "to-my" ? "to-my" : tabFromUrl === "other" ? "other" : "my");
   const [myApps, setMyApps] = useState<ApplicationItem[]>([]);
   const [toMyAds, setToMyAds] = useState<ApplicationItem[]>([]);
   const [otherApps, setOtherApps] = useState<ApplicationItem[]>([]);
+  const [showNewAppForm, setShowNewAppForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [marks, setMarks] = useState<any[]>([]);
@@ -154,6 +157,7 @@ function ProfileRequestsContent() {
       const data = res?.data ?? res;
       toast.success(`Заявка создана. Найдено объявлений: ${data?.matching_cars_count ?? data?.matching_cars?.length ?? 0}`);
       setFormData((prev) => ({ ...prev, message: "", images: [] }));
+      setShowNewAppForm(false);
       loadMy();
     } catch (err: any) {
       toast.error(err?.message?.ru ?? err?.message ?? "Ошибка");
@@ -291,119 +295,130 @@ function ProfileRequestsContent() {
           </TabsList>
 
           <TabsContent value="my" className="space-y-6">
-            <Card className="p-6">
-              <h2 className="font-semibold mb-4">Новая заявка</h2>
-              <form onSubmit={handleCreateApplication} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Город</Label>
-                    <Select
-                      value={formData.city_id != null ? String(formData.city_id) : ""}
-                      onValueChange={(v) => setFormData((p) => ({ ...p, city_id: v ? Number(v) : null }))}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Город" /></SelectTrigger>
-                      <SelectContent>
-                        {cities.map((c: any) => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            <Card className="p-6 border-slate-200">
+              <div
+                className="flex justify-between items-center cursor-pointer"
+                onClick={() => setShowNewAppForm(!showNewAppForm)}
+              >
+                <h2 className="font-semibold text-lg text-slate-800 flex items-center gap-2">Новая заявка</h2>
+                <Button variant="ghost" size="sm" className="rounded-full">
+                  {showNewAppForm ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </Button>
+              </div>
+
+              {showNewAppForm && (
+                <form onSubmit={handleCreateApplication} className="space-y-4 pt-4 border-t border-slate-100 mt-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Город</Label>
+                      <Select
+                        value={formData.city_id != null ? String(formData.city_id) : ""}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, city_id: v ? Number(v) : null }))}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Город" /></SelectTrigger>
+                        <SelectContent>
+                          {cities.map((c: any) => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Категория</Label>
+                      <Select
+                        value={formData.category_id != null ? String(formData.category_id) : ""}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, category_id: v ? Number(v) : null }))}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Любая" /></SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c: any) => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Марка</Label>
+                      <Select
+                        value={formData.vehicle_mark_id != null ? String(formData.vehicle_mark_id) : ""}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, vehicle_mark_id: v ? Number(v) : null, vehicle_model_id: null }))}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Не выбрано" /></SelectTrigger>
+                        <SelectContent>
+                          {marks.map((m: any) => (
+                            <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Модель</Label>
+                      <Select
+                        value={formData.vehicle_model_id != null ? String(formData.vehicle_model_id) : ""}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, vehicle_model_id: v ? Number(v) : null }))}
+                        disabled={!formData.vehicle_mark_id}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Не выбрано" /></SelectTrigger>
+                        <SelectContent>
+                          {models.map((m: any) => (
+                            <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div>
-                    <Label>Категория</Label>
-                    <Select
-                      value={formData.category_id != null ? String(formData.category_id) : ""}
-                      onValueChange={(v) => setFormData((p) => ({ ...p, category_id: v ? Number(v) : null }))}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Любая" /></SelectTrigger>
-                      <SelectContent>
-                        {categories.map((c: any) => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Марка</Label>
-                    <Select
-                      value={formData.vehicle_mark_id != null ? String(formData.vehicle_mark_id) : ""}
-                      onValueChange={(v) => setFormData((p) => ({ ...p, vehicle_mark_id: v ? Number(v) : null, vehicle_model_id: null }))}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Не выбрано" /></SelectTrigger>
-                      <SelectContent>
-                        {marks.map((m: any) => (
-                          <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Дата и время</Label>
+                    <Input
+                      type="datetime-local"
+                      value={formData.requested_at}
+                      onChange={(e) => setFormData((p) => ({ ...p, requested_at: e.target.value }))}
+                    />
                   </div>
                   <div>
-                    <Label>Модель</Label>
-                    <Select
-                      value={formData.vehicle_model_id != null ? String(formData.vehicle_model_id) : ""}
-                      onValueChange={(v) => setFormData((p) => ({ ...p, vehicle_model_id: v ? Number(v) : null }))}
-                      disabled={!formData.vehicle_mark_id}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Не выбрано" /></SelectTrigger>
-                      <SelectContent>
-                        {models.map((m: any) => (
-                          <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Сообщение ({formData.message.length}/{MAX_MESSAGE_LENGTH})</Label>
+                    <Textarea
+                      value={formData.message}
+                      onChange={(e) => setFormData((p) => ({ ...p, message: e.target.value.slice(0, MAX_MESSAGE_LENGTH) }))}
+                      maxLength={MAX_MESSAGE_LENGTH}
+                      rows={3}
+                    />
                   </div>
-                </div>
-                <div>
-                  <Label>Дата и время</Label>
-                  <Input
-                    type="datetime-local"
-                    value={formData.requested_at}
-                    onChange={(e) => setFormData((p) => ({ ...p, requested_at: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label>Сообщение ({formData.message.length}/{MAX_MESSAGE_LENGTH})</Label>
-                  <Textarea
-                    value={formData.message}
-                    onChange={(e) => setFormData((p) => ({ ...p, message: e.target.value.slice(0, MAX_MESSAGE_LENGTH) }))}
-                    maxLength={MAX_MESSAGE_LENGTH}
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label>Фото</Label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <label className="h-20 w-20 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer">
-                      <Upload className="h-6 w-6 text-muted-foreground" />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => {
-                          const files = e.target.files ? Array.from(e.target.files) : [];
-                          setFormData((p) => ({ ...p, images: [...p.images, ...files] }));
-                        }}
-                      />
-                    </label>
-                    {formData.images.map((f, i) => (
-                      <div key={i} className="relative h-20 w-20 rounded-lg border bg-muted flex items-center justify-center overflow-hidden">
-                        <img src={URL.createObjectURL(f)} alt="preview" className="h-full w-full object-cover" />
-                        <button
-                          type="button"
-                          className="absolute top-0 right-0 p-1 bg-destructive text-white rounded-bl"
-                          onClick={() => setFormData((p) => ({ ...p, images: p.images.filter((_, j) => j !== i) }))}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+                  <div>
+                    <Label>Фото</Label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <label className="h-20 w-20 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer">
+                        <Upload className="h-6 w-6 text-muted-foreground" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            const files = e.target.files ? Array.from(e.target.files) : [];
+                            setFormData((p) => ({ ...p, images: [...p.images, ...files] }));
+                          }}
+                        />
+                      </label>
+                      {formData.images.map((f, i) => (
+                        <div key={i} className="relative h-20 w-20 rounded-lg border bg-muted flex items-center justify-center overflow-hidden">
+                          <img src={URL.createObjectURL(f)} alt="preview" className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            className="absolute top-0 right-0 p-1 bg-destructive text-white rounded-bl"
+                            onClick={() => setFormData((p) => ({ ...p, images: p.images.filter((_, j) => j !== i) }))}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <Button type="submit" disabled={loading}>Отправить заявку</Button>
-              </form>
+                  <Button type="submit" disabled={loading} className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold">Отправить заявку</Button>
+                </form>
+              )}
             </Card>
 
             <div className="space-y-6">
@@ -554,14 +569,14 @@ function ProfileRequestsContent() {
                           )}
                           {app.applicant_contact.email && <p className="text-slate-500 text-sm mt-1">{app.applicant_contact.email}</p>}
                         </div>
-                      ) : (
-                        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 mb-4">
-                          <p className="text-sm text-amber-800 font-bold">Купите тарифный план для просмотра контактов заявителя</p>
+                      ) : subscriptionsEnabled ? (
+                        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 mb-4 flex flex-col items-center text-center">
+                          <p className="text-sm text-amber-800 font-bold mb-2">Для просмотра контактов заявителя необходима активная подписка</p>
                           <Link href="/subscriptions">
-                            <Button size="sm" className="mt-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl">Тарифы</Button>
+                            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 font-bold text-white shadow-md rounded-xl">Ознакомиться с тарифами</Button>
                           </Link>
                         </div>
-                      )}
+                      ) : null}
                       <div className="mt-2 space-y-2">
                         <p className="text-xs text-slate-500 font-medium">Ваши авто, по которым ищет клиент:</p>
                         <div className="flex gap-2 flex-wrap">
@@ -584,20 +599,49 @@ function ProfileRequestsContent() {
 
           <TabsContent value="other" className="space-y-4">
             {otherApps.length === 0 ? (
-              <p className="text-muted-foreground">Нет других заявок</p>
+              <p className="text-muted-foreground text-center py-10 bg-white rounded-3xl border border-slate-100">Нет других заявок</p>
             ) : (
               otherApps.map((app) => (
-                <Card key={app.id} className="p-4">
-                  <span className="font-medium">{app.city_name} · {app.category_name ?? "—"} · {app.mark_name ?? "—"} {app.model_name ?? ""}</span>
-                  {app.requested_at && <p className="text-sm text-muted-foreground">{new Date(app.requested_at).toLocaleString("ru")}</p>}
-                  {app.message && <p className="text-sm mt-1">{app.message}</p>}
-                  {app.images && app.images.length > 0 && (
-                    <div className="flex gap-2 mt-2">
-                      {app.images.map((img, i) => (
-                        <img key={i} src={img.url} alt="Заявка" className="h-16 w-16 object-cover rounded border" />
-                      ))}
+                <Card key={app.id} className="p-0 overflow-hidden flex flex-col md:flex-row shadow-sm border-slate-200">
+                  <div className="w-full md:w-1/2 p-6 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-4">
+                        <span className="font-black text-lg text-slate-900">{app.city_name} · {app.category_name ?? "Любая категория"} · {app.mark_name ?? "Любая марка"} {app.model_name ?? ""}</span>
+                      </div>
+                      {app.requested_at && (
+                        <p className="text-xs text-slate-500 font-medium mb-3">На дату: {new Date(app.requested_at).toLocaleString("ru")}</p>
+                      )}
+                      {app.message && <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-xl mb-4">{app.message}</p>}
+
+                      {app.images && app.images.length > 0 && (
+                        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                          {app.images.map((img, i) => (
+                            <img key={i} src={img.url} alt="Заявка" className="h-20 w-20 object-cover rounded-xl border border-slate-200 shadow-sm" />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+
+                  <div className="w-full md:w-1/2 bg-slate-50/50 p-6 flex flex-col">
+                    <h3 className="font-bold text-slate-800 mb-4">Контакты клиента</h3>
+                    {app.applicant_contact ? (
+                      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <p className="font-bold text-lg text-slate-900">{app.applicant_contact.name}</p>
+                        {app.applicant_contact.phone_number && (
+                          <a href={`tel:${app.applicant_contact.phone_number}`} className="block text-indigo-600 font-bold mt-2 text-sm">{app.applicant_contact.phone_number}</a>
+                        )}
+                        {app.applicant_contact.email && <p className="text-slate-500 text-sm mt-1">{app.applicant_contact.email}</p>}
+                      </div>
+                    ) : subscriptionsEnabled ? (
+                      <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex flex-col items-center text-center">
+                        <p className="text-sm text-amber-800 font-bold mb-2">Для просмотра контактов заявителя необходима активная подписка</p>
+                        <Link href="/subscriptions">
+                          <Button size="sm" className="bg-amber-500 hover:bg-amber-600 font-bold text-white shadow-md rounded-xl">Ознакомиться с тарифами</Button>
+                        </Link>
+                      </div>
+                    ) : null}
+                  </div>
                 </Card>
               ))
             )}
