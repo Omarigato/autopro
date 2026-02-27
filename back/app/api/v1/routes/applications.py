@@ -59,6 +59,7 @@ def _application_payload(app: Application, lang: str, include_cars: bool = False
             {
                 "id": c.id,
                 "name": c.name,
+                "author_id": c.author_id,
                 "price_per_day": c.price_per_day,
                 "release_year": c.release_year,
                 "images": [{"url": img.url} for img in c.images[:1]],
@@ -127,9 +128,9 @@ async def create_application(
                     position=idx,
                 ))
 
-    # Matching cars: PUBLISHED, same city, category; mark/model optional
+    # Matching cars: ACTIVE, same city, category; mark/model optional
     q = db.query(Car).filter(
-        Car.status == "PUBLISHED",
+        Car.status == "ACTIVE",
         Car.delete_date.is_(None),
         Car.city_id == app.city_id,
     )

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import Link from "next/link";
 
 const MAX_MESSAGE_LENGTH = 1000;
 
-export default function FindPage() {
+function FindContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
@@ -297,5 +297,13 @@ export default function FindPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function FindPage() {
+  return (
+    <Suspense fallback={<div className="container py-12 flex justify-center"><div className="animate-pulse rounded-xl bg-muted h-64 w-full max-w-md" /></div>}>
+      <FindContent />
+    </Suspense>
   );
 }

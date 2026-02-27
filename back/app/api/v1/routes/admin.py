@@ -207,22 +207,22 @@ def list_cars_admin(db: Session = Depends(get_db), admin: User = Depends(check_a
 
 @router.post("/cars/{car_id}/approve")
 def approve_car(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    """Одобрить объявление — статус PUBLISHED (показывается в каталоге)."""
+    """Одобрить объявление — статус ACTIVE (показывается в каталоге)."""
     car = db.query(Car).filter(Car.id == car_id).first()
     if not car:
         raise HTTPException(404)
-    car.status = "PUBLISHED"
+    car.status = "ACTIVE"
     car.update_date = datetime.utcnow()
     db.commit()
     return create_response(data={"id": car.id, "status": car.status})
 
 @router.post("/cars/{car_id}/reject")
 def reject_car(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    """Отклонить объявление — статус REJECTED (отказано)."""
+    """Отклонить объявление — статус REJECT (отказано)."""
     car = db.query(Car).filter(Car.id == car_id).first()
     if not car:
         raise HTTPException(404)
-    car.status = "REJECTED"
+    car.status = "REJECT"
     car.update_date = datetime.utcnow()
     db.commit()
     return create_response(data={"id": car.id, "status": car.status})

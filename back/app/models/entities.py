@@ -118,8 +118,8 @@ class Car(Base):
     is_top: Mapped[bool] = mapped_column(Boolean, default=False)
     views_count: Mapped[int] = mapped_column(Integer, default=0)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    # CREATED — создано, отправлено на модерацию; UPDATED — обновлено, снова на проверку; PUBLISHED — опубликовано; DRAFT — черновик;
-    status: Mapped[str] = mapped_column(String(20), default="CREATED", index=True)
+    # ACTIVE — активный, доступно для всех пользователей; DRAFT — черновик; AWAIT — ожидание от админа модерации; REJECT — отклонен
+    status: Mapped[str] = mapped_column(String(20), default="AWAIT", index=True)
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     update_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

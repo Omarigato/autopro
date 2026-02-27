@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowLeft, FileText, Inbox, List, Upload, X, ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { ArrowLeft, FileText, Inbox, List, Upload, X, ChevronDown, ChevronUp, Eye, Star } from "lucide-react";
 import { toast } from "sonner";
 import { getCachedDictionaries } from "@/lib/dictionaries";
 
@@ -35,7 +35,7 @@ interface ApplicationItem {
   viewers?: { name: string; phone: string; date: string }[];
 }
 
-export default function ProfileRequestsPage() {
+function ProfileRequestsContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const tabFromUrl = searchParams.get("tab") || "my";
@@ -70,6 +70,7 @@ export default function ProfileRequestsPage() {
   const [selectedCarIds, setSelectedCarIds] = useState<number[]>([]);
   const [viewCarsAppId, setViewCarsAppId] = useState<number | null>(null);
   const [viewCarsList, setViewCarsList] = useState<any[]>([]);
+  const [reviewData, setReviewData] = useState<Record<number, { rating: number, comment: string }>>({});
 
   useEffect(() => {
     setActiveTab(tabFromUrl === "to-my" ? "to-my" : tabFromUrl === "other" ? "other" : "my");
@@ -190,12 +191,33 @@ export default function ProfileRequestsPage() {
       toast.error("Выберите хотя бы одно объявление");
       return;
     }
+
+    for (const carId of selectedCarIds) {
+      const rev = reviewData[carId];
+      if (rev) {
+        const car = completeModal.cars.find(c => c.id === carId);
+        if (car && car.author_id) {
+          try {
+            await apiClient.post("/reviews", {
+              car_id: carId,
+              car_owner_id: car.author_id,
+              user_id: (user as any)?.id || null,
+              rating: rev.rating,
+              comment: rev.comment
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    }
+
     try {
       await apiClient.patch(`/applications/${completeModal.app.id}`, {
         status: "COMPLETED",
         selected_car_ids: selectedCarIds,
       });
-      toast.success("Заявка завершена");
+      toast.success("Заявка завершена. Спасибо за отзыв!");
       setCompleteModal(null);
       loadMy();
     } catch {
@@ -204,9 +226,19 @@ export default function ProfileRequestsPage() {
   };
 
   const toggleCarSelection = (carId: number) => {
-    setSelectedCarIds((prev) =>
-      prev.includes(carId) ? prev.filter((id) => id !== carId) : [...prev, carId]
-    );
+    setSelectedCarIds((prev) => {
+      if (prev.includes(carId)) {
+        setReviewData((rd) => {
+          const newRd = { ...rd };
+          delete newRd[carId];
+          return newRd;
+        });
+        return prev.filter((id) => id !== carId);
+      } else {
+        setReviewData((rd) => ({ ...rd, [carId]: { rating: 5, comment: "" } }));
+        return [...prev, carId];
+      }
+    });
   };
 
   const openListCars = async (appId: number) => {
@@ -581,17 +613,56 @@ export default function ProfileRequestsPage() {
               {completeModal.cars.length === 0 && (
                 <p className="text-muted-foreground">Нет объявлений для выбора. Вы можете просто завершить заявку.</p>
               )}
-              {completeModal.cars.map((car: any) => (
-                <label key={car.id} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/50">
-                  <input
-                    type="checkbox"
-                    checked={selectedCarIds.includes(car.id)}
-                    onChange={() => toggleCarSelection(car.id)}
-                  />
-                  <span>{car.name}</span>
-                  {car.price_per_day != null && <span className="text-muted-foreground">{car.price_per_day} ₸/сут</span>}
-                </label>
-              ))}
+              {completeModal.cars.map((car: any) => {
+                const isSelected = selectedCarIds.includes(car.id);
+                const rev = reviewData[car.id];
+                return (
+                  <div key={car.id} className="flex flex-col gap-2 p-3 rounded-xl border hover:bg-slate-50 transition-colors">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                        onChange={() => toggleCarSelection(car.id)}
+                      />
+                      <span className="font-bold text-slate-800 text-sm">{car.name}</span>
+                      {car.price_per_day != null && <span className="text-slate-500 font-medium text-xs bg-slate-100 px-2 py-1 rounded-md">{car.price_per_day} ₸/сут</span>}
+                    </label>
+
+                    {isSelected && rev && (
+                      <div className="mt-2 pl-8 space-y-3 animate-in fade-in slide-in-from-top-2">
+                        <div>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Оцените автомобиль</p>
+                          <div className="flex gap-1 border border-slate-200 w-fit p-1.5 rounded-xl bg-white">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                className="p-1 hover:scale-110 transition-transform"
+                                onClick={() => setReviewData(prev => ({ ...prev, [car.id]: { ...prev[car.id], rating: star } }))}
+                              >
+                                <Star
+                                  className={`w-6 h-6 ${star <= rev.rating ? "fill-yellow-400 text-yellow-400" : "text-slate-200"}`}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Отзыв</p>
+                          <Textarea
+                            placeholder="Напишите пару слов об автомобиле и владельце (необязательно)"
+                            className="text-sm bg-white resize-none rounded-xl"
+                            value={rev.comment}
+                            onChange={(e) => setReviewData(prev => ({ ...prev, [car.id]: { ...prev[car.id], comment: e.target.value } }))}
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <div className="flex gap-2">
               <Button onClick={handleComplete} disabled={completeModal.cars.length > 0 && selectedCarIds.length === 0}>Завершить</Button>
@@ -617,5 +688,13 @@ export default function ProfileRequestsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ProfileRequestsPage() {
+  return (
+    <Suspense fallback={<div className="container py-12 text-center animate-pulse">Загрузка...</div>}>
+      <ProfileRequestsContent />
+    </Suspense>
   );
 }
