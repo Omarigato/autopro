@@ -23,6 +23,7 @@ function AddCarContent() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [photoError, setPhotoError] = useState('');
     const [createdCarId, setCreatedCarId] = useState<number | null>(null);
     const [subscriptionCheck, setSubscriptionCheck] = useState<{
         subscriptions_enabled: boolean;
@@ -145,6 +146,15 @@ function AddCarContent() {
     };
 
     const handleChange = (name: string, value: any) => {
+        if (name === 'price_per_day') {
+            const num = typeof value === 'string' ? parseInt(value, 10) : value;
+            if (!isNaN(num) && num < 0) return;
+        }
+        if (name === 'mileage' || name === 'release_year') {
+            const num = typeof value === 'string' ? parseInt(value, 10) : value;
+            if (!isNaN(num) && num < 0) return;
+            if (name === 'release_year' && !isNaN(num) && num > 2026) return;
+        }
         setFormData({ ...formData, [name]: value });
     };
 
@@ -152,6 +162,7 @@ function AddCarContent() {
         if (e.target.files) {
             const files = Array.from(e.target.files);
             setFormData({ ...formData, images: [...formData.images, ...files] });
+            setPhotoError('');
         }
     };
 
@@ -161,12 +172,37 @@ function AddCarContent() {
         setFormData({ ...formData, images: newImages });
     };
 
+    const isStep1Filled =
+        (formData.category_id != null && formData.category_id !== '') &&
+        (formData.vehicle_mark_id != null && formData.vehicle_mark_id !== '') &&
+        (formData.name != null && String(formData.name).trim() !== '') &&
+        (formData.price_per_day != null && formData.price_per_day !== '') &&
+        (formData.images?.length ?? 0) > 0;
+
     const handleNext = () => {
         if (step === 1) {
-            if (!formData.name || !formData.price_per_day || !formData.category_id || !formData.vehicle_mark_id) {
-                toast.error('Пожалуйста, заполните все обязательные поля');
+            if (!formData.category_id || formData.category_id === '') {
+                toast.error('Выберите категорию');
                 return;
             }
+            if (!formData.vehicle_mark_id || formData.vehicle_mark_id === '') {
+                toast.error('Выберите марку');
+                return;
+            }
+            if (!formData.name?.trim()) {
+                toast.error('Введите заголовок');
+                return;
+            }
+            if (formData.price_per_day == null || formData.price_per_day === '') {
+                toast.error('Укажите цену');
+                return;
+            }
+            const hasPhoto = (formData.images?.length ?? 0) > 0;
+            if (!hasPhoto) {
+                setPhotoError('Поставьте хоть одну фотографию');
+                return;
+            }
+            setPhotoError('');
             setStep(2);
         }
     };
@@ -195,9 +231,23 @@ function AddCarContent() {
 
     const handleSubmit = async (saveAsDraft: boolean = false, options?: { stayOnPage?: boolean }) => {
         // Validation for step 2 (не требуем всё для черновика)
-        if (!saveAsDraft && (!formData.city_id || !formData.release_year)) {
-            toast.error('Пожалуйста, заполните все обязательные поля');
-            return;
+        if (!saveAsDraft) {
+            const required = [
+                formData.city_id,
+                formData.release_year,
+                formData.color_id,
+                formData.fuel_type_id,
+                formData.body_type != null && String(formData.body_type).trim() !== '',
+                formData.steering_id,
+                formData.mileage != null && String(formData.mileage).trim() !== '',
+                formData.transmission_id,
+                formData.condition_id,
+                formData.car_class_id,
+            ];
+            if (required.some((v) => !v)) {
+                toast.error('Пожалуйста, заполните все обязательные поля');
+                return;
+            }
         }
 
         setSubmitting(true);
@@ -294,7 +344,8 @@ function AddCarContent() {
                                 <Label>Цена <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="number"
-                                    placeholder="Введите цену"
+                                    placeholder="Укажите цену"
+                                    min={0}
                                     value={formData.price_per_day || ''}
                                     onChange={(e) => handleChange('price_per_day', e.target.value)}
                                     className="rounded-xl h-12 bg-slate-50 border-transparent"
@@ -304,7 +355,7 @@ function AddCarContent() {
 
                         <div className="space-y-2">
                             <Label>Категория <span className="text-red-500">*</span></Label>
-                            <Select onValueChange={(val) => handleChange('category_id', val)} value={formData.category_id}>
+                            <Select onValueChange={(val) => handleChange('category_id', val)} value={formData.category_id != null ? String(formData.category_id) : undefined}>
                                 <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                     <SelectValue placeholder="Выберите категорию" />
                                 </SelectTrigger>
@@ -319,7 +370,7 @@ function AddCarContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Марка <span className="text-red-500">*</span></Label>
-                                <Select onValueChange={(val) => handleChange('vehicle_mark_id', val)} value={formData.vehicle_mark_id}>
+                                <Select onValueChange={(val) => handleChange('vehicle_mark_id', val)} value={formData.vehicle_mark_id != null ? String(formData.vehicle_mark_id) : undefined}>
                                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                         <SelectValue placeholder="Выберите марку" />
                                     </SelectTrigger>
@@ -351,7 +402,7 @@ function AddCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Фото</Label>
+                            <Label>Фото <span className="text-red-500">* </span></Label>
                             <div className="space-y-4">
                                 <div className="grid grid-cols-4 gap-4">
                                     {formData.images.map((file: File, index: number) => (
@@ -383,6 +434,7 @@ function AddCarContent() {
                                         </label>
                                     )}
                                 </div>
+                                {photoError && <p className="text-sm text-red-500">{photoError}</p>}
                             </div>
                         </div>
 
@@ -398,7 +450,13 @@ function AddCarContent() {
                             <p className="text-xs text-slate-500 text-right">{formData.description?.length || 0}/250</p>
                         </div>
 
-                        <Button onClick={handleNext} size="lg" className="w-full rounded-xl h-14 text-lg">
+                        <Button
+                            type="button"
+                            onClick={handleNext}
+                            size="lg"
+                            className="w-full rounded-xl h-14 text-lg"
+                            disabled={!isStep1Filled}
+                        >
                             Далее
                         </Button>
                     </div>
@@ -420,7 +478,7 @@ function AddCarContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Цвет</Label>
+                                <Label>Цвет <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('color_id', val)} value={formData.color_id}>
                                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                         <SelectValue placeholder="Введите цвет" />
@@ -439,7 +497,9 @@ function AddCarContent() {
                                 <Label>Год выпуска <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="number"
-                                    placeholder="Введите год"
+                                    placeholder="2026"
+                                    min={1900}
+                                    max={2026}
                                     value={formData.release_year || ''}
                                     onChange={(e) => handleChange('release_year', e.target.value)}
                                     className="rounded-xl h-12 bg-slate-50 border-transparent"
@@ -447,7 +507,7 @@ function AddCarContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Двигатель</Label>
+                                <Label>Двигатель <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('fuel_type_id', val)} value={formData.fuel_type_id}>
                                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                         <SelectValue placeholder="Выберите двигатель" />
@@ -463,7 +523,7 @@ function AddCarContent() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Кузов</Label>
+                                <Label>Кузов <span className="text-red-500">*</span></Label>
                                 <Input
                                     placeholder="Выберите кузов"
                                     value={formData.body_type || ''}
@@ -473,9 +533,9 @@ function AddCarContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Руль</Label>
+                                <Label>Руль <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('steering_id', val)} value={formData.steering_id ? String(formData.steering_id) : undefined}>
-                                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
+                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                         <SelectValue placeholder="Выберите руль" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -489,10 +549,11 @@ function AddCarContent() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Пробег</Label>
+                                <Label>Пробег <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="number"
                                     placeholder="Введите пробег"
+                                    min={0}
                                     value={formData.mileage || ''}
                                     onChange={(e) => handleChange('mileage', e.target.value)}
                                     className="rounded-xl h-12 bg-slate-50 border-transparent"
@@ -500,7 +561,7 @@ function AddCarContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Коробка</Label>
+                                <Label>Коробка <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('transmission_id', val)} value={formData.transmission_id}>
                                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                         <SelectValue placeholder="Выберите коробку" />
@@ -516,7 +577,7 @@ function AddCarContent() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Состояние</Label>
+                                <Label>Состояние <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('condition_id', val)} value={formData.condition_id ? String(formData.condition_id) : undefined}>
                                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                         <SelectValue placeholder="Выберите состояние" />
@@ -530,7 +591,7 @@ function AddCarContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Класс машины</Label>
+                                <Label>Класс машины <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('car_class_id', val)} value={formData.car_class_id ? String(formData.car_class_id) : undefined}>
                                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                         <SelectValue placeholder="Выберите класс" />

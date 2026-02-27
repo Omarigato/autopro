@@ -25,6 +25,14 @@ function FindContent() {
   const [marks, setMarks] = useState<any[]>([]);
   const [models, setModels] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
+  const now = new Date();
+  const defaultRequestedAt = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const getMinDateTime = () => {
+    const n = new Date();
+    return new Date(n.getTime() - n.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+  const [minDateTime] = useState(getMinDateTime);
+
   const [formData, setFormData] = useState<{
     city_id: number | null;
     category_id: number | null;
@@ -38,7 +46,7 @@ function FindContent() {
     category_id: null,
     vehicle_mark_id: null,
     vehicle_model_id: null,
-    requested_at: "",
+    requested_at: defaultRequestedAt,
     message: "",
     images: [],
   });
@@ -122,10 +130,23 @@ function FindContent() {
     }));
   };
 
+  const isFormValid =
+    formData.city_id != null &&
+    formData.category_id != null &&
+    formData.vehicle_mark_id != null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.city_id) {
       toast.error("Выберите город");
+      return;
+    }
+    if (!formData.category_id) {
+      toast.error("Выберите категорию");
+      return;
+    }
+    if (!formData.vehicle_mark_id) {
+      toast.error("Выберите марку");
       return;
     }
     if (formData.message.length > MAX_MESSAGE_LENGTH) {
@@ -149,7 +170,7 @@ function FindContent() {
       const data = res?.data ?? res;
       const count = data?.matching_cars_count ?? data?.matching_cars?.length ?? 0;
       toast.success(`Заявка создана. Найдено объявлений: ${count}`);
-      router.push("/profile/requests?tab=my");
+      router.push("/applications?tab=my");
     } catch (err: any) {
       const msg = err?.message?.ru ?? err?.message ?? "Ошибка при создании заявки";
       toast.error(msg);
@@ -173,7 +194,7 @@ function FindContent() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
-          <Label>Город *</Label>
+          <Label>Город <span className="text-red-500">*</span></Label>
           <Select
             value={formData.city_id != null ? String(formData.city_id) : ""}
             onValueChange={(v) => handleChange("city_id", v ? Number(v) : null)}
@@ -191,13 +212,14 @@ function FindContent() {
         </div>
 
         <div className="space-y-2">
-          <Label>Категория</Label>
+          <Label>Категория <span className="text-red-500">*</span></Label>
           <Select
             value={formData.category_id != null ? String(formData.category_id) : ""}
             onValueChange={(v) => handleChange("category_id", v ? Number(v) : null)}
+            required
           >
             <SelectTrigger>
-              <SelectValue placeholder="Любая" />
+              <SelectValue placeholder="Выберите категорию" />
             </SelectTrigger>
             <SelectContent>
               {categories.map((c: any) => (
@@ -209,13 +231,14 @@ function FindContent() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Марка</Label>
+            <Label>Марка <span className="text-red-500">*</span></Label>
             <Select
               value={formData.vehicle_mark_id != null ? String(formData.vehicle_mark_id) : ""}
               onValueChange={(v) => handleChange("vehicle_mark_id", v ? Number(v) : null)}
+              required
             >
               <SelectTrigger>
-                <SelectValue placeholder="Не выбрано" />
+                <SelectValue placeholder="Выберите марку" />
               </SelectTrigger>
               <SelectContent>
                 {marks.map((m: any) => (
@@ -247,6 +270,7 @@ function FindContent() {
           <Label>Дата и время</Label>
           <Input
             type="datetime-local"
+            min={minDateTime}
             value={formData.requested_at}
             onChange={(e) => handleChange("requested_at", e.target.value)}
           />
@@ -288,11 +312,11 @@ function FindContent() {
         </div>
 
         <div className="flex gap-4 pt-4">
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || !isFormValid}>
             {loading ? "Отправка…" : "Отправить заявку"}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link href="/profile/requests">Мои заявки</Link>
+            <Link href="/applications">Мои заявки</Link>
           </Button>
         </div>
       </form>

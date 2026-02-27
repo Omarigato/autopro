@@ -19,8 +19,9 @@ export default function HomePage() {
           <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary/20 to-transparent" />
         </div>
 
-        <div className="container relative z-10 grid lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
+        <div className="container relative z-10 grid gap-6 lg:grid-cols-2 lg:grid-rows-[auto_auto] lg:gap-x-12 lg:gap-y-4 lg:items-center">
+          {/* Мобильная: 1. Текст | Десктоп: левая колонка, сверху */}
+          <div className="space-y-6 order-1 lg:col-start-1 lg:row-start-1">
             <h1 className="text-4xl lg:text-6xl font-black tracking-tight leading-[1.1]">
               Аренда авто <br className="hidden lg:block" />
               <span className="text-zinc-400">нового поколения</span>
@@ -28,21 +29,11 @@ export default function HomePage() {
             <p className="text-lg text-zinc-400 font-medium max-w-lg">
               Быстро, безопасно и без лишних документов. Выберите идеальный автомобиль для своих поездок прямо сейчас.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border-none" asChild>
-                <Link href="/find">Найти авто</Link>
-              </Button>
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-zinc-700 bg-transparent text-zinc-400 hover:bg-white hover:text-zinc-900 transition-colors" asChild>
-                <Link href="/add">Сдать своё авто</Link>
-              </Button>
-            </div>
           </div>
 
-          <div className="relative w-full h-[250px] sm:h-[300px] lg:h-[400px] flex items-center justify-center">
-            {/* Эффект свечения на заднем плане, чтобы выделить авто */}
+          {/* Мобильная: 2. Машина | Десктоп: правая колонка на всю высоту */}
+          <div className="relative w-full h-[250px] sm:h-[300px] lg:h-[400px] flex items-center justify-center order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[70%] bg-zinc-400/10 rounded-full blur-[100px] pointer-events-none" />
-
-            {/* Само изображение машины с тенью */}
             <Image
               src="/car.png"
               alt="Premium Car Rental"
@@ -51,6 +42,16 @@ export default function HomePage() {
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
             />
+          </div>
+
+          {/* Мобильная: 3. Кнопки | Десктоп: левая колонка, под текстом */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-4 order-3 lg:col-start-1 lg:row-start-2 lg:pt-0">
+            <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border-none" asChild>
+              <Link href="/find">Найти авто</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-zinc-700 bg-transparent text-zinc-400 hover:bg-white hover:text-zinc-900 transition-colors" asChild>
+              <Link href="/add">Сдать своё авто</Link>
+            </Button>
           </div>
         </div>
       </section>
