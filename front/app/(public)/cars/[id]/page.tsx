@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 import {
     ChevronLeft,
     Heart,
@@ -24,7 +31,9 @@ import {
     Gauge,
     ClipboardList,
     Palette,
-    Star
+    Star,
+    Send,
+    Copy
 } from "lucide-react";
 
 export default function CarDetailsPage() {
@@ -36,6 +45,7 @@ export default function CarDetailsPage() {
     const [mainImage, setMainImage] = useState<string | null>(null);
     const [isLiked, setIsLiked] = useState(false);
     const [isApplying, setIsApplying] = useState(false);
+    const [shareOpen, setShareOpen] = useState(false);
 
     // Track view
     useEffect(() => {
@@ -82,15 +92,74 @@ export default function CarDetailsPage() {
         } catch (e) { }
     };
 
-    const handleShare = () => {
-        if (navigator.share) {
-            navigator.share({
-                title: car?.name || "Автомобиль",
-                url: window.location.href,
-            }).catch(console.error);
-        } else {
-            navigator.clipboard.writeText(window.location.href);
-            alert("Ссылка скопирована!");
+    const handleShare = async () => {
+        const url = typeof window !== "undefined" ? window.location.href : "";
+        const title = car?.name || "Автомобиль";
+
+        // 1) Пытаемся вызвать системную отправку (share sheet)
+        if (typeof navigator !== "undefined" && typeof (navigator as any).share === "function") {
+            try {
+                await (navigator as any).share({
+                    title,
+                    text: title,
+                    url,
+                });
+                return;
+            } catch (err: any) {
+                // Пользователь закрыл — не показываем ошибку
+                if (err?.name === "AbortError") return;
+                // Иначе падаем в fallback-меню
+            }
+        }
+
+        // 2) Fallback: показываем удобное меню вариантов отправки
+        if (url) {
+            setShareOpen(true);
+            return;
+        }
+
+        toast.error("Не удалось получить ссылку для отправки");
+    };
+
+    const copyLink = async () => {
+        try {
+            const url = typeof window !== "undefined" ? window.location.href : "";
+            if (!url) {
+                toast.error("Не удалось получить ссылку");
+                return;
+            }
+
+            if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(url);
+                toast.success("Ссылка скопирована в буфер обмена");
+                return;
+            }
+
+            if (typeof document !== "undefined") {
+                const textarea = document.createElement("textarea");
+                textarea.value = url;
+                textarea.style.position = "fixed";
+                textarea.style.left = "-9999px";
+                textarea.style.top = "0";
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    const ok = document.execCommand("copy");
+                    if (ok) {
+                        toast.success("Ссылка скопирована в буфер обмена");
+                    } else {
+                        toast.info(url);
+                    }
+                } finally {
+                    document.body.removeChild(textarea);
+                }
+                return;
+            }
+
+            toast.info(url);
+        } catch {
+            toast.error("Не удалось скопировать ссылку");
         }
     };
 
@@ -147,6 +216,74 @@ export default function CarDetailsPage() {
 
     return (
         <div className="bg-slate-50 min-h-screen pb-20">
+            {/* Share fallback sheet (если Web Share API недоступен) */}
+            <Sheet open={shareOpen} onOpenChange={setShareOpen}>
+                <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh] overflow-y-auto p-0">
+                    <SheetHeader className="p-4 pr-12 border-b border-slate-100">
+                        <SheetTitle className="text-left text-lg font-black">Поделиться</SheetTitle>
+                    </SheetHeader>
+                    <div className="p-4 space-y-3">
+                        <a
+                            className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-800 hover:bg-slate-50 touch-manipulation"
+                            href={`https://wa.me/?text=${encodeURIComponent(`${car?.name || "Автомобиль"} ${typeof window !== "undefined" ? window.location.href : ""}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#25D366]/10 text-[#25D366]">
+                                <MessageCircle className="h-4 w-4" />
+                            </span>
+                            <span className="truncate">WhatsApp</span>
+                        </a>
+                        <a
+                            className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-800 hover:bg-slate-50 touch-manipulation"
+                            href={`https://t.me/share/url?url=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}&text=${encodeURIComponent(car?.name || "Автомобиль")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/10 text-sky-500">
+                                <Send className="h-4 w-4" />
+                            </span>
+                            <span className="truncate">Telegram</span>
+                        </a>
+                        <a
+                            className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-800 hover:bg-slate-50 touch-manipulation"
+                            href={`mailto:?subject=${encodeURIComponent(car?.name || "Автомобиль")}&body=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}`}
+                        >
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                                <ClipboardList className="h-4 w-4" />
+                            </span>
+                            <span className="truncate">Email</span>
+                        </a>
+                        <a
+                            className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-800 hover:bg-slate-50 touch-manipulation"
+                            href={`sms:?&body=${encodeURIComponent(`${car?.name || "Автомобиль"} ${typeof window !== "undefined" ? window.location.href : ""}`)}`}
+                        >
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                                <MessageCircle className="h-4 w-4" />
+                            </span>
+                            <span className="truncate">SMS</span>
+                        </a>
+                        <button
+                            type="button"
+                            className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-800 hover:bg-slate-50 touch-manipulation"
+                            onClick={copyLink}
+                        >
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                                <Copy className="h-4 w-4" />
+                            </span>
+                            <span className="truncate">Скопировать ссылку</span>
+                        </button>
+                        <Button
+                            variant="outline"
+                            className="w-full h-12 rounded-2xl font-bold"
+                            onClick={() => setShareOpen(false)}
+                        >
+                            Закрыть
+                        </Button>
+                    </div>
+                </SheetContent>
+            </Sheet>
+
             {/* Top Bar */}
             <div className="bg-white border-b mb-8 sticky top-0 z-10">
                 <div className="container flex h-16 items-center justify-between">

@@ -150,10 +150,20 @@ function EditCarContent() {
     };
 
     const handleChange = (name: string, value: any) => {
-        setFormData({ ...formData, [name]: value });
+        if (name === 'price_per_day') {
+            const num = typeof value === 'string' ? parseInt(value, 10) : value;
+            if (!isNaN(num) && num < 0) return;
+        }
+        if (name === 'mileage' || name === 'release_year') {
+            const num = typeof value === 'string' ? parseInt(value, 10) : value;
+            if (!isNaN(num) && num < 0) return;
+            if (name === 'release_year' && !isNaN(num) && num > 2026) return;
+        }
         if (name === 'vehicle_mark_id') {
             loadModels(value);
             setFormData((prev: any) => ({ ...prev, vehicle_mark_id: value, vehicle_model_id: "" }));
+        } else {
+            setFormData({ ...formData, [name]: value });
         }
     };
 
@@ -196,9 +206,34 @@ function EditCarContent() {
     };
 
     const handleSubmit = async (saveAsDraft: boolean = false) => {
-        if (!formData.name || !formData.price_per_day || !formData.category_id || !formData.vehicle_mark_id) {
-            toast.error('Пожалуйста, заполните основные поля (Заголовок, Цена, Категория, Марка)');
+        const hasAnyImage = (existingImages.length + (formData.images?.length ?? 0)) > 0;
+
+        if (!formData.name?.trim() || formData.price_per_day == null || formData.price_per_day === '' || !formData.category_id || !formData.vehicle_mark_id) {
+            toast.error('Заполните основные поля: Заголовок, Цена, Категория, Марка');
             return;
+        }
+        if (!hasAnyImage) {
+            toast.error('Добавьте хотя бы одно фото');
+            return;
+        }
+
+        if (!saveAsDraft) {
+            const required = [
+                formData.city_id,
+                formData.release_year,
+                formData.color_id,
+                formData.fuel_type_id,
+                formData.body_type != null && String(formData.body_type).trim() !== '',
+                formData.steering_id,
+                formData.mileage != null && String(formData.mileage).trim() !== '',
+                formData.transmission_id,
+                formData.condition_id,
+                formData.car_class_id,
+            ];
+            if (required.some((v) => !v)) {
+                toast.error('Заполните все обязательные поля (Город, Цвет, Год, Двигатель, Кузов, Руль, Пробег, Коробка, Состояние, Класс)');
+                return;
+            }
         }
 
         setSubmitting(true);
@@ -246,20 +281,44 @@ function EditCarContent() {
     if (!user) return null;
 
     return (
-        <div className="container max-w-4xl py-12">
-            <div className="mb-8 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
+        <div className="container max-w-4xl px-4 sm:px-0 py-8 sm:py-12">
+            <div className="mb-4 sm:mb-8 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => router.back()}
+                        className="rounded-full shrink-0"
+                    >
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-3xl font-black">Редактирование</h1>
+                    <h1 className="text-2xl sm:text-3xl font-black truncate">
+                        Редактирование
+                    </h1>
                 </div>
-                <Button variant="outline" className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 font-bold" onClick={handleDeleteAd} disabled={isDeleting}>
+                <Button
+                    variant="outline"
+                    className="hidden sm:inline-flex text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 font-bold"
+                    onClick={handleDeleteAd}
+                    disabled={isDeleting}
+                >
                     <Trash2 className="w-4 h-4 mr-2" /> Удалить
                 </Button>
             </div>
 
-            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 space-y-8">
+            {/* Мобилка: кнопка удаления на всю ширину под заголовком */}
+            <div className="mb-4 sm:hidden">
+                <Button
+                    variant="outline"
+                    className="w-full text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 font-bold rounded-xl"
+                    onClick={handleDeleteAd}
+                    disabled={isDeleting}
+                >
+                    <Trash2 className="w-4 h-4 mr-2" /> Удалить
+                </Button>
+            </div>
+
+            <div className="bg-white p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 space-y-8">
 
                 {/* 1. Основное */}
                 <div className="space-y-6">
@@ -356,7 +415,7 @@ function EditCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Цвет</Label>
+                            <Label>Цвет <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('color_id', val)} value={formData.color_id}>
                                 <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                     <SelectValue placeholder="Укажите цвет" />
@@ -381,7 +440,7 @@ function EditCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Двигатель</Label>
+                            <Label>Двигатель <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('fuel_type_id', val)} value={formData.fuel_type_id}>
                                 <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                     <SelectValue placeholder="Выберите двигатель" />
@@ -395,7 +454,7 @@ function EditCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Кузов</Label>
+                            <Label>Кузов <span className="text-red-500">*</span></Label>
                             <Input
                                 placeholder="Укажите кузов"
                                 value={formData.body_type || ''}
@@ -405,7 +464,7 @@ function EditCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Руль</Label>
+                            <Label>Руль <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('steering_id', val)} value={formData.steering_id}>
                                 <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                     <SelectValue placeholder="Выберите руль" />
@@ -419,7 +478,7 @@ function EditCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Пробег</Label>
+                            <Label>Пробег <span className="text-red-500">*</span></Label>
                             <Input
                                 type="number"
                                 placeholder="Пробег"
@@ -430,7 +489,7 @@ function EditCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Коробка</Label>
+                            <Label>Коробка <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('transmission_id', val)} value={formData.transmission_id}>
                                 <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                     <SelectValue placeholder="Выберите коробку" />
@@ -444,7 +503,7 @@ function EditCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Состояние</Label>
+                            <Label>Состояние <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('condition_id', val)} value={formData.condition_id}>
                                 <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                     <SelectValue placeholder="Выберите состояние" />
@@ -458,7 +517,7 @@ function EditCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Класс машины</Label>
+                            <Label>Класс машины <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('car_class_id', val)} value={formData.car_class_id}>
                                 <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
                                     <SelectValue placeholder="Выберите класс" />
