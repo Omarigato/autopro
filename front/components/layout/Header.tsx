@@ -19,11 +19,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuItem as DropdownMenuItemBase,
+  DropdownMenuLabel as DropdownMenuLabelBase,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+const DropdownMenuItem = DropdownMenuItemBase as React.ComponentType<React.PropsWithChildren<Record<string, unknown>>>;
+const DropdownMenuLabel = DropdownMenuLabelBase as React.ComponentType<React.PropsWithChildren<Record<string, unknown>>>;
 import { useAppState } from "@/lib/store";
 import { apiClient } from "@/lib/api";
 import { usePublicSettings } from "@/hooks/usePublicSettings";
@@ -101,8 +104,6 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
-
-
           <NavigationMenu>
             <NavigationMenuList>
               {routes.map((route) => (
@@ -148,7 +149,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9 border border-border">
-                    <AvatarImage src={user.avatar_url || ""} alt={user.name || ""} />
+                    <AvatarImage src={user.avatar_url ?? ""} alt={user.name ?? ""} />
                     <AvatarFallback>{user.name?.[0] || "U"}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -192,14 +193,34 @@ export function Header() {
             </div>
           )}
         </div>
-
-        {/* Mobile Menu Toggle */}
-        <button
-          className="md:hidden p-2 text-foreground"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          {isMobileMenuOpen ? <X /> : <Menu />}
-        </button>
+        {/* Mobile: Location + Menu Toggle */}
+        <div className="md:hidden flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground rounded-xl border-slate-200 h-9 text-sm">
+                <MapPin className="h-4 w-4 shrink-0" />
+                {city}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
+              {cities.map((c) => (
+                <DropdownMenuItem
+                  key={c.id}
+                  onClick={() => handleCitySelect(c)}
+                  className={city === c.name ? "bg-accent" : ""}
+                >
+                  {c.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <button
+            className="p-2 text-foreground"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}

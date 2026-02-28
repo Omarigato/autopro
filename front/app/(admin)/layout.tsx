@@ -1,6 +1,6 @@
 "use client";
 
-import { Car, LayoutDashboard, Users, FileText, Settings, LogOut, CreditCard, BookOpen, Package, Menu, type LucideIcon } from "lucide-react";
+import { Car, LayoutDashboard, Users, FileText, Settings, LogOut, CreditCard, BookOpen, Package, Menu, KeyRound, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -30,6 +30,7 @@ const nav = [
   navLink("/admin-supersecret/payments", "Платежи", CreditCard),
   navLink("/admin-supersecret/subscriptions", "Подписки", Package),
   navLink("/admin-supersecret/dictionaries", "Словари", BookOpen),
+  navLink("/admin-supersecret/otp", "OTP коды", KeyRound),
   navLink("/admin-supersecret/settings", "Настройки", Settings),
 ];
 

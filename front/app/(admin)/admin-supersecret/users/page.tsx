@@ -323,7 +323,7 @@ export default function AdminUsersPage() {
                 </div>
                 <div className="flex justify-between gap-2">
                   <span className="text-slate-500 shrink-0">Активен</span>
-                  <span className={u.is_active ? "text-green-600 font-medium" : "text-slate-400"}>
+                  <span className={u.is_active ? "text-blue-600 font-medium" : "text-red-400"}>
                     {u.is_active ? "Да" : "Нет"}
                   </span>
                 </div>
