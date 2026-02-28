@@ -12,7 +12,7 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle
 } from "@/components/ui/navigation-menu";
-import { Car, User, Menu, X, MapPin, FileText } from "lucide-react";
+import { Car, User, Menu, X, MapPin, FileText, LayoutDashboard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -232,6 +232,11 @@ export function Header() {
                     <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">+{applicationsCount}</span>
                   )}
                 </Link>
+                {user.role === "admin" && (
+                  <Link href="/admin-supersecret" className="flex items-center gap-2 px-4 py-2 text-sm font-medium hover:bg-accent rounded-md" onClick={() => setIsMobileMenuOpen(false)}>
+                    <LayoutDashboard size={16} /> Админ панель
+                  </Link>
+                )}
                 <button onClick={() => logout()} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md text-left">
                   Выйти
                 </button>

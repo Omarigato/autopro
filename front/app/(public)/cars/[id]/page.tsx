@@ -3,6 +3,7 @@
 import { useCar } from "@/hooks/useCars";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -153,7 +154,9 @@ export default function CarDetailsPage() {
                         >
                             <ChevronLeft className="mr-1 h-4 w-4" /> Назад
                         </Button>
-                        <span className="text-sm font-medium text-slate-400">Объявление</span>
+                        <Link href={`/cars/${id}`} className="text-sm font-medium text-slate-400 hover:text-slate-600 hover:underline">
+                            Объявление
+                        </Link>
                     </div>
                     <div className="flex items-center gap-2">
                         <Button

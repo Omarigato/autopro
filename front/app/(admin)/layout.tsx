@@ -14,6 +14,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navLink = (href: string, label: string, Icon: LucideIcon) => ({
   href,
@@ -57,7 +58,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, logout, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -66,10 +67,9 @@ export default function AdminLayout({
     }
   }, [user, authLoading, router]);
 
-  const handleLogout = () => {
-    logout();
+  const goToMain = () => {
     setMobileOpen(false);
-    router.push("/");
+    window.location.href = "/";
   };
 
   if (authLoading || !user || user.role !== "admin") {
@@ -80,23 +80,24 @@ export default function AdminLayout({
     <div className="min-h-screen flex">
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-zinc-900 text-white hidden md:flex flex-col flex-shrink-0">
-        <div className="p-6 flex items-center gap-2 font-bold text-xl border-b border-zinc-800">
+        <Link href="/" className="p-6 flex items-center gap-2 font-bold text-xl border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors">
           <Image
             src="/logo-dark.png"
-            alt="AutoPro Admin"
-            width={140}
-            height={40}
-            className="h-8 w-auto"
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 object-contain"
             priority
           />
-        </div>
+          <span className="text-white">AutoPro</span>
+        </Link>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <NavLinks />
         </nav>
         <div className="p-4 border-t border-zinc-800">
           <button
             type="button"
-            onClick={handleLogout}
+            onClick={goToMain}
             className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors"
           >
             <LogOut size={20} /> Выйти
@@ -116,15 +117,18 @@ export default function AdminLayout({
               </SheetTrigger>
               <SheetContent side="left" className="w-[280px] max-w-[85vw] p-0 bg-zinc-900 text-white border-zinc-800">
                 <SheetHeader className="p-4 border-b border-zinc-800 text-left">
-                  <SheetTitle className="flex items-center gap-2 font-bold text-white">
-                    <Image
-                      src="/logo-dark.png"
-                      alt="AutoPro Admin"
-                      width={140}
-                      height={40}
-                      className="h-8 w-auto"
-                      priority
-                    />
+                  <SheetTitle asChild>
+                    <Link href="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 font-bold text-white hover:opacity-90">
+                      <Image
+                        src="/logo-dark.png"
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="h-8 w-8 object-contain"
+                        priority
+                      />
+                      <span>AutoPro</span>
+                    </Link>
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="p-4 space-y-1">
@@ -133,7 +137,7 @@ export default function AdminLayout({
                 <div className="p-4 border-t border-zinc-800">
                   <button
                     type="button"
-                    onClick={handleLogout}
+                    onClick={goToMain}
                     className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors"
                   >
                     <LogOut size={20} /> Выйти
@@ -144,8 +148,15 @@ export default function AdminLayout({
             <h1 className="font-bold text-base sm:text-xl truncate">Панель управления</h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <span className="text-xs sm:text-sm font-medium text-slate-600 hidden sm:inline">Администратор</span>
-            <div className="w-8 h-8 rounded-full bg-zinc-200" />
+            <span className="text-xs sm:text-sm font-medium text-slate-600 hidden sm:inline truncate max-w-[180px]">
+              {user?.name || "Администратор"}
+            </span>
+            <Avatar className="h-8 w-8 border border-slate-200">
+              <AvatarImage src={user?.avatar_url || ""} alt={user?.name || ""} />
+              <AvatarFallback className="bg-zinc-200 text-slate-600 text-xs">
+                {user?.name?.[0]?.toUpperCase() || "A"}
+              </AvatarFallback>
+            </Avatar>
           </div>
         </header>
         <div className="p-4 sm:p-6 lg:p-8 overflow-auto">

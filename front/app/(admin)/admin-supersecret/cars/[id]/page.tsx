@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { CheckCircle, XCircle } from "lucide-react";
 
 export default function AdminCarDetailPage() {
   const params = useParams();
@@ -51,32 +51,25 @@ export default function AdminCarDetailPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            className="bg-green-600 hover:bg-green-700 text-white"
-            onClick={approve}
-          >
-            Одобрить
-          </Button>
-          <Button
-            className="bg-red-600 hover:bg-red-700 text-white"
-            variant="destructive"
-            onClick={reject}
-          >
-            Отклонить
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <h3 className="font-semibold">Ссылки</h3>
-        <div className="flex flex-col gap-2 text-sm">
-          <Link
-            href={`/cars/${car.id}`}
-            target="_blank"
-            className="text-primary hover:underline"
-          >
-            Открыть публичную страницу объявления
-          </Link>
+          {car.status !== "ACTIVE" && car.status !== "PUBLISHED" && (
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white gap-2"
+              onClick={approve}
+            >
+              <CheckCircle className="h-4 w-4" />
+              Одобрить
+            </Button>
+          )}
+          {car.status !== "REJECT" && car.status !== "REJECTED" && (
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white gap-2"
+              variant="destructive"
+              onClick={reject}
+            >
+              <XCircle className="h-4 w-4" />
+              Отклонить
+            </Button>
+          )}
         </div>
       </div>
 

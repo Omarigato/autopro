@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminCarsPage() {
@@ -86,7 +86,7 @@ export default function AdminCarsPage() {
           paginatedCars.map((c) => (
             <div key={c.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3">
               <div className="flex items-start justify-between gap-2">
-                <Link href={`/dashboard/cars/${c.id}`} className="text-base font-bold text-slate-900 truncate hover:underline">
+                <Link href={`/cars/${c.id}`} className="text-base font-bold text-slate-900 truncate hover:underline">
                   {c.name}
                 </Link>
                 <span className="text-xs font-bold text-slate-400 shrink-0">#{c.id}</span>
@@ -97,15 +97,18 @@ export default function AdminCarsPage() {
                 <span className="text-slate-500 text-xs truncate">Автор: {c.author || "—"}</span>
               </div>
               <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
-                <Button size="sm" className="flex-1 min-w-0 h-10 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold" onClick={() => approve(c.id)}>
-                  Одобрить
-                </Button>
-                <Button size="sm" className="flex-1 min-w-0 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold" onClick={() => reject(c.id)}>
-                  Отклонить
-                </Button>
-                <a href={`/cars/${c.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center h-10 px-4 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50">
-                  Открыть
-                </a>
+                {c.status !== "ACTIVE" && c.status !== "PUBLISHED" && (
+                  <Button size="sm" className="flex-1 min-w-0 h-10 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold gap-1.5" onClick={() => approve(c.id)}>
+                    <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                    Одобрить
+                  </Button>
+                )}
+                {c.status !== "REJECT" && c.status !== "REJECTED" && (
+                  <Button size="sm" className="flex-1 min-w-0 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold gap-1.5" onClick={() => reject(c.id)}>
+                    <XCircle className="h-3.5 w-3.5 shrink-0" />
+                    Отклонить
+                  </Button>
+                )}
               </div>
             </div>
           ))
@@ -131,17 +134,26 @@ export default function AdminCarsPage() {
                 <tr key={c.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <td className="p-4 text-slate-600 font-medium">{c.id}</td>
                   <td className="p-4">
-                    <Link href={`/dashboard/cars/${c.id}`} className="text-slate-900 font-medium hover:underline">{c.name}</Link>
+                    <Link href={`/cars/${c.id}`} className="text-slate-900 font-medium hover:underline">{c.name}</Link>
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${statusClass(c.status)}`}>{c.status}</span>
                   </td>
                   <td className="p-4 text-slate-700">{c.views ?? 0}</td>
                   <td className="p-4 text-slate-700">{c.author || "—"}</td>
-                  <td className="p-4 flex gap-2">
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white rounded-xl" onClick={() => approve(c.id)}>Одобрить</Button>
-                    <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white rounded-xl" variant="destructive" onClick={() => reject(c.id)}>Отклонить</Button>
-                    <a href={`/cars/${c.id}`} target="_blank" rel="noopener noreferrer" className="text-slate-700 text-xs font-semibold hover:underline">Открыть</a>
+                  <td className="p-4 flex gap-2 flex-wrap">
+                    {c.status !== "ACTIVE" && c.status !== "PUBLISHED" && (
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white rounded-xl gap-1.5" onClick={() => approve(c.id)}>
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        Одобрить
+                      </Button>
+                    )}
+                    {c.status !== "REJECT" && c.status !== "REJECTED" && (
+                      <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white rounded-xl gap-1.5" variant="destructive" onClick={() => reject(c.id)}>
+                        <XCircle className="h-3.5 w-3.5" />
+                        Отклонить
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}
