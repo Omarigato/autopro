@@ -140,6 +140,11 @@ export default function CarDetailsPage() {
         { label: 'Пробег', value: car.mileage ? `${car.mileage} км` : null, icon: Gauge },
     ].filter(spec => spec.value);
 
+    // DEBUG AUTH
+    if (typeof window !== "undefined") {
+        console.log("DEBUG AUTH:", { userId: user?.id, userRole: user?.role, carAuthorId: car.author_id });
+    }
+
     return (
         <div className="bg-slate-50 min-h-screen pb-20">
             {/* Top Bar */}
@@ -251,26 +256,42 @@ export default function CarDetailsPage() {
                     {/* Right Column: Details & Actions */}
                     <div className="space-y-8">
                         {/* Title & Price */}
-                        <div className="flex justify-between items-start bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                            <div>
-                                <h1 className="text-2xl font-bold text-slate-900 leading-tight">
-                                    {car.name} {car.release_year ? `${car.release_year} г.` : ''}
-                                </h1>
-                            </div>
-                            <div className="text-right pl-4">
-                                <div className="text-2xl font-black text-primary whitespace-nowrap">
-                                    {car.price_per_day} ₸ <span className="text-sm font-medium text-slate-400 block">/ день</span>
+                        <div className="flex flex-col bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-slate-900 leading-tight">
+                                        {car.name} {car.release_year ? `${car.release_year} г.` : ''}
+                                    </h1>
                                 </div>
+                                <div className="text-right pl-4">
+                                    <div className="text-2xl font-black text-primary whitespace-nowrap">
+                                        {car.price_per_day} ₸ <span className="text-sm font-medium text-slate-400 block">/ день</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-slate-50 flex flex-wrap gap-2 text-sm text-slate-600 font-medium">
+                                {[
+                                    car.city || 'Алматы',
+                                    car.mark,
+                                    car.model,
+                                    car.release_year,
+                                    car.color
+                                ].filter(Boolean).join(' • ')}
                             </div>
                         </div>
 
                         {/* Specs Table */}
                         {specs.length > 0 && (
-                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                                <h3 className="text-lg font-bold text-slate-900 mb-4">Характеристики</h3>
-                                <div className="space-y-3">
+                            <details className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 group [&_summary::-webkit-details-marker]:hidden">
+                                <summary className="flex items-center justify-between cursor-pointer list-none font-bold text-slate-900 text-lg">
+                                    Характеристики
+                                    <span className="transition group-open:rotate-180">
+                                        <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                                    </span>
+                                </summary>
+                                <div className="space-y-3 mt-4">
                                     {specs.map((spec: any, idx) => (
-                                        <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0 group">
+                                        <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0 hover-group">
                                             <div className="flex items-center gap-3 text-slate-500">
                                                 <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
                                                     <spec.icon className="h-4 w-4 group-hover:text-blue-500 transition-colors" />
@@ -281,52 +302,73 @@ export default function CarDetailsPage() {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            </details>
                         )}
 
                         {/* Action Buttons Container */}
                         <div className="bg-white p-6 rounded-3xl shadow-xl shadow-blue-500/5 ring-1 ring-slate-100 flex flex-col gap-4 sticky top-24">
-                            <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                                <Phone className="w-5 h-5 text-slate-400" /> Контакты владельца
-                            </h3>
-                            {car.author?.phone_number ? (
+                            {Number(user?.id) === Number(car.author_id) || user?.role === 'admin' ? (
                                 <>
-                                    <Button asChild className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white h-12 rounded-xl font-bold shadow-md shadow-green-500/20">
-                                        <a href={`https://wa.me/${car.author.phone_number.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
-                                            Написать в WhatsApp
-                                        </a>
-                                    </Button>
-                                    <Button asChild variant="outline" className="w-full border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 h-12 rounded-xl font-bold transition-all">
-                                        <a href={`tel:${car.author.phone_number}`}>
-                                            Позвонить {car.author.phone_number}
-                                        </a>
+                                    <h3 className="font-bold text-slate-900 flex items-center justify-between">
+                                        <span>Мое объявление</span>
+                                        <span className={`text-xs px-2 py-1 rounded-md font-bold text-white ${car.status === 'PUBLISHED' ? 'bg-green-500' : car.status === 'ACTIVE' ? 'bg-green-500' : 'bg-amber-500'}`}>
+                                            {car.status === "PUBLISHED" ? "Активно" : car.status === "ACTIVE" ? "Активно" : car.status === "DRAFT" ? "Черновик" : "Модерация"}
+                                        </span>
+                                    </h3>
+                                    <Button asChild className="w-full bg-slate-800 hover:bg-slate-700 text-white h-12 rounded-xl font-bold shadow-md shadow-slate-500/20">
+                                        <Link href={`/cars/${car.id}/edit`}>
+                                            Редактировать
+                                        </Link>
                                     </Button>
                                 </>
                             ) : (
-                                <p className="text-center text-sm font-medium text-slate-500 py-3 bg-slate-50 rounded-xl">
-                                    Автор не указал контакты
-                                </p>
+                                <>
+                                    <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                        <Phone className="w-5 h-5 text-slate-400" /> Контакты владельца
+                                    </h3>
+                                    {car.author?.name && (
+                                        <p className="text-sm font-semibold text-slate-700 mb-2">{car.author.name}</p>
+                                    )}
+                                    {car.author?.phone_number ? (
+                                        <>
+                                            <Button asChild className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white h-12 rounded-xl font-bold shadow-md shadow-green-500/20">
+                                                <a href={`https://wa.me/${car.author.phone_number.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
+                                                    Написать в WhatsApp
+                                                </a>
+                                            </Button>
+                                            <Button asChild variant="outline" className="w-full border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 h-12 rounded-xl font-bold transition-all">
+                                                <a href={`tel:${car.author.phone_number}`}>
+                                                    Позвонить {car.author.phone_number}
+                                                </a>
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <p className="text-center text-sm font-medium text-slate-500 py-3 bg-slate-50 rounded-xl">
+                                            Автор не указал контакты
+                                        </p>
+                                    )}
+
+                                    <div className="relative py-2">
+                                        <div className="absolute inset-0 flex items-center">
+                                            <span className="w-full border-t border-slate-100" />
+                                        </div>
+                                        <div className="relative flex justify-center text-xs uppercase">
+                                            <span className="bg-white px-2 text-slate-400 font-semibold">Или</span>
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        onClick={handleApply}
+                                        disabled={isApplying}
+                                        className="w-full bg-primary hover:bg-primary/90 text-white h-12 rounded-xl font-bold shadow-md shadow-primary/20"
+                                    >
+                                        {isApplying ? "Отправка..." : "Подать заявку онлайн"}
+                                    </Button>
+                                    <p className="text-xs text-center text-slate-400 px-4">
+                                        Заявка сразу поступит владельцу, и он сам выйдет с вами на связь
+                                    </p>
+                                </>
                             )}
-
-                            <div className="relative py-2">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-slate-100" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-white px-2 text-slate-400 font-semibold">Или</span>
-                                </div>
-                            </div>
-
-                            <Button
-                                onClick={handleApply}
-                                disabled={isApplying}
-                                className="w-full bg-primary hover:bg-primary/90 text-white h-12 rounded-xl font-bold shadow-md shadow-primary/20"
-                            >
-                                {isApplying ? "Отправка..." : "Подать заявку онлайн"}
-                            </Button>
-                            <p className="text-xs text-center text-slate-400 px-4">
-                                Заявка сразу поступит владельцу, и он сам выйдет с вами на связь
-                            </p>
                         </div>
                     </div>
                 </div>

@@ -156,12 +156,23 @@ async def create_application(
             owner_dict[owner.id] = owner
     
     for owner in owner_dict.values():
-        text = "Новая заявка по вашему объявлению. Зайдите в приложение (вкладка 'Заявки'), чтобы посмотреть подробности."
-        subject = "Новая заявка AutoPro"
+        text_whatsapp = (
+            f"🔔 *Уведомление AutoPro*\n\n"
+            f"Поступила новая заявка на авто, которая может вас заинтересовать!\n\n"
+            f"👉 Зайдите в приложение (вкладка 'Заявки'), чтобы посмотреть подробности и предложить свой автомобиль."
+        )
+        text_email = (
+            f"Здравствуйте!\n\n"
+            f"В приложении AutoPro появилась новая заявка на поиск автомобиля, которая совпадает с вашими настройками или объявлениями.\n\n"
+            f"Зайдите в приложение (вкладка 'Заявки'), чтобы предложить свой автомобиль!\n\n"
+            f"С уважением,\nКоманда AutoPro"
+        )
+        subject_email = "🔔 Новая заявка на поиск авто (AutoPro)"
+        
         if getattr(owner, 'notify_by_email', True) and owner.email:
-            background_tasks.add_task(email_service.send_notification, email=owner.email, subject=subject, text=text)
+            background_tasks.add_task(email_service.send_notification, email=owner.email, subject=subject_email, text=text_email)
         if getattr(owner, 'notify_by_whatsapp', True) and owner.phone_number:
-            background_tasks.add_task(whatsapp_service.send_notification, phone_number=owner.phone_number, text=text)
+            background_tasks.add_task(whatsapp_service.send_notification, phone_number=owner.phone_number, text=text_whatsapp)
 
     lang = getattr(request.state, "lang", "ru")
     payload = _application_payload(app, lang, include_cars=True, cars_list=matching_cars)
@@ -296,8 +307,13 @@ def list_other_applications(
         q = q.filter(~Application.id.in_(subq))
 
     apps = q.order_by(Application.create_date.desc()).limit(100).all()
+    has_subscription = get_active_subscription_for_owner(db, current_user.id) is not None
     lang = getattr(request.state, "lang", "ru")
-    result = [_application_payload(app, lang) for app in apps]
+    result = []
+    for app in apps:
+        payload = _application_payload(app, lang)
+        payload["applicant_contact"] = _applicant_contact(app.user, has_subscription)
+        result.append(payload)
     return create_response(data=result, lang=lang)
 
 

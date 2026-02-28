@@ -32,6 +32,11 @@ def list_cars(
     model_id: int = None,
     release_year: int = None,
     category_id: int = None,
+    color_id: int = None,
+    car_class_id: int = None,
+    city_id: int = None,
+    city_name: str = None,
+    sort: str = "new",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_optional),
 ):
@@ -40,8 +45,19 @@ def list_cars(
         Car.status == "ACTIVE",
         Car.delete_date.is_(None),
     )
-    if current_user and getattr(current_user, "city_id", None) is not None:
-        query = query.filter(Car.city_id == current_user.city_id)
+    
+    # Filter by city_id from request, or fallback to current_user
+    filter_city_id = city_id
+    if filter_city_id is None and city_name:
+        city_record = db.query(Dictionary).filter(Dictionary.name == city_name, Dictionary.type == 'CITY').first()
+        if city_record:
+            filter_city_id = city_record.id
+            
+    if filter_city_id is None and current_user and getattr(current_user, "city_id", None) is not None:
+        filter_city_id = current_user.city_id
+        
+    if filter_city_id:
+        query = query.filter(Car.city_id == filter_city_id)
         
     if marka_id:
         query = query.filter(Car.vehicle_mark_id == marka_id)
@@ -54,6 +70,12 @@ def list_cars(
         
     if category_id:
         query = query.filter(Car.category_id == category_id)
+
+    if color_id:
+        query = query.filter(Car.color_id == color_id)
+
+    if car_class_id:
+        query = query.filter(Car.car_class_id == car_class_id)
         
     if q:
         search_term = f"%{q.lower()}%"
@@ -70,6 +92,14 @@ def list_cars(
         )
         
     total = query.count()
+
+    if sort == "cheap":
+        query = query.order_by(Car.price_per_day.asc())
+    elif sort == "new":
+        query = query.order_by(Car.create_date.desc())
+    else:
+        query = query.order_by(Car.create_date.desc())
+
     cars = query.offset(skip).limit(limit).all()
 
     result = []
@@ -80,6 +110,13 @@ def list_cars(
             "release_year": c.release_year,
             "price_per_day": c.price_per_day,
             "views_count": c.views_count,
+            "is_top": c.is_top,
+            "mark": c.mark.name if c.mark else None,
+            "model": c.model.name if c.model else None,
+            "category_name": c.category.name if c.category else None,
+            "car_class": c.car_class.name if c.car_class else None,
+            "color": c.color.name if c.color else None,
+            "transmission": c.transmission.name if c.transmission else None,
             "images": [{"url": img.url} for img in c.images],
             "city": c.city.name if c.city else "Алматы",
             "author": {
@@ -273,6 +310,7 @@ def get_car(
     car_id: int,
     request: Request,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_optional),
 ):
     """Публичное получение объявления по id. Только со статусом ACTIVE/DRAFT."""
     car = db.query(Car).filter(
@@ -282,6 +320,10 @@ def get_car(
     ).first()
     if not car:
         raise HTTPException(status_code=404, detail="Car not found")
+
+    if car.status == "DRAFT":
+        if not current_user or car.author_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to view draft")
 
     def dict_name(d):
         if not d:
@@ -319,6 +361,8 @@ def get_car(
         "category": dict_name(car.category),
         "category_id": car.category_id,
         "views_count": car.views_count,
+        "status": car.status,
+        "author_id": car.author_id,
         "author": {
             "name": car.author.name if car.author else None, 
             "address": car.author.address if car.author else None,
@@ -434,6 +478,28 @@ async def update_car(
 
     return create_response(
         data={"id": car.id, "name": car.name, "status": car.status},
-        message_key="car_updated",
-        lang=request.state.lang
+        message_key="ok",
+        lang=request.state.lang if hasattr(request.state, 'lang') else "ru"
     )
+
+@router.delete("/{car_id}/images/{image_id}")
+async def delete_car_image(
+    car_id: int,
+    image_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_owner: User = Depends(get_current_owner),
+):
+    car = db.query(Car).filter(Car.id == car_id).first()
+    if not car or car.author_id != current_owner.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    image = db.query(Image).filter(Image.id == image_id, Image.entity_id == car_id, Image.entity_type == 'CAR').first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+        
+    from app.services.cloudinary_service import CloudinaryService
+    if image.image_id:
+        CloudinaryService.delete_image(image.image_id)
+    db.delete(image)
+    db.commit()
+    return create_response(message_key="ok", lang=request.state.lang if hasattr(request.state, 'lang') else "ru")

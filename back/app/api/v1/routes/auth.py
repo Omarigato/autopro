@@ -205,6 +205,7 @@ def check_user_exists(
 
 class OTPRequest(BaseModel):
     target: str  # email or phone
+    type: str | None = None  # e.g., 'update' for profile changes
 
 @router.post("/otp/request")
 async def request_otp(
@@ -223,8 +224,8 @@ async def request_otp(
         )
     ).first()
 
-    # Если пользователь не найден, просим сначала зарегистрироваться.
-    if not user:
+    # Если это не запрос на обновление профиля и пользователь не найден — ошибка:
+    if not user and payload.type != "update":
         return create_response(
             code=404,
             message="Пользователь с такими данными не найден. Пожалуйста, зарегистрируйтесь.",
@@ -233,19 +234,22 @@ async def request_otp(
 
     otp = str(random.randint(100000, 999999))
 
+    # Определяем тип OTP (по умолчанию login/register, или 'update' если передан)
+    otp_type = payload.type if payload.type else ("login" if user else "register")
+
     verification = OTPVerification(
         target=payload.target,
         code=otp,
-        type="login" if user else "register",
+        type=otp_type,
         expires_at=datetime.utcnow() + timedelta(minutes=5),
     )
     db.add(verification)
     db.commit()
 
     # Отправка кода пользователю
-    if "@" in payload.target and user.email:
+    if "@" in payload.target:
         # Отправка на email
-        await email_service.send_otp(user.email, otp)
+        await email_service.send_otp(payload.target, otp)
     else:
         # Отправка в WhatsApp/SMS по номеру телефона
         phone = user.phone_number or payload.target
