@@ -7,6 +7,8 @@ from sqlalchemy import or_
 
 from app.core.security import (
     create_access_token,
+    create_refresh_token,
+    decode_refresh_token,
     get_current_user,
     get_password_hash,
     verify_password,
@@ -117,8 +119,9 @@ def login(
         return create_response(code=400, message="Необходимо указать пароль или код", lang=request.state.lang)
 
     access_token = create_access_token(subject=user.id)
+    refresh_token = create_refresh_token(subject=user.id)
     return create_response(
-        data={"access_token": access_token, "token_type": "bearer", "user_id": user.id},
+        data={"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "user_id": user.id},
         lang=request.state.lang
     )
 
@@ -175,8 +178,9 @@ def register(
     db.commit()
     
     access_token = create_access_token(subject=new_user.id)
+    refresh_token = create_refresh_token(subject=new_user.id)
     return create_response(
-        data={"access_token": access_token, "token_type": "bearer"},
+        data={"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"},
         message="Регистрация успешно завершена",
         lang=request.state.lang
     )
@@ -184,6 +188,39 @@ def register(
 class CheckExistsRequest(BaseModel):
     email: str | None = None
     phone_number: str | None = None
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/refresh")
+def refresh_tokens(
+    payload: RefreshTokenRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Обмен refresh_token на новую пару access_token и refresh_token.
+    """
+    user_id = decode_refresh_token(payload.refresh_token)
+    if not user_id:
+        return create_response(code=401, message_key="invalid_refresh_token", lang=request.state.lang)
+    user = db.query(User).filter(User.id == user_id, User.delete_date.is_(None)).first()
+    if not user or not user.is_active:
+        return create_response(code=401, message_key="invalid_refresh_token", lang=request.state.lang)
+    access_token = create_access_token(subject=user.id)
+    new_refresh_token = create_refresh_token(subject=user.id)
+    return create_response(
+        data={
+            "access_token": access_token,
+            "refresh_token": new_refresh_token,
+            "token_type": "bearer",
+            "user_id": user.id,
+        },
+        lang=request.state.lang,
+    )
+
 
 @router.post("/check-exists")
 def check_user_exists(

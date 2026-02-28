@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.db.session import get_db
 from app.models.entities import (
@@ -17,11 +18,14 @@ from app.models.entities import (
     SubscriptionPlan,
     AppSetting,
     OTPVerification,
+
+    Review,
 )
 from app.core.security import get_current_user, get_password_hash
 from app.core.responses import create_response
 from app.services.dictionary_service import dictionary_service
 from app.services.admin_service import admin_service
+from app.services.email_service import email_service
 from fastapi.responses import StreamingResponse
 from fastapi import UploadFile, File
 
@@ -72,6 +76,26 @@ async def trigger_sync(db: Session = Depends(get_db), admin: User = Depends(chec
 
 # --- Управление справочниками (Dictionaries) ---
 
+def _dict_item_to_response(d: Dictionary, db: Session) -> dict:
+    """Собирает элемент словаря с переводами name_ru, name_en, name_kk."""
+    translations = db.query(DictionaryTranslation).filter(DictionaryTranslation.dictionary_id == d.id).all()
+    by_lang = {t.lang: t.name for t in translations}
+    return {
+        "id": d.id,
+        "name": d.name,
+        "name_ru": by_lang.get("ru", d.name or ""),
+        "name_en": by_lang.get("en", ""),
+        "name_kk": by_lang.get("kk", ""),
+        "code": d.code,
+        "type": d.type,
+        "parent_id": d.parent_id,
+        "icon": d.icon,
+        "color": d.color,
+        "display_order": d.display_order,
+        "is_active": d.is_active,
+    }
+
+
 @router.get("/dictionaries")
 def list_dictionaries(
     type: str | None = None,
@@ -80,69 +104,101 @@ def list_dictionaries(
     admin: User = Depends(check_admin),
 ):
     """
-    Список элементов словаря для админ‑панели.
-    Отдаём только примитивные поля, чтобы избежать проблем сериализации ORM‑объектов.
+    Список элементов словаря для админ‑панели с переводами (ru, en, kk).
     """
     query = db.query(Dictionary)
     if type:
         query = query.filter(Dictionary.type == type)
     if parent_id:
         query = query.filter(Dictionary.parent_id == parent_id)
-    items = query.all()
-    data = [
-        {
-            "id": d.id,
-            "name": d.name,
-            "code": d.code,
-            "type": d.type,
-            "parent_id": d.parent_id,
-            "display_order": d.display_order,
-            "is_active": d.is_active,
-        }
-        for d in items
-    ]
+    items = query.order_by(Dictionary.display_order.asc(), Dictionary.id.asc()).all()
+    data = [_dict_item_to_response(d, db) for d in items]
     return create_response(data=data)
+
 
 @router.post("/dictionaries")
 def create_dictionary_item(payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     """
-    Создание новой записи в справочнике.
+    Создание записи в справочнике. Обязательны: name_ru, name_en, name_kk, code, type.
     """
+    name_ru = (payload.get("name_ru") or "").strip()
+    name_en = (payload.get("name_en") or "").strip()
+    name_kk = (payload.get("name_kk") or "").strip()
+    if not name_ru or not name_en or not name_kk:
+        raise HTTPException(400, detail="Укажите названия на трёх языках (RU, EN, KK)")
+    code = (payload.get("code") or "").strip()
+    type_ = payload.get("type")
+    if not code or not type_:
+        raise HTTPException(400, detail="Укажите код и тип")
+
     new_item = Dictionary(
-        name=payload.get("name"),
-        code=payload.get("code"),
-        type=payload.get("type"),
+        name=name_ru,
+        code=code,
+        type=type_,
         parent_id=payload.get("parent_id"),
-        is_active=True
+        icon=payload.get("icon") or None,
+        color=payload.get("color") or None,
+        display_order=payload.get("display_order") is not None and payload.get("display_order") or 0,
+        is_active=payload.get("is_active") if payload.get("is_active") is not None else True,
     )
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
-    return create_response(data={
-        "id": new_item.id,
-        "name": new_item.name,
-        "code": new_item.code,
-        "type": new_item.type
-    })
+
+    for lang, name in [("ru", name_ru), ("en", name_en), ("kk", name_kk)]:
+        db.add(DictionaryTranslation(dictionary_id=new_item.id, lang=lang, name=name))
+    db.commit()
+
+    return create_response(data=_dict_item_to_response(new_item, db))
+
 
 @router.patch("/dictionaries/{item_id}")
 def update_dictionary_item(item_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     item = db.query(Dictionary).filter(Dictionary.id == item_id).first()
-    if not item: raise HTTPException(404)
-    
-    for key, value in payload.items():
-        if hasattr(item, key):
-            setattr(item, key, value)
-    
+    if not item:
+        raise HTTPException(404)
+
+    # Обновление полей Dictionary (кроме переводов)
+    for key in ("code", "type", "parent_id", "icon", "color", "display_order", "is_active"):
+        if key in payload:
+            if key == "display_order":
+                item.display_order = payload[key] if payload[key] is not None else 0
+            elif key == "is_active":
+                item.is_active = bool(payload[key])
+            else:
+                setattr(item, key, payload[key])
+
+    name_ru = payload.get("name_ru")
+    name_en = payload.get("name_en")
+    name_kk = payload.get("name_kk")
+    if name_ru is not None or name_en is not None or name_kk is not None:
+        if name_ru is not None:
+            item.name = (name_ru if isinstance(name_ru, str) else "").strip() or item.name
+        for lang, name_val in [("ru", name_ru), ("en", name_en), ("kk", name_kk)]:
+            if name_val is None:
+                continue
+            name_str = (name_val if isinstance(name_val, str) else "").strip()
+            trans = db.query(DictionaryTranslation).filter(
+                DictionaryTranslation.dictionary_id == item_id,
+                DictionaryTranslation.lang == lang,
+            ).first()
+            if trans:
+                trans.name = name_str or trans.name
+            else:
+                db.add(DictionaryTranslation(dictionary_id=item_id, lang=lang, name=name_str))
+        if name_ru is not None and (name_ru if isinstance(name_ru, str) else "").strip():
+            item.name = (name_ru if isinstance(name_ru, str) else "").strip()
+
     db.commit()
-    return create_response(data=item)
+    db.refresh(item)
+    return create_response(data=_dict_item_to_response(item, db))
+
 
 @router.delete("/dictionaries/{item_id}")
 def delete_dictionary_item(item_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     item = db.query(Dictionary).filter(Dictionary.id == item_id).first()
-    if not item: raise HTTPException(404)
-    
-    # Удаляем также переводы
+    if not item:
+        raise HTTPException(404)
     db.query(DictionaryTranslation).filter(DictionaryTranslation.dictionary_id == item_id).delete()
     db.delete(item)
     db.commit()
@@ -150,18 +206,107 @@ def delete_dictionary_item(item_id: int, db: Session = Depends(get_db), admin: U
 
 @router.get("/stats")
 def get_stats(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    most_viewed = db.query(Car).order_by(Car.views_count.desc()).limit(10).all()
-    total_users = db.query(User).count()
-    total_cars = db.query(Car).count()
+    from sqlalchemy import func
 
-    return create_response(data={
-        "totals": {"users": total_users, "cars": total_cars},
-        "most_viewed": [{"id": c.id, "name": c.name, "views": c.views_count} for c in most_viewed],
-    })
+    total_users = db.query(User).filter(User.delete_date.is_(None)).count()
+    total_cars = db.query(Car).filter(Car.delete_date.is_(None)).count()
+    total_applications = db.query(Application).filter(Application.status != "DELETED").count()
+    total_reviews = db.query(Review).count()
+
+    # Объявления по статусам (ACTIVE, AWAIT, REJECT, DRAFT)
+    cars_by_status = (
+        db.query(Car.status, func.count(Car.id))
+        .filter(Car.delete_date.is_(None))
+        .group_by(Car.status)
+        .all()
+    )
+    cars_by_status_dict = {row[0] or "OTHER": row[1] for row in cars_by_status}
+
+    # Заявки по статусам (ACTIVE, COMPLETED, REJECTED)
+    apps_by_status = (
+        db.query(Application.status, func.count(Application.id))
+        .filter(Application.status != "DELETED")
+        .group_by(Application.status)
+        .all()
+    )
+    apps_by_status_dict = {row[0]: row[1] for row in apps_by_status}
+
+    # Рейтинги и отзывы: средний рейтинг, распределение по звёздам
+    avg_rating_row = db.query(func.avg(Review.rating)).scalar()
+    avg_rating = round(float(avg_rating_row or 0), 1)
+    reviews_by_rating = (
+        db.query(Review.rating, func.count(Review.id)).group_by(Review.rating).order_by(Review.rating).all()
+    )
+    reviews_by_rating_dict = {str(row[0]): row[1] for row in reviews_by_rating}
+
+    # Последние 14 дней: заявки и объявления по дням (для графиков)
+    today = datetime.utcnow().date()
+    applications_per_day = []
+    cars_per_day = []
+    for i in range(13, -1, -1):
+        d = today - timedelta(days=i)
+        day_str = d.isoformat()
+        app_count = (
+            db.query(func.count(Application.id))
+            .filter(func.date(Application.create_date) == d, Application.status != "DELETED")
+            .scalar()
+            or 0
+        )
+        car_count = (
+            db.query(func.count(Car.id))
+            .filter(func.date(Car.create_date) == d, Car.delete_date.is_(None))
+            .scalar()
+            or 0
+        )
+        applications_per_day.append({"date": day_str, "count": app_count, "label": d.strftime("%d.%m")})
+        cars_per_day.append({"date": day_str, "count": car_count, "label": d.strftime("%d.%m")})
+
+    most_viewed = (
+        db.query(Car)
+        .filter(Car.delete_date.is_(None))
+        .order_by(Car.views_count.desc())
+        .limit(10)
+        .all()
+    )
+    recent_reviews = (
+        db.query(Review)
+        .order_by(Review.create_date.desc())
+        .limit(5)
+        .all()
+    )
+    recent_reviews_data = [
+        {
+            "id": r.id,
+            "car_id": r.car_id,
+            "rating": r.rating,
+            "comment": (r.comment or "")[:100],
+            "create_date": r.create_date.isoformat() if r.create_date else None,
+        }
+        for r in recent_reviews
+    ]
+
+    return create_response(
+        data={
+            "totals": {
+                "users": total_users,
+                "cars": total_cars,
+                "applications": total_applications,
+                "reviews": total_reviews,
+            },
+            "cars_by_status": cars_by_status_dict,
+            "applications_by_status": apps_by_status_dict,
+            "reviews_avg_rating": avg_rating,
+            "reviews_by_rating": reviews_by_rating_dict,
+            "applications_per_day": applications_per_day,
+            "cars_per_day": cars_per_day,
+            "most_viewed": [{"id": c.id, "name": c.name, "views": c.views_count} for c in most_viewed],
+            "recent_reviews": recent_reviews_data,
+        }
+    )
 
 @router.get("/users")
 def list_users(role: str = None, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    query = db.query(User)
+    query = db.query(User).filter(User.delete_date.is_(None))
     if role:
         query = query.filter(User.role == role)
     users = query.all()
@@ -174,6 +319,7 @@ def list_users(role: str = None, db: Session = Depends(get_db), admin: User = De
                 "phone_number": u.phone_number,
                 "role": u.role,
                 "is_active": u.is_active,
+                "create_date": u.create_date.isoformat() if u.create_date else None,
             }
             for u in users
         ]
@@ -182,7 +328,7 @@ def list_users(role: str = None, db: Session = Depends(get_db), admin: User = De
 
 @router.patch("/users/{user_id}")
 def update_user(user_id: int, payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id, User.delete_date.is_(None)).first()
     if not user:
         raise HTTPException(404)
     for key in ("name", "email", "phone_number", "role", "is_active"):
@@ -194,6 +340,90 @@ def update_user(user_id: int, payload: dict, db: Session = Depends(get_db), admi
     db.commit()
     db.refresh(user)
     return create_response(data={"id": user.id, "is_active": user.is_active})
+
+
+def _generate_secure_password(length: int = 12) -> str:
+    """Генерация пароля: буквы, цифры, спецсимволы."""
+    import secrets
+    import string
+    alphabet = string.ascii_letters + string.digits + "!@#$%&*"
+    while True:
+        pwd = "".join(secrets.choice(alphabet) for _ in range(length))
+        if (len(pwd) >= 8 and any(c.islower() for c in pwd) and any(c.isupper() for c in pwd)
+                and any(c.isdigit() for c in pwd) and any(c in "!@#$%&*" for c in pwd)):
+            return pwd
+
+
+@router.post("/users/{user_id}/reset-password")
+async def reset_user_password(user_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    """
+    Сброс пароля пользователя: генерируется новый пароль, сохраняется в БД и отправляется на email.
+    """
+    user = db.query(User).filter(User.id == user_id, User.delete_date.is_(None)).first()
+    if not user:
+        raise HTTPException(404)
+    if not user.email:
+        raise HTTPException(400, detail="У пользователя нет email, сброс пароля невозможен")
+    new_password = _generate_secure_password()
+    user.password_hash = get_password_hash(new_password)
+    db.commit()
+    sent = await email_service.send_password_reset(user.email, new_password)
+    return create_response(data={"sent": sent, "message": "Пароль сброшен и отправлен на email" if sent else "Пароль сброшен, но письмо отправить не удалось"})
+
+
+@router.post("/users")
+async def create_user(payload: dict, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    """
+    Создание нового пользователя. Пароль опционален: если не передан — генерируется и отправляется на email.
+    """
+    email = payload.get("email")
+    phone_number = payload.get("phone_number")
+    if not email and not phone_number:
+        raise HTTPException(400, detail="Укажите email или номер телефона")
+    conds = []
+    if email:
+        conds.append(User.email == email)
+    if phone_number:
+        conds.append(User.phone_number == phone_number)
+    existing = db.query(User).filter(User.delete_date.is_(None)).filter(or_(*conds)).first() if conds else None
+    if existing:
+        raise HTTPException(400, detail="Пользователь с таким email или телефоном уже существует")
+
+    password = payload.get("password")
+    if not password:
+        password = _generate_secure_password()
+    password_hash = get_password_hash(password)
+
+    new_user = User(
+        name=payload.get("name"),
+        email=email or None,
+        phone_number=phone_number or None,
+        password_hash=password_hash,
+        role=payload.get("role", "client"),
+        is_active=bool(payload.get("is_active", True)),
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    if not payload.get("password") and new_user.email:
+        await email_service.send_password_reset(new_user.email, password)
+    return create_response(data={"id": new_user.id, "email": new_user.email})
+
+
+@router.delete("/users/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+    """Мягкое удаление пользователя (устанавливается delete_date)."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404)
+    if user.id == admin.id:
+        raise HTTPException(400, detail="Нельзя удалить самого себя")
+    user.delete_date = datetime.utcnow()
+    user.is_active = False
+    db.commit()
+    return create_response(data={"id": user_id, "deleted": True})
+
 
 @router.get("/cars")
 def list_cars_admin(db: Session = Depends(get_db), admin: User = Depends(check_admin)):
@@ -263,7 +493,6 @@ def list_applications_admin(
     db: Session = Depends(get_db), 
     admin: User = Depends(check_admin)
 ):
-    from sqlalchemy import or_
     query = db.query(Application).filter(Application.status != "DELETED")
     
     if q:

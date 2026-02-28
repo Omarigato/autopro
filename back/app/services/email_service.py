@@ -61,6 +61,22 @@ class EmailService:
     async def send_notification(self, email: str, subject: str, text: str) -> bool:
         return await self._send(email, subject, text)
 
+    async def send_password_reset(self, email: str, new_password: str) -> bool:
+        """
+        Отправка нового пароля пользователю после сброса админом.
+        """
+        subject = "Новый пароль для входа в AutoPro"
+        body = (
+            f"Здравствуйте!\n\n"
+            f"Администратор сбросил ваш пароль. Ваш новый временный пароль для входа:\n\n"
+            f"  {new_password}\n\n"
+            f"Рекомендуем сменить его после входа в личном кабинете.\n"
+            f"Никому не сообщайте этот пароль.\n\n"
+            f"С уважением,\n"
+            f"Команда AutoPro"
+        )
+        return await self._send(email, subject, body)
+
 
 email_service = EmailService()
 

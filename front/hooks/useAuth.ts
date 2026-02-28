@@ -16,6 +16,7 @@ export function useAuth() {
         return await apiClient.get('/auth/me') as UserResponse;
       } catch (e) {
         localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
         return null;
       }
     },
@@ -30,6 +31,9 @@ export function useAuth() {
     },
     onSuccess: (data) => {
       localStorage.setItem('token', data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
       queryClient.invalidateQueries({ queryKey: ['user'] });
       toast.success("Вы успешно вошли в систему");
     },
@@ -44,6 +48,7 @@ export function useAuth() {
     },
     onSuccess: () => {
       localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
       queryClient.setQueryData(['user'], null);
       queryClient.clear();
       // toast.info("Вы вышли из системы");

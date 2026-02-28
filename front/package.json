@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "node -e \"const fs=require('fs'); const p='.next'; if(fs.existsSync(p)){ fs.rmSync(p,{recursive:true}); console.log('.next removed'); } else console.log('no .next');\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -30,6 +31,7 @@
     "react-dom": "18.2.0",
     "react-hook-form": "^7.71.1",
     "react-input-mask": "^2.0.4",
+    "recharts": "^3.7.0",
     "sharp": "^0.33.5",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
