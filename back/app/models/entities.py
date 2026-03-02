@@ -33,48 +33,27 @@ class Dictionary(Base):
     translations: Mapped[list["DictionaryTranslation"]] = relationship("DictionaryTranslation", back_populates="dictionary")
 
 
-class Client(Base):
-    __tablename__ = "clients"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(255))
-    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    phone_number: Mapped[str] = mapped_column(String(30))
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-
-class BlackList(Base):
-    __tablename__ = "blacklist"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), unique=True)
-
-    client: Mapped[Client] = relationship("Client")
-
-
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    first_name: Mapped[str] = mapped_column(String(255))
-    last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    name: Mapped[str | None] = mapped_column(String(255), nullable=True)  # For backwards compatibility
-    login: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    # Храним только одно поле имени, без раздельных first_name / last_name.
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(30), unique=True, index=True, nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    role: Mapped[str] = mapped_column(String(50), default="client")  # client, owner, admin
+    # Роль owner больше не используется — все владельцы являются клиентами.
+    role: Mapped[str] = mapped_column(String(50), default="client")  # client, admin
     gender: Mapped[str | None] = mapped_column(String(10), nullable=True)  # male, female
     date_birth: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     balance: Mapped[int] = mapped_column(Integer, default=0)  # Баланс в тенге
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    
-    otp_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    otp_expiry: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    
+    city_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)
+    notify_by_email: Mapped[bool] = mapped_column(Boolean, default=True)
+    notify_by_whatsapp: Mapped[bool] = mapped_column(Boolean, default=True)
+
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -90,10 +69,12 @@ class User(Base):
         overlaps="images",
         cascade="all, delete-orphan"
     )
+    city: Mapped["Dictionary | None"] = relationship("Dictionary", foreign_keys=[city_id])
 
 
 class CarOwner(Base):
-    __tablename__ = "car_owners"
+    # Таблица переименована с car_owners в client_cars.
+    __tablename__ = "client_cars"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
     subscription_id: Mapped[int | None] = mapped_column(
@@ -137,8 +118,8 @@ class Car(Base):
     is_top: Mapped[bool] = mapped_column(Boolean, default=False)
     views_count: Mapped[int] = mapped_column(Integer, default=0)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    # CREATED — создано, отправлено на модерацию; UPDATED — обновлено, снова на проверку; PUBLISHED — опубликовано; DRAFT — черновик; DELETED — удалено
-    status: Mapped[str] = mapped_column(String(20), default="CREATED", index=True)
+    # ACTIVE — активный, доступно для всех пользователей; DRAFT — черновик; AWAIT — ожидание от админа модерации; REJECT — отклонен
+    status: Mapped[str] = mapped_column(String(20), default="AWAIT", index=True)
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     update_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     delete_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -173,7 +154,7 @@ class Image(Base):
     image_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Cloudinary public_id
     
     entity_id: Mapped[int] = mapped_column(Integer, index=True)
-    entity_type: Mapped[str] = mapped_column(String(50), index=True)  # 'CAR', 'USER'
+    entity_type: Mapped[str] = mapped_column(String(50), index=True)  # 'CAR', 'USER', 'APPLICATION'
     position: Mapped[int] = mapped_column(Integer, default=0)
 
 
@@ -186,6 +167,67 @@ def receive_after_delete(mapper, connection, target):
         CloudinaryService.delete_image(target.image_id)
 
 
+class Application(Base):
+    """Заявка от клиента на поиск авто (по городу, категории, марке/модели)."""
+    __tablename__ = "applications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    city_id: Mapped[int] = mapped_column(ForeignKey("dictionaries.id"))
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)
+    vehicle_mark_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)
+    vehicle_model_id: Mapped[int | None] = mapped_column(ForeignKey("dictionaries.id"), nullable=True)
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="ACTIVE", index=True)  # ACTIVE, COMPLETED, REJECTED
+    views_count: Mapped[int] = mapped_column(Integer, default=0)
+    create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    update_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped["User"] = relationship("User")
+    city: Mapped["Dictionary | None"] = relationship("Dictionary", foreign_keys=[city_id])
+    category: Mapped["Dictionary | None"] = relationship("Dictionary", foreign_keys=[category_id])
+    mark: Mapped["Dictionary | None"] = relationship("Dictionary", foreign_keys=[vehicle_mark_id])
+    model: Mapped["Dictionary | None"] = relationship("Dictionary", foreign_keys=[vehicle_model_id])
+    images: Mapped[list["Image"]] = relationship(
+        "Image",
+        primaryjoin="and_(Image.entity_id==Application.id, Image.entity_type=='APPLICATION')",
+        foreign_keys="[Image.entity_id]",
+        cascade="all, delete-orphan",
+    )
+    application_cars: Mapped[list["ApplicationCar"]] = relationship(
+        "ApplicationCar", back_populates="application", cascade="all, delete-orphan"
+    )
+
+
+class ApplicationCar(Base):
+    """Связь заявки с объявлением (совпадение по критериям)."""
+    __tablename__ = "application_cars"
+    __table_args__ = (UniqueConstraint("application_id", "car_id", name="uq_application_car"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
+    car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"), index=True)
+    owner_read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    application: Mapped["Application"] = relationship("Application", back_populates="application_cars")
+    car: Mapped["Car"] = relationship("Car")
+
+
+class ApplicationSelectedCar(Base):
+    """Выбор объявлений при завершении заявки (с кем сделка)."""
+    __tablename__ = "application_selected_cars"
+    __table_args__ = (UniqueConstraint("application_id", "car_id", name="uq_application_selected_car"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
+    car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"), index=True)
+
+    application: Mapped["Application"] = relationship("Application")
+    car: Mapped["Car"] = relationship("Car")
+
+
 class Review(Base):
     """
     Отзыв о машине и/или арендодателе.
@@ -196,8 +238,10 @@ class Review(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     car_id: Mapped[int] = mapped_column(ForeignKey("cars.id"))
-    car_owner_id: Mapped[int] = mapped_column(ForeignKey("car_owners.user_id"))
-    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id"))
+    # Ссылаемся на переименованную таблицу client_cars.
+    car_owner_id: Mapped[int] = mapped_column(ForeignKey("client_cars.user_id"))
+    # Автор отзыва — пользователь (клиент) из таблицы users.
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     rating: Mapped[int] = mapped_column(Integer)  # 1-5
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -278,7 +322,7 @@ class OwnerSubscription(Base):
     __tablename__ = "owner_subscriptions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    owner_id: Mapped[int] = mapped_column(ForeignKey("car_owners.user_id"))
+    owner_id: Mapped[int] = mapped_column(ForeignKey("client_cars.user_id"))
     plan_id: Mapped[int] = mapped_column(ForeignKey("subscription_plans.id"))
 
     status: Mapped[str] = mapped_column(
@@ -314,7 +358,7 @@ class PaymentTransaction(Base):
     amount_kzt: Mapped[int] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(String(10), default="KZT")
 
-    owner_id: Mapped[int] = mapped_column(ForeignKey("car_owners.user_id"))
+    owner_id: Mapped[int] = mapped_column(ForeignKey("client_cars.user_id"))
     subscription_id: Mapped[int] = mapped_column(ForeignKey("owner_subscriptions.id"))
 
     payment_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

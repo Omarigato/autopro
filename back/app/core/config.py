@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     # JWT
     SECRET_KEY: str = "CHANGE_ME_SECRET"  # заменить в .env
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 день
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"
 
     # Server
@@ -39,6 +40,21 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str | None = None
     CLOUDINARY_API_KEY: str | None = None
     CLOUDINARY_API_SECRET: str | None = None
+
+    # Email (SMTP)
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int | None = None
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_USE_TLS: bool = True
+    EMAIL_FROM: str | None = None  # от кого отправляем письма
+
+    # WhatsApp API (внешний провайдер / собственный шлюз)
+    WHATSAPP_API_URL: str | None = None
+    WHATSAPP_API_TOKEN: str | None = None
+
+    # Базовый URL фронтенда (для ссылок в Telegram)
+    FRONTEND_BASE_URL: str | None = None  # например, https://autopro.kz или http://localhost:3000
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

@@ -1,15 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { CarResponse } from "@/types/cars";
+import { useAppState } from "@/lib/store";
 
-export function useCars(filters?: Record<string, string>) {
-  return useQuery<CarResponse[]>({
-    queryKey: ['cars', filters],
+export function useCars(filters?: Record<string, any>) {
+  const { city } = useAppState();
+  return useQuery<{ items: CarResponse[], total: number }>({
+    queryKey: ['cars', filters, city],
     queryFn: async () => {
       const params = filters ? { ...filters } : {};
+      if (city && city !== "Все города") {
+        params.city_name = city;
+      }
       const res = await apiClient.get('/cars', { params }) as any;
+      if (res && Array.isArray(res.items)) {
+        return res;
+      }
       const data = Array.isArray(res) ? res : (res?.data || []);
-      return data;
+      const items = Array.isArray(data) ? data : (data.items || []);
+      const total = data.total ?? items.length;
+      return { items, total };
     },
   });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,89 +12,98 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle
 } from "@/components/ui/navigation-menu";
-import { Car, User, Menu, X, MapPin } from "lucide-react";
+import { Car, User, Menu, X, MapPin, FileText, LayoutDashboard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuItem as DropdownMenuItemBase,
+  DropdownMenuLabel as DropdownMenuLabelBase,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+const DropdownMenuItem = DropdownMenuItemBase as React.ComponentType<React.PropsWithChildren<Record<string, unknown>>>;
+const DropdownMenuLabel = DropdownMenuLabelBase as React.ComponentType<React.PropsWithChildren<Record<string, unknown>>>;
 import { useAppState } from "@/lib/store";
 import { apiClient } from "@/lib/api";
+import { usePublicSettings } from "@/hooks/usePublicSettings";
 
 export function Header() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { city, setCity } = useAppState();
   const [cities, setCities] = useState<any[]>([]);
+  const [applicationsCount, setApplicationsCount] = useState<number>(0);
+  const { subscriptionsEnabled } = usePublicSettings();
 
   useEffect(() => {
-    const allCities = [
-      { id: 1, name: 'Алматы' },
-      { id: 2, name: 'Астана' },
-      { id: 3, name: 'Шымкент' },
-      { id: 4, name: 'Караганда' },
-      { id: 5, name: 'Актобе' },
-      { id: 6, name: 'Тараз' },
-      { id: 7, name: 'Павлодар' },
-      { id: 8, name: 'Усть-Каменогорск' },
-      { id: 9, name: 'Семей' },
-      { id: 10, name: 'Атырау' },
-      { id: 11, name: 'Костанай' },
-      { id: 12, name: 'Кызылорда' },
-      { id: 13, name: 'Уральск' },
-      { id: 14, name: 'Петропавловск' },
-      { id: 15, name: 'Актау' },
-      { id: 16, name: 'Темиртау' },
-      { id: 17, name: 'Туркестан' },
-      { id: 18, name: 'Кокшетау' },
-      { id: 19, name: 'Талдыкорган' },
-      { id: 20, name: 'Экибастуз' },
-      { id: 21, name: 'Рудный' }
-    ];
-
     apiClient.get('/dictionaries', { params: { type: 'CITY' } })
       .then(res => {
         const data = Array.isArray(res) ? res : (res?.data || []);
-        if (data.length > 0) {
-          setCities(data);
-        } else {
-          setCities(allCities);
-        }
+        setCities(data || []);
       })
-      .catch(err => {
-        console.error('Failed to load cities:', err);
-        setCities(allCities);
-      });
+      .catch(() => setCities([]));
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setApplicationsCount(0);
+      return;
+    }
+    apiClient.get('/applications/to-my-ads/count')
+      .then((res: any) => {
+        const d = res?.data ?? res;
+        setApplicationsCount(typeof d?.count === 'number' ? d.count : 0);
+      })
+      .catch(() => setApplicationsCount(0));
+  }, [user]);
+
+  useEffect(() => {
+    if (user && cities.length > 0 && (user as any).city_id != null) {
+      const c = cities.find((x: any) => x.id === (user as any).city_id);
+      if (c?.name && city !== c.name) setCity(c.name);
+    }
+  }, [user, cities]);
 
   const routes = [
     { href: "/", label: "Главная" },
     { href: "/catalog", label: "Каталог" },
-    { href: "/subscriptions", label: "Тарифы" },
+    { href: "/find", label: "Найти авто" },
     { href: "/add", label: "Сдать авто" },
+    ...(subscriptionsEnabled ? [{ href: "/subscriptions", label: "Тарифы" }] : []),
   ];
+
+  const handleCitySelect = (c: { id: number; name: string }) => {
+    setCity(c.name);
+    if (user) {
+      apiClient.put('/auth/me', { city_id: c.id }).then(() => refreshUser()).catch(() => { });
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="bg-primary rounded-lg p-1.5">
-            <Car className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-xl tracking-tight">AutoPro</span>
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/logo-light.png"
+            alt=""
+            width={220}
+            height={60}
+            className="h-10 w-auto sm:h-12"
+            priority
+          />
+          <span className="inline-flex items-baseline gap-0">
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-black">Auto</span>
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Pro</span>
+          </span>
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
-
-
           <NavigationMenu>
             <NavigationMenuList>
               {routes.map((route) => (
@@ -123,7 +133,7 @@ export function Header() {
               {cities.map((c) => (
                 <DropdownMenuItem
                   key={c.id}
-                  onClick={() => setCity(c.name)}
+                  onClick={() => handleCitySelect(c)}
                   className={city === c.name ? "bg-accent" : ""}
                 >
                   {c.name}
@@ -139,7 +149,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9 border border-border">
-                    <AvatarImage src="/avatars/01.png" alt={user.name} />
+                    <AvatarImage src={user.avatar_url ?? ""} alt={user.name ?? ""} />
                     <AvatarFallback>{user.name?.[0] || "U"}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -153,8 +163,18 @@ export function Header() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href="/profile">Профиль</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/applications" className="flex items-center justify-between">
+                    Заявки
+                    {applicationsCount > 0 && (
+                      <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                        +{applicationsCount}
+                      </span>
+                    )}
+                  </Link>
+                </DropdownMenuItem>
                 {user.role === 'admin' && (
-                  <DropdownMenuItem asChild><Link href="/dashboard">Админ панель</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/admin-supersecret">Админ панель</Link></DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => logout()} className="text-red-600 focus:text-red-600">
@@ -173,14 +193,34 @@ export function Header() {
             </div>
           )}
         </div>
-
-        {/* Mobile Menu Toggle */}
-        <button
-          className="md:hidden p-2 text-foreground"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          {isMobileMenuOpen ? <X /> : <Menu />}
-        </button>
+        {/* Mobile: Location + Menu Toggle */}
+        <div className="md:hidden flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground rounded-xl border-slate-200 h-9 text-sm">
+                <MapPin className="h-4 w-4 shrink-0" />
+                {city}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
+              {cities.map((c) => (
+                <DropdownMenuItem
+                  key={c.id}
+                  onClick={() => handleCitySelect(c)}
+                  className={city === c.name ? "bg-accent" : ""}
+                >
+                  {c.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <button
+            className="p-2 text-foreground"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
@@ -207,6 +247,17 @@ export function Header() {
                 <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-sm font-medium hover:bg-accent rounded-md">
                   <User size={16} /> Профиль
                 </Link>
+                <Link href="/applications" className="flex items-center gap-2 px-4 py-2 text-sm font-medium hover:bg-accent rounded-md">
+                  <FileText size={16} /> Заявки
+                  {applicationsCount > 0 && (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">+{applicationsCount}</span>
+                  )}
+                </Link>
+                {user.role === "admin" && (
+                  <Link href="/admin-supersecret" className="flex items-center gap-2 px-4 py-2 text-sm font-medium hover:bg-accent rounded-md" onClick={() => setIsMobileMenuOpen(false)}>
+                    <LayoutDashboard size={16} /> Админ панель
+                  </Link>
+                )}
                 <button onClick={() => logout()} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md text-left">
                   Выйти
                 </button>

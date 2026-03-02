@@ -23,10 +23,14 @@ import { toast } from "sonner";
 const formSchema = z.object({
   name: z.string().min(2, "Имя должно быть не менее 2 символов"),
   phone_number: z.string().min(11, "Введите корректный номер телефона"),
-  login: z.string().min(3, "Логин должен быть не менее 3 символов"),
-  password: z.string().min(6, "Пароль должен быть не менее 6 символов"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
+  email: z.string().email("Введите корректный email").optional().or(z.literal("")),
+  password: z.string().min(6, "Пароль должен быть не менее 6 символов").optional().or(z.literal("")),
+  confirmPassword: z.string().optional().or(z.literal("")),
+}).refine((data) => {
+  // Если пароль не введён — ничего не проверяем
+  if (!data.password) return true;
+  return data.password === data.confirmPassword;
+}, {
   message: "Пароли не совпадают",
   path: ["confirmPassword"],
 });
@@ -42,11 +46,13 @@ export default function RegisterPage() {
     defaultValues: {
       name: "",
       phone_number: "+7",
-      login: "",
+      email: "",
       password: "",
       confirmPassword: "",
     },
   });
+
+  const watchEmail = form.watch("email");
 
   async function checkExistence(field: "email" | "phone_number", value: string) {
     if (!value) return;
@@ -55,10 +61,10 @@ export default function RegisterPage() {
       const res: any = await apiClient.post("/auth/check-exists", payload);
 
       if (field === "email" && res?.email_exists) {
-        form.setError("login", { type: "manual", message: "Этот email уже зарегистрирован" });
+        form.setError("email", { type: "manual", message: "Этот email уже зарегистрирован" });
         toast.error("Этот email уже зарегистрирован", { style: { background: 'red', color: 'white' } });
       } else if (field === "email") {
-        form.clearErrors("login");
+        form.clearErrors("email");
       }
 
       if (field === "phone_number" && res?.phone_exists) {
@@ -75,18 +81,32 @@ export default function RegisterPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const { confirmPassword, ...payload } = values;
-      await apiClient.post("/auth/register", payload);
+      const normalizedPayload = {
+        ...payload,
+        email: payload.email || undefined,
+        password: payload.password || undefined,
+      };
+      await apiClient.post("/auth/register", normalizedPayload);
       toast.success("Регистрация успешна! Теперь вы можете войти.");
       router.push("/login");
     } catch (error: any) {
       console.error(error);
-      const msg = error.response?.data?.message || error.detail || "Ошибка регистрации";
+      const rawMsg = error?.response?.data?.message ?? error?.message ?? error?.detail;
+      let msg: string = "Ошибка регистрации";
+      if (typeof rawMsg === "string") {
+        msg = rawMsg;
+      } else if (Array.isArray(rawMsg)) {
+        msg = rawMsg.map((e: any) => e?.msg || JSON.stringify(e)).join("\n");
+      } else if (rawMsg && typeof rawMsg === "object") {
+        msg = (rawMsg.ru || rawMsg.en || rawMsg.msg || JSON.stringify(rawMsg)) as string;
+      }
+
       toast.error(msg);
       if (msg.includes("телефона")) {
         form.setError("phone_number", { message: msg });
       }
       if (msg.includes("email")) {
-        form.setError("login", { message: msg });
+        form.setError("email", { message: msg });
       }
     }
   }
@@ -143,10 +163,10 @@ export default function RegisterPage() {
           />
           <FormField
             control={form.control}
-            name="login"
+            name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Логин (Email) <span className="text-red-500">*</span></FormLabel>
+                <FormLabel>Email</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="user@example.com"
@@ -161,58 +181,67 @@ export default function RegisterPage() {
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Пароль <span className="text-red-500">*</span></FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="******"
-                      {...field}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Подтвердите пароль <span className="text-red-500">*</span></FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="******"
-                      {...field}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showConfirmPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {watchEmail && watchEmail.trim() !== "" && (
+            <>
+              <div className="pt-2">
+                <p className="text-xs text-muted-foreground">
+                  Если хотите входить по email и паролю, придумайте пароль. Иначе можете входить по SMS‑коду.
+                </p>
+              </div>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Пароль</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="******"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Подтвердите пароль</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="******"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showConfirmPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
           <Button type="submit" className="w-full">
             Зарегистрироваться
           </Button>

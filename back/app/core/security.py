@@ -27,9 +27,27 @@ def create_access_token(subject: str | int, expires_delta: Optional[timedelta] =
     if expires_delta is None:
         expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     expire = datetime.now(timezone.utc) + expires_delta
-    to_encode: dict[str, Any] = {"sub": str(subject), "exp": expire}
+    to_encode: dict[str, Any] = {"sub": str(subject), "exp": expire, "type": "access"}
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+
+def create_refresh_token(subject: str | int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode: dict[str, Any] = {"sub": str(subject), "exp": expire, "type": "refresh"}
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_refresh_token(token: str) -> Optional[int]:
+    """Валидирует refresh token и возвращает user_id или None."""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("type") != "refresh":
+            return None
+        sub = payload.get("sub")
+        return int(sub) if sub else None
+    except (JWTError, ValueError):
+        return None
 
 
 def get_current_user(
@@ -46,6 +64,8 @@ def get_current_user(
         subject: str | None = payload.get("sub")
         if subject is None:
             raise credentials_exception
+        if payload.get("type") == "refresh":
+            raise credentials_exception
     except JWTError:
         raise credentials_exception
 
@@ -53,6 +73,25 @@ def get_current_user(
     if user is None or not user.is_active:
         raise credentials_exception
     return user
+
+
+def get_current_user_optional(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    if auth is None:
+        return None
+    try:
+        payload = jwt.decode(auth.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        subject = payload.get("sub")
+        if subject is None:
+            return None
+        user = db.query(User).filter(User.id == int(subject)).first()
+        if user is None or not user.is_active:
+            return None
+        return user
+    except JWTError:
+        return None
 
 
 def get_current_owner(user: User = Depends(get_current_user)) -> User:

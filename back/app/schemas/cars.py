@@ -37,7 +37,7 @@ class ImageResponse(BaseModel):
 class CarResponse(CarBase):
     id: int
     author_id: int
-    status: str  # CREATED, UPDATED, PUBLISHED, DRAFT, DELETED
+    status: str  # ACTIVE, DRAFT, AWAIT, REJECT
     create_date: datetime
     update_date: Optional[datetime] = None
 

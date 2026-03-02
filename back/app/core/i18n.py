@@ -14,6 +14,7 @@ MESSAGES = {
         "invalid_otp": "Неверный код",
         "otp_expired": "Срок действия кода истек",
         "login_success": "Вы успешно вошли",
+        "invalid_refresh_token": "Сессия истекла. Войдите снова",
     },
     "kk": {
         "success": "Сәтті",
@@ -30,6 +31,7 @@ MESSAGES = {
         "invalid_otp": "Қате код",
         "otp_expired": "Кодтың жарамдылық мерзімі өтті",
         "login_success": "Сәтті кірдіңіз",
+        "invalid_refresh_token": "Сессия мерзімі өтті. Қайта кіріңіз",
     },
     "en": {
         "success": "Success",
@@ -46,6 +48,7 @@ MESSAGES = {
         "invalid_otp": "Invalid security code",
         "otp_expired": "Code expired",
         "login_success": "Login successful",
+        "invalid_refresh_token": "Session expired. Please log in again",
     }
 }
 

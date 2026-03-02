@@ -1,12 +1,14 @@
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
+  user_id?: number;
 }
 
 export interface OwnerRegisterRequest {
   name: string;
   phone_number: string;
-  login: string;
+  email?: string | null;
   password: string;
 }
 
@@ -23,5 +25,8 @@ export interface UserResponse {
   role: "client" | "admin";
   create_date: string; // ISO date string
   email?: string;
-  login?: string;
+  avatar_url?: string;
+  city_id?: number;
+  notify_by_email?: boolean;
+  notify_by_whatsapp?: boolean;
 }

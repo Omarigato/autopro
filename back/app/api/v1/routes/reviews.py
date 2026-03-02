@@ -16,7 +16,7 @@ def create_review(
     review = Review(
         car_id=payload.car_id,
         car_owner_id=payload.car_owner_id,
-        client_id=payload.client_id,
+        user_id=payload.user_id,
         rating=payload.rating,
         comment=payload.comment,
     )

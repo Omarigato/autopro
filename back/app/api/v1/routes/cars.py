@@ -1,32 +1,106 @@
 from typing import List
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Request
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_owner
+from app.core.security import get_current_owner, get_current_user_optional
 from app.db.session import get_db
-from app.models.entities import Car, Image, User, AppSetting
+from app.models.entities import Car, Image, User, AppSetting, Dictionary
 from app.schemas.cars import CarResponse
+from sqlalchemy import or_, String, cast
+from sqlalchemy.orm import aliased
 from app.services.cloudinary_service import CloudinaryService
 from app.services.subscriptions_service import (
     get_active_subscription_for_owner,
     owner_cars_count,
 )
 from app.services.telegram import send_new_application_message
-import asyncio
 from app.core.responses import create_response
-from app.services.telegram import send_new_application_message
+from app.core.config import settings
 
 router = APIRouter()
 
 
 @router.get("")
-def list_cars(request: Request, db: Session = Depends(get_db)):
-    # Показываем только опубликованные объявления
-    cars = db.query(Car).filter(
-        Car.status == "PUBLISHED",
-        Car.delete_date.is_(None)
-    ).all()
+def list_cars(
+    request: Request,
+    skip: int = 0,
+    limit: int = 15,
+    q: str = None,
+    marka_id: int = None,
+    model_id: int = None,
+    release_year: int = None,
+    category_id: int = None,
+    color_id: int = None,
+    car_class_id: int = None,
+    city_id: int = None,
+    city_name: str = None,
+    sort: str = "new",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_optional),
+):
+    # Показываем только опубликованные объявления (ACTIVE)
+    query = db.query(Car).filter(
+        Car.status == "ACTIVE",
+        Car.delete_date.is_(None),
+    )
+    
+    # Filter by city_id from request, or fallback to current_user
+    filter_city_id = city_id
+    if filter_city_id is None and city_name:
+        city_record = db.query(Dictionary).filter(Dictionary.name == city_name, Dictionary.type == 'CITY').first()
+        if city_record:
+            filter_city_id = city_record.id
+            
+    if filter_city_id is None and current_user and getattr(current_user, "city_id", None) is not None:
+        filter_city_id = current_user.city_id
+        
+    if filter_city_id:
+        query = query.filter(Car.city_id == filter_city_id)
+        
+    if marka_id:
+        query = query.filter(Car.vehicle_mark_id == marka_id)
+        
+    if model_id:
+        query = query.filter(Car.vehicle_model_id == model_id)
+        
+    if release_year:
+        query = query.filter(Car.release_year == release_year)
+        
+    if category_id:
+        query = query.filter(Car.category_id == category_id)
+
+    if color_id:
+        query = query.filter(Car.color_id == color_id)
+
+    if car_class_id:
+        query = query.filter(Car.car_class_id == car_class_id)
+        
+    if q:
+        search_term = f"%{q.lower()}%"
+        CityAlias = aliased(Dictionary)
+        query = query.outerjoin(Dictionary, Car.vehicle_mark_id == Dictionary.id).outerjoin(CityAlias, Car.city_id == CityAlias.id)
+        query = query.filter(
+            or_(
+                Car.name.ilike(search_term),
+                Car.description.ilike(search_term),
+                Dictionary.name.ilike(search_term),
+                CityAlias.name.ilike(search_term),
+                cast(Car.release_year, String).ilike(search_term),
+            )
+        )
+        
+    total = query.count()
+
+    if sort == "cheap":
+        query = query.order_by(Car.price_per_day.asc())
+    elif sort == "new":
+        query = query.order_by(Car.create_date.desc())
+    else:
+        query = query.order_by(Car.create_date.desc())
+
+    cars = query.offset(skip).limit(limit).all()
 
     result = []
     for c in cars:
@@ -36,19 +110,26 @@ def list_cars(request: Request, db: Session = Depends(get_db)):
             "release_year": c.release_year,
             "price_per_day": c.price_per_day,
             "views_count": c.views_count,
+            "is_top": c.is_top,
+            "mark": c.mark.name if c.mark else None,
+            "model": c.model.name if c.model else None,
+            "category_name": c.category.name if c.category else None,
+            "car_class": c.car_class.name if c.car_class else None,
+            "color": c.color.name if c.color else None,
+            "transmission": c.transmission.name if c.transmission else None,
             "images": [{"url": img.url} for img in c.images],
             "city": c.city.name if c.city else "Алматы",
             "author": {
-                "name": c.author.name,
-                "address": c.author.address
+                "name": c.author.name if c.author else "Без имени",
+                "address": c.author.address if c.author else None
             }
         })
 
-    return create_response(data=result, lang=request.state.lang)
+    return create_response(data={"items": result, "total": total}, lang=request.state.lang)
 
 
 @router.post("")
-def create_car(
+async def create_car(
     name: str = Form(...),
     vehicle_mark_id: int | None = Form(default=None),
     vehicle_model_id: int | None = Form(default=None),
@@ -84,7 +165,7 @@ def create_car(
     setting = db.query(AppSetting).filter(AppSetting.key == "subscriptions_enabled").first()
     subscriptions_enabled = (setting and setting.value and setting.value.lower() == "true")
 
-    status = "DRAFT" if save_as_draft else "CREATED"
+    status = "DRAFT" if save_as_draft else "AWAIT"
 
     current_cars = owner_cars_count(db, current_owner.id)
 
@@ -152,19 +233,37 @@ def create_car(
 
     # Уведомление в Telegram о новом объявлении (для админов)
     if not save_as_draft:
-        try:
-            text = (
-                f"🆕 Новое объявление #{car.id}\n"
-                f"<b>{car.name}</b>\n"
-                f"Статус: {car.status}\n"
-                f"Автор: {current_owner.name or current_owner.first_name}\n"
-                f"Проверьте и одобрите в админ‑панели."
-            )
-            # Запускаем отправку в фоновом таске, чтобы не блокировать ответ
-            asyncio.create_task(send_new_application_message(text))
-        except RuntimeError:
-            # Если нет текущего event loop (например, в sync‑контексте) — игнорируем
-            pass
+        # Формируем красивое сообщение
+        created_at = car.create_date or datetime.utcnow()
+        dt_str = created_at.strftime("%d.%m.%Y %H:%M:%S")
+
+        # Марка / модель / цвет из справочников
+        def dict_name(d):
+            return d.name if d else ""
+
+        mark_name = dict_name(car.mark)
+        model_name = dict_name(car.model)
+        color_name = dict_name(car.color)
+
+        frontend_base = (settings.FRONTEND_BASE_URL or "http://localhost:3000").rstrip("/")
+        admin_url = f"{frontend_base}/dashboard/cars/{car.id}"
+
+        text_lines = [
+            f"🆕 <b>Новое объявление #{car.id}</b>",
+            "",
+            f"Дата: <b>{dt_str}</b>",
+            f"Автор: <b>{current_owner.name or ''}</b> {current_owner.phone_number or ''}",
+            "",
+            "<b>Объявление</b>",
+            f"Заголовок: <b>{car.name}</b>",
+            f"Цена: <b>{car.price_per_day or 0} ₸/день</b>",
+            f"Машина: <b>{mark_name} {model_name}</b>{', ' + color_name if color_name else ''}",
+            "",
+            f"Админ‑панель: {admin_url}",
+        ]
+        text = "\n".join(text_lines)
+
+        await send_new_application_message(text)
 
     message_key = "car_saved_draft" if save_as_draft else "client_application_sent"
     return create_response(
@@ -211,15 +310,20 @@ def get_car(
     car_id: int,
     request: Request,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_optional),
 ):
-    """Публичное получение объявления по id. Только со статусом PUBLISHED."""
+    """Публичное получение объявления по id. Только со статусом ACTIVE/DRAFT."""
     car = db.query(Car).filter(
         Car.id == car_id,
-        Car.status == "PUBLISHED",
+        Car.status.in_(["ACTIVE", "DRAFT"]),
         Car.delete_date.is_(None),
     ).first()
     if not car:
         raise HTTPException(status_code=404, detail="Car not found")
+
+    if car.status == "DRAFT":
+        if not current_user or car.author_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to view draft")
 
     def dict_name(d):
         if not d:
@@ -251,10 +355,19 @@ def get_car(
         "color": dict_name(car.color),
         "color_id": car.color_id,
         "mark": dict_name(car.mark),
+        "vehicle_mark_id": car.vehicle_mark_id,
         "model": dict_name(car.model),
+        "vehicle_model_id": car.vehicle_model_id,
         "category": dict_name(car.category),
+        "category_id": car.category_id,
         "views_count": car.views_count,
-        "author": {"name": car.author.name if car.author else None, "address": car.author.address if car.author else None},
+        "status": car.status,
+        "author_id": car.author_id,
+        "author": {
+            "name": car.author.name if car.author else None, 
+            "address": car.author.address if car.author else None,
+            "phone_number": car.author.phone_number if car.author else None,
+        },
         "images": [{"url": img.url, "id": img.id} for img in car.images],
         "create_date": car.create_date.isoformat() if car.create_date else None,
         "update_date": car.update_date.isoformat() if car.update_date else None,
@@ -269,7 +382,7 @@ def delete_car(
     current_owner: User = Depends(get_current_owner),
 ):
     """
-    Удаление объявления. Удаляет фото из Cloudinary.
+    Мягкое удаление объявления.
     """
     car = db.query(Car).filter(Car.id == car_id).first()
     if not car:
@@ -279,15 +392,114 @@ def delete_car(
     if car.author_id != current_owner.id and current_owner.role != "admin":
          raise HTTPException(status_code=403, detail="Not authorized to delete this car")
 
-    # Delete images from Cloudinary
-    for image in car.images:
-        if image.image_id:
-            CloudinaryService.delete_image(image.image_id)
-    
-    db.delete(car)
+    car.status = "DELETED"
+    car.delete_date = datetime.utcnow()
+    car.update_date = datetime.utcnow()
     db.commit()
     
     return create_response(
         message_key="car_deleted",
         lang=request.state.lang
     )
+
+@router.put("/{car_id}")
+async def update_car(
+    car_id: int,
+    name: str = Form(...),
+    vehicle_mark_id: int | None = Form(default=None),
+    vehicle_model_id: int | None = Form(default=None),
+    category_id: int | None = Form(default=None),
+    transmission_id: int | None = Form(default=None),
+    fuel_type_id: int | None = Form(default=None),
+    color_id: int | None = Form(default=None),
+    city_id: int | None = Form(default=None),
+    engine_volume: float | None = Form(default=None),
+    price_per_day: float | None = Form(default=None),
+    release_year: int | None = Form(default=None),
+    mileage: int | None = Form(default=None),
+    body_type: str | None = Form(default=None),
+    steering_id: int | None = Form(default=None),
+    condition_id: int | None = Form(default=None),
+    car_class_id: int | None = Form(default=None),
+    is_top: bool = Form(default=False),
+    additional_info: str | None = Form(default=None),
+    description: str | None = Form(default=None),
+    images: list[UploadFile] = File(default=[]),
+    save_as_draft: bool = Form(default=False),
+    request: Request = None,
+    db: Session = Depends(get_db),
+    current_owner: User = Depends(get_current_owner),
+):
+    car = db.query(Car).filter(Car.id == car_id).first()
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+    if car.author_id != current_owner.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    car.name = name
+    car.vehicle_mark_id = vehicle_mark_id
+    car.vehicle_model_id = vehicle_model_id
+    car.category_id = category_id
+    car.transmission_id = transmission_id
+    car.fuel_type_id = fuel_type_id
+    car.color_id = color_id
+    car.city_id = city_id
+    car.engine_volume = engine_volume
+    car.price_per_day = price_per_day
+    car.release_year = release_year
+    car.mileage = mileage
+    car.body_type = body_type
+    car.steering_id = steering_id
+    car.condition_id = condition_id
+    car.car_class_id = car_class_id
+    car.is_top = is_top
+    car.additional_info = additional_info
+    car.description = description
+    car.status = "DRAFT" if save_as_draft else "AWAIT"
+    car.update_date = datetime.utcnow()
+
+    # Если загружены новые фото
+    if images:
+        for idx, photo in enumerate(images):
+            url, public_id = CloudinaryService.upload_image(photo.file, folder="autopro/cars")
+            if url:
+                pos = len(car.images) + idx
+                img_record = Image(
+                    entity_id=car.id,
+                    entity_type='CAR',
+                    url=url,
+                    image_id=public_id,
+                    position=pos
+                )
+                db.add(img_record)
+
+    db.commit()
+    db.refresh(car)
+
+    return create_response(
+        data={"id": car.id, "name": car.name, "status": car.status},
+        message_key="ok",
+        lang=request.state.lang if hasattr(request.state, 'lang') else "ru"
+    )
+
+@router.delete("/{car_id}/images/{image_id}")
+async def delete_car_image(
+    car_id: int,
+    image_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_owner: User = Depends(get_current_owner),
+):
+    car = db.query(Car).filter(Car.id == car_id).first()
+    if not car or car.author_id != current_owner.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    image = db.query(Image).filter(Image.id == image_id, Image.entity_id == car_id, Image.entity_type == 'CAR').first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+        
+    from app.services.cloudinary_service import CloudinaryService
+    if image.image_id:
+        CloudinaryService.delete_image(image.image_id)
+    db.delete(image)
+    db.commit()
+    return create_response(message_key="ok", lang=request.state.lang if hasattr(request.state, 'lang') else "ru")

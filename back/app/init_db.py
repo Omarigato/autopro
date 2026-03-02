@@ -4,7 +4,7 @@ from app.db.session import Base, engine, SessionLocal
 from app.models import entities
 from app.core.security import get_password_hash
 from app.services.dictionary_service import dictionary_service
-from app.models.entities import AppSetting
+from app.models.entities import AppSetting, Dictionary, User
 
 def init_db(recreate: bool = False) -> None:
     if recreate:
@@ -21,10 +21,12 @@ def init_db(recreate: bool = False) -> None:
         if not admin:
             print("Creating admin...")
             admin = entities.User(
-                first_name="Admin", last_name="System",
-                name="Admin System", login="admin", phone_number="777",
+                name="Admin System",
+                phone_number="777",
+                email="adminautopro@autopro.kz",
                 password_hash=get_password_hash("admin123"),
-                role="admin", is_active=True
+                role="admin",
+                is_active=True,
             )
             db.add(admin)
             db.commit()

@@ -7,19 +7,21 @@ import Image from "next/image";
 import { Car, Search } from "lucide-react";
 
 export default function HomePage() {
-  const { data: cars = [], isLoading } = useCars();
+  const { data, isLoading } = useCars();
+  const cars = data?.items || [];
 
   return (
     <div className="space-y-20 pb-20">
       {/* Hero Section */}
-      <section className="relative bg-zinc-900 text-white py-20 lg:py-32 overflow-hidden">
+      <section className="relative bg-zinc-900 text-white py-8 lg:py-10 overflow-hidden">
         <div className="absolute inset-0 z-0 opacity-20">
           {/* Abstract background pattern or image could go here */}
           <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary/20 to-transparent" />
         </div>
 
-        <div className="container relative z-10 grid lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
+        <div className="container relative z-10 grid gap-6 lg:grid-cols-2 lg:grid-rows-[auto_auto] lg:gap-x-12 lg:gap-y-4 lg:items-center">
+          {/* Мобильная: 1. Текст | Десктоп: левая колонка, сверху */}
+          <div className="space-y-6 order-1 lg:col-start-1 lg:row-start-1">
             <h1 className="text-4xl lg:text-6xl font-black tracking-tight leading-[1.1]">
               Аренда авто <br className="hidden lg:block" />
               <span className="text-zinc-400">нового поколения</span>
@@ -27,21 +29,29 @@ export default function HomePage() {
             <p className="text-lg text-zinc-400 font-medium max-w-lg">
               Быстро, безопасно и без лишних документов. Выберите идеальный автомобиль для своих поездок прямо сейчас.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border-none" asChild>
-                <Link href="/catalog">Выбрать авто</Link>
-              </Button>
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-zinc-700 bg-transparent text-zinc-400 hover:bg-white hover:text-zinc-900 transition-colors" asChild>
-                <Link href="/add">Сдать своё авто</Link>
-              </Button>
-            </div>
           </div>
 
-          <div className="relative aspect-video rounded-3xl bg-zinc-800/50 border border-zinc-700 p-2 shadow-2xl skew-y-1">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Car size={100} className="text-zinc-600 opacity-50" />
-              {/* This would be a hero image */}
-            </div>
+          {/* Мобильная: 2. Машина | Десктоп: правая колонка на всю высоту */}
+          <div className="relative w-full h-[250px] sm:h-[300px] lg:h-[400px] flex items-center justify-center order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[70%] bg-zinc-400/10 rounded-full blur-[100px] pointer-events-none" />
+            <Image
+              src="/car.png"
+              alt="Premium Car Rental"
+              fill
+              className="object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.8)] z-10 scale-110 lg:scale-[1.45] lg:translate-x-2 lg:translate-y-[8%]"
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+          </div>
+
+          {/* Мобильная: 3. Кнопки | Десктоп: левая колонка, под текстом */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-4 order-3 lg:col-start-1 lg:row-start-2 lg:pt-0">
+            <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border-none" asChild>
+              <Link href="/find">Найти авто</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-zinc-700 bg-transparent text-zinc-400 hover:bg-white hover:text-zinc-900 transition-colors" asChild>
+              <Link href="/add">Сдать своё авто</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -73,7 +83,9 @@ export default function HomePage() {
                 </div>
                 <div className="px-2 pb-2">
                   <h3 className="font-bold text-lg">{car.name}</h3>
-                  <p className="text-sm text-slate-400 mb-4">{car.release_year} • {car.transmission || 'Автомат'}</p>
+                  <p className="text-sm text-slate-400 mb-4">
+                    {[car.mark, car.model].filter(Boolean).join(" ")} {car.release_year ? `• ${car.release_year}` : ''}
+                  </p>
                   <div className="flex items-center justify-between">
                     <span className="text-primary font-black text-xl">{car.price_per_day} ₸</span>
                     <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">/ сутки</span>
@@ -85,21 +97,6 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Call to Action */}
-      <section className="container">
-        <div className="bg-primary rounded-3xl p-12 text-white relative overflow-hidden">
-          <div className="relative z-10 max-w-2xl space-y-6">
-            <h2 className="text-3xl font-black">Зарабатывайте на своём авто</h2>
-            <p className="text-primary-foreground/80 text-lg">
-              У вас есть автомобиль, который простаивает? Сдайте его в аренду через AutoPro и получайте стабильный пассивный доход. Мы берем на себя проверку клиентов и страховку.
-            </p>
-            <Button variant="secondary" size="lg" className="rounded-full font-bold shadow-lg" asChild>
-              <Link href="/add">Начать зарабатывать</Link>
-            </Button>
-          </div>
-          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-white/10 skew-x-12 translate-x-10" />
-        </div>
-      </section>
     </div>
   );
 }
