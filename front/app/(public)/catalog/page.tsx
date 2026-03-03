@@ -113,8 +113,9 @@ export default function CatalogPage() {
     return (
         <div className="min-h-screen">
             {/* Catalog Banner */}
-            <div className="bg-black py-12 sm:py-16 lg:py-20 text-white relative overflow-hidden">
+            <div className="bg-gradient-to-br from-brand via-brand to-brand-dark py-12 sm:py-16 lg:py-20 text-white relative overflow-hidden">
                 <div className="absolute inset-0 opacity-20">
+                  <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-white/10 to-transparent" />
                     <div className="absolute top-0 right-0 w-96 h-96 bg-slate-100/80 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-slate-200/50 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2" />
                 </div>

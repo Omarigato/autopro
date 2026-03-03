@@ -430,8 +430,8 @@ export default function CarDetailsPage() {
                                     {specs.map((spec: any, idx) => (
                                         <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0 hover-group">
                                             <div className="flex items-center gap-3 text-slate-500">
-                                                <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
-                                                    <spec.icon className="h-4 w-4 group-hover:text-blue-500 transition-colors" />
+                                                <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-brand/10 transition-colors">
+                                                    <spec.icon className="h-4 w-4 group-hover:text-brand transition-colors" />
                                                 </div>
                                                 <span className="text-sm">{spec.label}</span>
                                             </div>
@@ -443,7 +443,7 @@ export default function CarDetailsPage() {
                         )}
 
                         {/* Action Buttons Container */}
-                        <div className="bg-white p-6 rounded-3xl shadow-xl shadow-blue-500/5 ring-1 ring-slate-100 flex flex-col gap-4 sticky top-24">
+                        <div className="bg-white p-6 rounded-3xl shadow-xl shadow-brand/5 ring-1 ring-slate-100 flex flex-col gap-4 sticky top-24">
                             {Number(user?.id) === Number(car.author_id) || user?.role === 'admin' ? (
                                 <>
                                     <h3 className="font-bold text-slate-900 flex items-center justify-between">
@@ -473,7 +473,7 @@ export default function CarDetailsPage() {
                                                     Написать в WhatsApp
                                                 </a>
                                             </Button>
-                                            <Button asChild variant="outline" className="w-full border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 h-12 rounded-xl font-bold transition-all">
+                                            <Button asChild variant="outline" className="w-full border-2 border-slate-200 hover:border-brand hover:bg-brand/10 hover:text-brand h-12 rounded-xl font-bold transition-all">
                                                 <a href={`tel:${car.author.phone_number}`}>
                                                     Позвонить {car.author.phone_number}
                                                 </a>

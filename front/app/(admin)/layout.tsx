@@ -43,7 +43,7 @@ function NavLinks({ onLinkClick }: { onLinkClick?: () => void }) {
           key={href}
           href={href}
           onClick={onLinkClick}
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${pathname === href ? "bg-zinc-800/50 text-white" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${pathname === href ? "bg-blue-800/50 text-white" : "text-white/80 hover:bg-blue-800 hover:text-white"
             }`}
         >
           <Icon size={22} /> {label}
@@ -80,8 +80,8 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen flex">
       {/* Desktop Sidebar */}
-      <aside className="w-64 bg-zinc-900 text-white hidden md:flex flex-col flex-shrink-0">
-        <Link href="/" className="p-6 flex items-center gap-2 font-bold text-xl border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors">
+      <aside className="w-64 bg-blue-900 text-white hidden md:flex flex-col flex-shrink-0">
+        <Link href="/" className="p-6 flex items-center gap-2 font-bold text-xl border-b border-blue-800 hover:bg-blue-800/50 transition-colors">
           <Image
             src="/logo-dark.png"
             alt=""
@@ -95,11 +95,11 @@ export default function AdminLayout({
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <NavLinks />
         </nav>
-        <div className="p-4 border-t border-zinc-800">
+        <div className="p-4 border-t border-blue-800">
           <button
             type="button"
             onClick={goToMain}
-            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors"
+            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-blue-800 transition-colors"
           >
             <LogOut size={20} /> Выйти
           </button>
@@ -116,8 +116,8 @@ export default function AdminLayout({
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] max-w-[85vw] p-0 bg-zinc-900 text-white border-zinc-800">
-                <SheetHeader className="p-4 border-b border-zinc-800 text-left">
+              <SheetContent side="left" className="w-[280px] max-w-[85vw] p-0 bg-blue-900 text-white border-blue-800">
+                <SheetHeader className="p-4 border-b border-blue-800 text-left">
                   <SheetTitle asChild>
                     <Link href="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 font-bold text-white hover:opacity-90">
                       <Image
@@ -135,11 +135,11 @@ export default function AdminLayout({
                 <nav className="p-4 space-y-1">
                   <NavLinks onLinkClick={() => setMobileOpen(false)} />
                 </nav>
-                <div className="p-4 border-t border-zinc-800">
+                <div className="p-4 border-t border-blue-800">
                   <button
                     type="button"
                     onClick={goToMain}
-                    className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-blue-800 transition-colors"
                   >
                     <LogOut size={20} /> Выйти
                   </button>
@@ -154,7 +154,7 @@ export default function AdminLayout({
             </span>
             <Avatar className="h-8 w-8 border border-slate-200">
               <AvatarImage src={user?.avatar_url || ""} alt={user?.name || ""} />
-              <AvatarFallback className="bg-zinc-200 text-slate-600 text-xs">
+              <AvatarFallback className="bg-blue-100 text-blue-800 text-xs">
                 {user?.name?.[0]?.toUpperCase() || "A"}
               </AvatarFallback>
             </Avatar>

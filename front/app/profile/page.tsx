@@ -219,7 +219,7 @@ export default function ProfilePage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="min-h-screen">
             <div className="bg-slate-50/50 min-h-screen pb-20">
                 {/* Шапка: только кнопка «На главную» */}
-                <div className="bg-black pt-4 pb-6 sm:pb-8 w-full">
+                <div className="bg-gradient-to-r from-brand to-brand-dark pt-4 pb-6 sm:pb-8 w-full">
                     <div className="container max-w-7xl px-4 mx-auto">
                         <Link
                             href="/"
@@ -237,14 +237,14 @@ export default function ProfilePage() {
                         <div className="flex items-center gap-4">
                             <label className="relative group cursor-pointer flex-shrink-0">
                                 <div className="relative">
-                                    <Avatar className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-white shadow-lg ring-2 ring-slate-200 transition-all duration-300 group-hover:ring-slate-400">
+                                    <Avatar className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-white shadow-lg ring-2 ring-slate-200 transition-all duration-300 group-hover:ring-brand/60">
                                         <AvatarImage src={profileData.avatar_url} alt={profileData.first_name} />
                                         <AvatarFallback className="text-xl sm:text-2xl bg-slate-100 text-slate-700">
                                             {profileData.name?.split(' ')?.[0]?.[0]}
                                             {profileData.name?.split(' ')?.[1]?.[0] ?? ''}
                                         </AvatarFallback>
                                     </Avatar>
-                                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <div className="absolute inset-0 bg-brand/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                         <Camera className="text-white h-6 w-6 sm:h-8 sm:w-8" />
                                     </div>
                                 </div>

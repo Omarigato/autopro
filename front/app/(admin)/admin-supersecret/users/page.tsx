@@ -323,7 +323,7 @@ export default function AdminUsersPage() {
                 </div>
                 <div className="flex justify-between gap-2">
                   <span className="text-slate-500 shrink-0">Активен</span>
-                  <span className={u.is_active ? "text-blue-600 font-medium" : "text-red-400"}>
+                  <span className={u.is_active ? "text-brand font-medium" : "text-red-400"}>
                     {u.is_active ? "Да" : "Нет"}
                   </span>
                 </div>
@@ -402,7 +402,7 @@ export default function AdminUsersPage() {
                   <td className="p-4 text-slate-700">{u.role}</td>
                   <td className="p-4">
                     {u.is_active ? (
-                      <span className="text-blue-600 font-medium">Да</span>
+                      <span className="text-brand font-medium">Да</span>
                     ) : (
                       <span className="text-red-400">Нет</span>
                     )}

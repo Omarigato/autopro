@@ -267,7 +267,7 @@ function ProfileRequestsContent() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20">
-      <div className="bg-black pt-4 pb-6 sm:pb-8 w-full">
+      <div className="bg-gradient-to-r from-brand to-brand-dark pt-4 pb-6 sm:pb-8 w-full">
         <div className="container max-w-4xl px-4 mx-auto">
           <Link
             href="/"
@@ -656,7 +656,7 @@ function ProfileRequestsContent() {
       </div>
 
       {completeModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4 sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-blue-950/50 p-4 sm:p-6">
           <Card className="w-full max-w-lg p-4 sm:p-6 max-h-[85vh] sm:max-h-[80vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl">
             <h3 className="font-semibold text-base sm:text-lg mb-4">Выберите объявления (сделка состоялась)</h3>
             <div className="space-y-2 mb-4">
@@ -723,7 +723,7 @@ function ProfileRequestsContent() {
       )}
 
       {viewCarsAppId != null && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4 sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-blue-950/50 p-4 sm:p-6">
           <Card className="w-full max-w-lg p-4 sm:p-6 max-h-[85vh] sm:max-h-[80vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl">
             <h3 className="font-semibold text-base sm:text-lg mb-4">Объявления по заявке</h3>
             <div className="space-y-2 mb-4">

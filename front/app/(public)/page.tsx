@@ -13,10 +13,10 @@ export default function HomePage() {
   return (
     <div className="space-y-20 pb-20">
       {/* Hero Section */}
-      <section className="relative bg-zinc-900 text-white py-8 lg:py-10 overflow-hidden">
-        <div className="absolute inset-0 z-0 opacity-20">
-          {/* Abstract background pattern or image could go here */}
-          <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-primary/20 to-transparent" />
+      <section className="relative bg-gradient-to-br from-brand via-brand to-brand-dark text-white py-8 lg:py-10 overflow-hidden">
+        <div className="absolute inset-0 z-0 opacity-30">
+          <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-white/10 to-transparent" />
+          <div className="absolute bottom-0 left-0 w-1/3 h-1/2 bg-brand-light/20 rounded-full blur-3xl" />
         </div>
 
         <div className="container relative z-10 grid gap-6 lg:grid-cols-2 lg:grid-rows-[auto_auto] lg:gap-x-12 lg:gap-y-4 lg:items-center">
@@ -24,16 +24,16 @@ export default function HomePage() {
           <div className="space-y-6 order-1 lg:col-start-1 lg:row-start-1">
             <h1 className="text-4xl lg:text-6xl font-black tracking-tight leading-[1.1]">
               Аренда авто <br className="hidden lg:block" />
-              <span className="text-zinc-400">нового поколения</span>
+              <span className="text-white">нового поколения</span>
             </h1>
-            <p className="text-lg text-zinc-400 font-medium max-w-lg">
+            <p className="text-lg text-white/90 font-medium max-w-lg">
               Быстро, безопасно и без лишних документов. Выберите идеальный автомобиль для своих поездок прямо сейчас.
             </p>
           </div>
 
           {/* Мобильная: 2. Машина | Десктоп: правая колонка на всю высоту */}
           <div className="relative w-full h-[250px] sm:h-[300px] lg:h-[400px] flex items-center justify-center order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[70%] bg-zinc-400/10 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[70%] bg-white/10 rounded-full blur-[100px] pointer-events-none" />
             <Image
               src="/car.png"
               alt="Premium Car Rental"
@@ -46,10 +46,10 @@ export default function HomePage() {
 
           {/* Мобильная: 3. Кнопки | Десктоп: левая колонка, под текстом */}
           <div className="flex flex-col sm:flex-row gap-4 pt-4 order-3 lg:col-start-1 lg:row-start-2 lg:pt-0">
-            <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border-none" asChild>
+            <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-white text-brand-dark hover:bg-white/95 shadow-lg shadow-black/10 border-none" asChild>
               <Link href="/find">Найти авто</Link>
             </Button>
-            <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-zinc-700 bg-transparent text-zinc-400 hover:bg-white hover:text-zinc-900 transition-colors" asChild>
+            <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-2 border-white/90 bg-white/5 text-white hover:bg-white hover:text-brand-dark transition-all backdrop-blur-sm" asChild>
               <Link href="/add">Сдать своё авто</Link>
             </Button>
           </div>
@@ -73,7 +73,7 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {cars.slice(0, 4).map((car: any) => (
-              <Link key={car.id} href={`/cars/${car.id}`} className="group block bg-white rounded-2xl border border-slate-100 p-2 hover:shadow-xl transition-all hover:-translate-y-1">
+              <Link key={car.id} href={`/cars/${car.id}`} className="group block bg-white rounded-2xl border border-slate-100 p-2 hover:shadow-xl hover:shadow-brand/10 hover:border-brand/20 transition-all hover:-translate-y-1">
                 <div className="relative aspect-[4/3] bg-slate-100 rounded-xl overflow-hidden mb-4">
                   {car.images?.[0] ? (
                     <Image src={car.images[0].url} alt={car.name} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />

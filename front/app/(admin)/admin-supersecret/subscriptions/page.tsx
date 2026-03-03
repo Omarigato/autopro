@@ -223,7 +223,7 @@ export default function AdminSubscriptionsPage() {
                   <td className="p-4 text-slate-600">{p.period_days}</td>
                   <td className="p-4 text-slate-600">{p.max_cars ?? "—"}</td>
                   <td className="p-4">
-                    <span className={p.is_active ? "text-blue-600 font-medium" : "text-red-400"}>
+                    <span className={p.is_active ? "text-brand font-medium" : "text-red-400"}>
                       {p.is_active ? "Да" : "Нет"}
                     </span>
                   </td>

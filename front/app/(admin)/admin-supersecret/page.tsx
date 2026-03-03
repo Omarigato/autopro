@@ -86,8 +86,8 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <FileText className="h-6 w-6 text-blue-600" />
+          <div className="w-12 h-12 rounded-xl bg-brand/10 flex items-center justify-center shrink-0">
+            <FileText className="h-6 w-6 text-brand" />
           </div>
           <div className="min-w-0">
             <p className="text-slate-500 font-medium text-sm">Объявления</p>
@@ -145,7 +145,7 @@ export default function DashboardPage() {
             {carsPerDay.map((d) => (
               <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
                 <div
-                  className="w-full rounded-t bg-blue-500 min-h-[4px] transition-all"
+                  className="w-full rounded-t bg-brand min-h-[4px] transition-all"
                   style={{ height: `${(d.count / maxCars) * 100}%` }}
                   title={`${d.label}: ${d.count}`}
                 />

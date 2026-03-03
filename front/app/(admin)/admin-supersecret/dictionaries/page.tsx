@@ -466,7 +466,7 @@ function DictTable({
                   )}
                 </td>
                 <td className="p-4">
-                  <span className={item.is_active ? "text-blue-600 font-medium" : "text-red-400"}>
+                  <span className={item.is_active ? "text-brand font-medium" : "text-red-400"}>
                     {item.is_active ? "Да" : "Нет"}
                   </span>
                 </td>

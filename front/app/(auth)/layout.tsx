@@ -9,7 +9,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col justify-between bg-zinc-900 p-10 text-white">
+      <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-brand via-brand to-brand-dark p-10 text-white">
         <Link href="/" className="flex items-center gap-3 font-bold text-2xl text-white hover:opacity-90 transition-opacity w-fit">
           <Image
             src="/logo-dark.png"

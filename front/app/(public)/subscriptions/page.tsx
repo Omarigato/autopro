@@ -40,9 +40,10 @@ export default function SubscriptionsPage() {
 
     return (
         <div className="min-h-screen bg-slate-50/30 pb-20">
-            {/* Hero Header — чёрный блок как в каталоге */}
-            <section className="bg-black py-32 text-white text-center relative overflow-hidden">
+            {/* Hero Header — сининий брендовый фон */}
+            <section className="bg-gradient-to-br from-brand via-brand to-brand-dark py-32 text-white text-center relative overflow-hidden">
                 <div className="absolute inset-0 opacity-20">
+                  <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/20 to-transparent" />
                     <div className="absolute top-0 left-0 w-64 h-64 bg-slate-100 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
                     <div className="absolute bottom-0 right-0 w-96 h-96 bg-slate-200/80 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
                 </div>
@@ -80,7 +81,7 @@ export default function SubscriptionsPage() {
                                     )}
                                 >
                                     {isPremium && (
-                                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">
+                                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-blue-800 text-white px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">
                                             Рекомендуем
                                         </div>
                                     )}
@@ -122,8 +123,8 @@ export default function SubscriptionsPage() {
                                         className={cn(
                                             "w-full h-16 rounded-2xl text-lg font-black transition-all duration-300 shadow-lg",
                                             isPremium
-                                                ? "bg-slate-800 hover:bg-slate-700 shadow-slate-200"
-                                                : "bg-slate-900 hover:bg-slate-800 shadow-slate-200"
+                                                ? "bg-blue-800 hover:bg-blue-700 shadow-blue-200"
+                                                : "bg-blue-900 hover:bg-blue-800 shadow-blue-200"
                                         )}
                                         asChild={plan.price === 0}
                                     >

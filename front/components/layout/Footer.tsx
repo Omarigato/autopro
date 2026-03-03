@@ -7,14 +7,14 @@ import Image from "next/image";
 export function Footer() {
 
   return (
-    <footer className="bg-blue-50/50 border-t border-blue-100/50 py-12 text-slate-500">
+    <footer className="bg-brand-muted border-t border-brand/10 py-12 text-slate-600">
       <div className="container grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
         <div className="space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 h-6 mb-4">
             <Image src="/logo-light.png" alt="Logo" width={220} height={60}  className="h-10 w-auto sm:h-12" />
             <span className="inline-flex items-baseline gap-0">
-            <span className="font-bold text-xl sm:text-2xl tracking-tight text-black">Auto</span>
-            <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Pro</span>
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-brand">Auto</span>
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-brand/90">Pro</span>
           </span>
           </div>
           <p className="text-sm max-w-sm leading-relaxed">
