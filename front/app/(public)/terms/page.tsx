@@ -61,8 +61,8 @@ export default function TermsPage() {
                 <section className="mt-12 p-6 bg-slate-50 rounded-2xl">
                     <p className="text-slate-600">
                         {t("terms.contact_text") || "По вопросам использования обращайтесь"}:
-                        <a href="mailto:legal@autorentgo.kz" className="text-primary hover:underline ml-1">
-                            legal@autorentgo.kz
+                        <a href="mailto:legal@autopro.kz" className="text-primary hover:underline ml-1">
+                            legal@autopro.kz
                         </a>
                     </p>
                 </section>

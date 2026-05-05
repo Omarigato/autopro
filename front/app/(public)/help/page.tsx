@@ -51,7 +51,7 @@ export default function HelpPage() {
                     </p>
                     <div className="space-y-2 text-slate-600 font-medium">
                         <p>📞 {t("help.phone")}: +7 (777) 123-45-67</p>
-                        <p>📧 {t("help.email")}: support@autorentgo.kz</p>
+                        <p>📧 {t("help.email")}: support@autopro.kz</p>
                         <p>⏰ {t("help.work_time")}: {t("help.work_days")}</p>
                     </div>
                 </section>

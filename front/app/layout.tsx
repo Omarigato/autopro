@@ -3,7 +3,7 @@ import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata = {
-  title: "AutoRentGo - Premium Car Rental",
+  title: "AutoPro - Premium Car Rental",
   description: "Rent the best cars in Kazakhstan",
 };
 

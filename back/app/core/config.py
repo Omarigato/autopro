@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Общие настройки
-    APP_NAME: str = "AutoRentGo API"
+    APP_NAME: str = "AutoPro API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     WHATSAPP_ALT_API_TOKEN: str | None = None
 
     # Базовый URL фронтенда (для ссылок в Telegram)
-    FRONTEND_BASE_URL: str | None = None  # например, https://autorentgo.kz или http://localhost:3000
+    FRONTEND_BASE_URL: str | None = None  # например, https://autopro.kz или http://localhost:3000
 
     @field_validator("SMTP_PORT", mode="before")
     @classmethod

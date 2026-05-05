@@ -125,7 +125,7 @@ async def create_application(
 
     for idx, img_file in enumerate(images):
         if img_file and img_file.filename:
-            url, public_id = CloudinaryService.upload_image(img_file.file, folder="autorentgo/applications")
+            url, public_id = CloudinaryService.upload_image(img_file.file, folder="autopro/applications")
             if url:
                 db.add(models.Image(
                     entity_id=app.id,
@@ -165,18 +165,18 @@ async def create_application(
     
     for owner in owner_dict.values():
         text_whatsapp = (
-            f"🚀 *Новая возможность для вас в AutoRentGo!*\n\n"
+            f"🚀 *Новая возможность для вас в AutoPro!*\n\n"
             f"Появилась свежая заявка на автомобиль, которая идеально совпадает с вашим парком. 🚗✨\n\n"
             f"👉 *Нажмите в приложении на вкладку 'Заявки'*, чтобы увидеть детали и отправить свое предложение.\n\n"
-            f"Желаем успешной аренды!\n_Команда AutoRentGo_"
+            f"Желаем успешной аренды!\n_Команда AutoPro_"
         )
         text_email = (
             f"Здравствуйте!\n\n"
-            f"В сервисе AutoRentGo появилась новая заявка на аренду автомобиля, которая совпадает с вашими объявлениями.\n\n"
+            f"В сервисе AutoPro появилась новая заявка на аренду автомобиля, которая совпадает с вашими объявлениями.\n\n"
             f"Не упустите возможность — зайдите в приложение и предложите свой вариант первым!\n\n"
-            f"С уважением,\nКоманда AutoRentGo"
+            f"С уважением,\nКоманда AutoPro"
         )
-        subject_email = "🔔 Новая заявка на автомобиль (AutoRentGo)"
+        subject_email = "🔔 Новая заявка на автомобиль (AutoPro)"
         
         if getattr(owner, 'notify_by_email', True) and owner.email:
             action_url = f"{settings.FRONTEND_BASE_URL}/applications"

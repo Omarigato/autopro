@@ -34,7 +34,7 @@ export default function AboutPage() {
                 </p>
                 <ul className="list-none space-y-2 text-slate-600">
                     <li>📞 {t("about.phone")}: +7 (777) 123-45-67</li>
-                    <li>📧 {t("about.email")}: support@autorentgo.kz</li>
+                    <li>📧 {t("about.email")}: support@autopro.kz</li>
                     <li>📍 {t("about.address")}: {t("about.address_val")}</li>
                 </ul>
             </div>

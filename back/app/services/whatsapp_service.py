@@ -21,7 +21,7 @@ class WhatsAppAltService:
 
     async def send_otp(self, phone_number: str, otp_code: str) -> bool:
         message = (
-            f"🔑 *Код подтверждения AutoRentGo*\n\n"
+            f"🔑 *Код подтверждения AutoPro*\n\n"
             f"Ваш код: *{otp_code}*\n\n"
             f"⚠️ Пожалуйста, никому не сообщайте этот код."
         )
@@ -57,7 +57,7 @@ class WhatsAppCloudService:
 
     async def send_otp(self, phone_number: str, otp_code: str) -> bool:
         message = (
-            f"🔑 *Код подтверждения AutoRentGo*\n\n"
+            f"🔑 *Код подтверждения AutoPro*\n\n"
             f"Ваш код: *{otp_code}*\n\n"
             f"⚠️ Пожалуйста, никому не сообщайте этот код."
         )

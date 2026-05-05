@@ -1,6 +1,6 @@
-# AutoRentGo Frontend
+# AutoPro Frontend
 
-Next.js (App Router) фронт для сервиса аренды AutoRentGo.
+Next.js (App Router) фронт для сервиса аренды AutoPro.
 
 ## Запуск
 

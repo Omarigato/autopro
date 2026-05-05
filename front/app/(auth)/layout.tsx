@@ -19,11 +19,11 @@ export default function AuthLayout({
             className="h-10 w-auto"
             priority
           />
-          <span className="font-bold text-2xl tracking-tight">AutoRentGo</span>
+          <span className="font-bold text-2xl tracking-tight">AutoPro</span>
         </Link>
         <div className="space-y-4">
           <blockquote className="text-lg font-medium leading-relaxed">
-            "AutoRentGo помог мне найти идеальный автомобиль для моего путешествия по Казахстану. Сервис на высшем уровне!"
+            "AutoPro помог мне найти идеальный автомобиль для моего путешествия по Казахстану. Сервис на высшем уровне!"
           </blockquote>
           <div className="font-semibold">Омар А., Алматы</div>
         </div>
@@ -39,7 +39,7 @@ export default function AuthLayout({
               className="h-10 w-auto"
               priority
             />
-            <span className="font-bold text-2xl tracking-tight">AutoRentGo</span>
+            <span className="font-bold text-2xl tracking-tight">AutoPro</span>
           </Link>
           {children}
         </div>

@@ -23,8 +23,8 @@ def init_db(recreate: bool = False) -> None:
             admin = models.User(
                 name="Admin System",
                 phone_number="+7 (777) 777-77-77",
-                email="admin@autorentgo.kz",
-                password_hash=get_password_hash("adminautorentgo2026@@!"),
+                email="admin@autopro.kz",
+                password_hash=get_password_hash("adminautopro2026@@!"),
                 role="admin",
                 is_active=True,
             )

@@ -30,4 +30,4 @@ def setup_logging():
 
     return root_logger
 
-logger = logging.getLogger("autorentgo")
+logger = logging.getLogger("autopro")

@@ -95,7 +95,7 @@ export default function AdminLayout({
             className="h-16 w-auto object-contain"
             priority
           />
-          <span className="text-white">AutoRentGo</span>
+          <span className="text-white">AutoPro</span>
         </Link>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <NavLinks />
@@ -133,7 +133,7 @@ export default function AdminLayout({
                         className="h-8 w-8 object-contain"
                         priority
                       />
-                      <span>AutoRentGo</span>
+                      <span>AutoPro</span>
                     </Link>
                   </SheetTitle>
                 </SheetHeader>

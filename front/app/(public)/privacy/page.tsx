@@ -88,8 +88,8 @@ export default function PrivacyPage() {
                 <section className="mt-12 p-6 bg-blue-50/50 rounded-2xl">
                     <p className="text-slate-600">
                         {t("privacy.contact_text")}:
-                        <a href="mailto:privacy@autorentgo.kz" className="text-primary hover:underline ml-1">
-                            privacy@autorentgo.kz
+                        <a href="mailto:privacy@autopro.kz" className="text-primary hover:underline ml-1">
+                            privacy@autopro.kz
                         </a>
                     </p>
                 </section>

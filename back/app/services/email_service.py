@@ -56,7 +56,7 @@ class EmailService:
         """
         Отправка OTP‑кода на email (HTML).
         """
-        subject = "Ваш код подтверждения AutoRentGo"
+        subject = "Ваш код подтверждения AutoPro"
         try:
             template = jinja_env.get_template("otp.html")
             html_content = template.render(otp_code=otp_code)
@@ -64,7 +64,7 @@ class EmailService:
         except Exception as e:
             logger.error(f"Error rendering OTP template: {e}")
             # Fallback to plain text if template fails
-            body = f"Ваш код для входа в AutoRentGo: {otp_code}"
+            body = f"Ваш код для входа в AutoPro: {otp_code}"
             return await self._send(email, subject, body)
 
     async def send_notification(self, email: str, subject: str, text: str, action_url: str = None) -> bool:
@@ -88,7 +88,7 @@ class EmailService:
         """
         Отправка нового пароля пользователю (HTML).
         """
-        subject = "Новый пароль для входа в AutoRentGo"
+        subject = "Новый пароль для входа в AutoPro"
         login_url = f"{settings.FRONTEND_BASE_URL}/login"
         try:
             template = jinja_env.get_template("password_reset.html")
@@ -98,9 +98,9 @@ class EmailService:
             logger.error(f"Error rendering password_reset template: {e}")
             body = (
                 f"Здравствуйте!\n\n"
-                f"Ваш новый временный пароль для входа в AutoRentGo: {new_password}\n\n"
+                f"Ваш новый временный пароль для входа в AutoPro: {new_password}\n\n"
                 f"Рекомендуем сменить его после входа.\n"
-                f"С уважением, Команда AutoRentGo"
+                f"С уважением, Команда AutoPro"
             )
             return await self._send(email, subject, body)
 
@@ -128,7 +128,7 @@ class EmailService:
                 body = (
                     f"Здравствуйте!\n\n"
                     f"Новый автомобиль добавлен в вашу заявку: {car_name}\n\n"
-                    f"С уважением, Команда AutoRentGo"
+                    f"С уважением, Команда AutoPro"
                 )
                 return await self._send(email, subject, body)
 

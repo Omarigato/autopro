@@ -208,7 +208,7 @@ async def create_car(
     # Save photos to Cloudinary
     if images:
         for idx, photo in enumerate(images):
-            url, public_id = CloudinaryService.upload_image(photo.file, folder="autorentgo/cars")
+            url, public_id = CloudinaryService.upload_image(photo.file, folder="autopro/cars")
             if url:
                 img_record = Image(
                     entity_id=car.id,
@@ -454,7 +454,7 @@ async def update_car(
     # Если загружены новые фото
     if images:
         for idx, photo in enumerate(images):
-            url, public_id = CloudinaryService.upload_image(photo.file, folder="autorentgo/cars")
+            url, public_id = CloudinaryService.upload_image(photo.file, folder="autopro/cars")
             if url:
                 pos = len(car.car_images) + idx
                 img_record = Image(

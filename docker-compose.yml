@@ -1,36 +1,36 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: autorentgo_db
+    container_name: autopro_db
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-autorentgo}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-autorentgo123}
-      - POSTGRES_DB=${POSTGRES_DB:-autorentgo}
+      - POSTGRES_USER=${POSTGRES_USER:-autopro}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-autopro123}
+      - POSTGRES_DB=${POSTGRES_DB:-autopro}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autorentgo} -d ${POSTGRES_DB:-autorentgo}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autopro} -d ${POSTGRES_DB:-autopro}"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - autorentgo_network
+      - autopro_network
 
   back:
     build: ./back
-    container_name: autorentgo_backend
+    container_name: autopro_backend
     ports:
       - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
     env_file:
       - .env
     environment:
-      - SQLALCHEMY_DATABASE_URI=postgresql://${POSTGRES_USER:-autorentgo}:${POSTGRES_PASSWORD:-autorentgo123}@db:5432/${POSTGRES_DB:-autorentgo}
+      - SQLALCHEMY_DATABASE_URI=postgresql://${POSTGRES_USER:-autopro}:${POSTGRES_PASSWORD:-autopro123}@db:5432/${POSTGRES_DB:-autopro}
     command: sh -c "python -m app.init_db && uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000}"
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - autorentgo_network
+      - autopro_network
 
   front:
     build:
@@ -38,7 +38,7 @@ services:
       args:
         - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
         - API_BACKEND_URL=http://back:${BACKEND_PORT:-8000}
-    container_name: autorentgo_frontend
+    container_name: autopro_frontend
     ports:
       - "3000:3000"
     env_file:
@@ -49,10 +49,10 @@ services:
     depends_on:
       - back
     networks:
-      - autorentgo_network
+      - autopro_network
 
 networks:
-  autorentgo_network:
+  autopro_network:
     driver: bridge
 
 volumes:

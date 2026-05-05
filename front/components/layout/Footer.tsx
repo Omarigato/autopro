@@ -63,11 +63,11 @@ export function Footer() {
               </svg>
             </Link>
           </div>
-          <p className="text-sm">support@autorentgo.kz</p>
+          <p className="text-sm">support@autopro.kz</p>
         </div>
       </div>
       <div className="container mt-12 pt-8 border-t border-slate-200 text-center text-xs">
-        &copy; {new Date().getFullYear()} AutoRentGo. {t("footer.rights")}
+        &copy; {new Date().getFullYear()} AutoPro. {t("footer.rights")}
       </div>
     </footer >
   );
