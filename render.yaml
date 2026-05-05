@@ -23,7 +23,7 @@ services:
       - key: SQLALCHEMY_DATABASE_URI
         sync: false
       - key: CORS_ORIGINS
-        value: "https://rent-hub.kz,https://www.rent-hub.kz"
+        value: "https://autopro.kz,https://www.autopro.kz"
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
@@ -43,4 +43,22 @@ services:
     dockerContext: ./front
     envVars:
       - key: NEXT_PUBLIC_API_BASE_URL
-        value: "https://api.rent-hub.kz/api/v1"
+        value: "https://api.autopro.kz/api/v1"
+
+  # ── WhatsApp Gateway (Node.js) ─────────────────────────
+  - type: web
+    name: autopro-whatsapp-gateway
+    runtime: docker
+    dockerfilePath: ./whatsapp-gateway/Dockerfile
+    dockerContext: ./whatsapp-gateway
+    envVars:
+      - key: PORT
+        value: "3001"
+      - key: WHATSAPP_GATEWAY_TOKEN
+        sync: false
+      - key: ADMIN_LOGIN
+        value: "admin"
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        sync: false

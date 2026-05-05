@@ -1,59 +1,18 @@
 import httpx
-
 from app.core.logger import logger
 from app.core.config import settings
 
-
 def _normalize_phone(phone: str) -> str:
-    """Номер только цифрами: 77056948240."""
-    return "".join(c for c in phone if c.isdigit())
+    """Номер только цифрами: +77056948240."""
+    phone = phone.replace("+", "")
+    digits = "".join(c for c in phone if c.isdigit())
+    return "+" + digits if digits else ""
 
-
-class WhatsAppAltService:
-    """
-    WhatsApp через Whapi.Cloud: POST {base}/messages/text.
-    Body: { "to": "77056948240", "body": "текст" }
-    """
+class WhatsAppLocalGatewayService:
     def __init__(self, base_url: str, token: str):
         self.base_url = base_url.rstrip("/")
         self.token = token
-        self._text_url = f"{self.base_url}/messages/text"
-
-    async def send_otp(self, phone_number: str, otp_code: str) -> bool:
-        message = (
-            f"🔑 *Код подтверждения AutoPro*\n\n"
-            f"Ваш код: *{otp_code}*\n\n"
-            f"⚠️ Пожалуйста, никому не сообщайте этот код."
-        )
-        return await self._post_text(phone_number, message)
-
-    async def send_notification(self, phone_number: str, text: str) -> bool:
-        return await self._post_text(phone_number, text)
-
-    async def _post_text(self, phone_number: str, body: str) -> bool:
-        to = _normalize_phone(phone_number)
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.token}",
-        }
-        payload = {"to": to, "body": body}
-        try:
-            logger.info(f"[WHATSAPP_ALT] Sending to {phone_number}: {body[:50]}...")
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.post(self._text_url, json=payload, headers=headers)
-                resp.raise_for_status()
-            return True
-        except Exception as e:
-            logger.error(f"[WHATSAPP_ALT] Error sending to {phone_number}: {e}")
-            return False
-
-
-class WhatsAppCloudService:
-    """Facebook WhatsApp Cloud API (graph.facebook.com)."""
-    def __init__(self, url: str, token: str):
-        self.url = url
-        self.token = token
+        self._send_url = f"{self.base_url}/messages/send"
 
     async def send_otp(self, phone_number: str, otp_code: str) -> bool:
         message = (
@@ -68,51 +27,40 @@ class WhatsAppCloudService:
 
     async def _post_message(self, phone_number: str, message: str) -> bool:
         to = _normalize_phone(phone_number)
+        if not to:
+            logger.error(f"[WHATSAPP_GATEWAY] Invalid phone number: {phone_number}")
+            return False
+            
         headers = {
-            "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.token}",
         }
-        payload = {
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": to,
-            "type": "text",
-            "text": {"preview_url": False, "body": message},
-        }
+        payload = {"phone": to, "message": message}
         try:
-            logger.info(f"[WHATSAPP_CLOUD] Sending to {phone_number}: {message[:50]}...")
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.post(self.url, json=payload, headers=headers)
+            logger.info(f"[WHATSAPP_GATEWAY] Sending to {to}: {message[:50]}...")
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(self._send_url, json=payload, headers=headers)
                 resp.raise_for_status()
+                data = resp.json()
+                if not data.get("success"):
+                    logger.error(f"[WHATSAPP_GATEWAY] Gateway returned error: {data.get('error')}")
+                    return False
             return True
         except Exception as e:
-            logger.error(f"[WHATSAPP_CLOUD] Error sending to {phone_number}: {e}")
+            logger.error(f"[WHATSAPP_GATEWAY] HTTP Error sending to {to}: {e}")
             return False
 
-
 class WhatsAppService:
-    """
-    Единая точка отправки в WhatsApp.
-    Если заданы WHATSAPP_ALT_API_URL и WHATSAPP_ALT_API_TOKEN — используется альтернативный API (POST /api/messages/text).
-    Иначе, если заданы WHATSAPP_API_URL (graph.facebook.com) и WHATSAPP_API_TOKEN — Cloud API.
-    """
     def __init__(self):
         self._impl = None
-        if settings.WHATSAPP_ALT_API_URL and settings.WHATSAPP_ALT_API_TOKEN:
-            self._impl = WhatsAppAltService(
-                settings.WHATSAPP_ALT_API_URL,
-                settings.WHATSAPP_ALT_API_TOKEN,
+        if settings.WHATSAPP_ENABLED and settings.WHATSAPP_GATEWAY_URL and settings.WHATSAPP_GATEWAY_TOKEN:
+            self._impl = WhatsAppLocalGatewayService(
+                settings.WHATSAPP_GATEWAY_URL,
+                settings.WHATSAPP_GATEWAY_TOKEN,
             )
-            logger.info("[WHATSAPP] Using ALT API (POST /api/messages/text)")
-        elif settings.WHATSAPP_API_URL and settings.WHATSAPP_API_TOKEN and "graph.facebook.com" in settings.WHATSAPP_API_URL:
-            self._impl = WhatsAppCloudService(
-                settings.WHATSAPP_API_URL,
-                settings.WHATSAPP_API_TOKEN,
-            )
-            logger.info("[WHATSAPP] Using Cloud API (graph.facebook.com)")
+            logger.info("[WHATSAPP] Using Local Gateway")
         else:
-            if not (settings.WHATSAPP_API_URL and settings.WHATSAPP_API_TOKEN):
-                logger.warning("WhatsApp API не настроен: задайте WHATSAPP_ALT_API_URL/TOKEN или WHATSAPP_API_URL/TOKEN в .env")
+            logger.warning("[WHATSAPP] Disabled or missing WHATSAPP_GATEWAY_URL/TOKEN in config")
 
     async def send_otp(self, phone_number: str, otp_code: str) -> bool:
         if not self._impl:
@@ -124,6 +72,4 @@ class WhatsAppService:
             return False
         return await self._impl.send_notification(phone_number, text)
 
-
 whatsapp_service = WhatsAppService()
-

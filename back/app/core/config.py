@@ -49,12 +49,23 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
     EMAIL_FROM: str | None = None  # от кого отправляем письма
 
-    # WhatsApp API (внешний провайдер / собственный шлюз)
-    WHATSAPP_API_URL: str | None = None
-    WHATSAPP_API_TOKEN: str | None = None
-    # Альтернативный WhatsApp API (POST /api/messages/text, body: { to, body })
-    WHATSAPP_ALT_API_URL: str | None = None
-    WHATSAPP_ALT_API_TOKEN: str | None = None
+    # WhatsApp Gateway
+    WHATSAPP_ENABLED: bool = False
+    WHATSAPP_GATEWAY_URL: str | None = None
+    WHATSAPP_GATEWAY_TOKEN: str | None = None
+
+    # Kassa24
+    KASSA24_ENABLED: bool = False
+    KASSA24_MERCHANT_ID: str | None = None
+    KASSA24_LOGIN: str | None = None
+    KASSA24_PASSWORD: str | None = None
+    KASSA24_SECRET_KEY: str | None = None
+    KASSA24_API_URL: str | None = None
+    KASSA24_CALLBACK_URL: str | None = None
+    KASSA24_RETURN_URL: str | None = None
+    KASSA24_SUCCESS_URL: str | None = None
+    KASSA24_FAIL_URL: str | None = None
+    KASSA24_DEMO: bool = False
 
     # Базовый URL фронтенда (для ссылок в Telegram)
     FRONTEND_BASE_URL: str | None = None  # например, https://autopro.kz или http://localhost:3000

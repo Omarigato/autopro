@@ -51,9 +51,26 @@ services:
     networks:
       - autopro_network
 
+  whatsapp-gateway:
+    build: ./whatsapp-gateway
+    container_name: autopro_whatsapp_gateway
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - WHATSAPP_GATEWAY_TOKEN=${WHATSAPP_GATEWAY_TOKEN:-}
+      - ADMIN_LOGIN=${ADMIN_LOGIN:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - SESSION_SECRET=${SESSION_SECRET:-super_secret}
+    volumes:
+      - whatsapp_sessions:/app/.wwebjs_auth
+    networks:
+      - autopro_network
+
 networks:
   autopro_network:
     driver: bridge
 
 volumes:
   postgres_data:
+  whatsapp_sessions:

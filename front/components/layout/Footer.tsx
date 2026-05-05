@@ -15,8 +15,8 @@ export function Footer() {
           <div className="flex items-center gap-2 h-6 mb-4">
             <Image src="/logo-dark.png" alt="Logo" width={480} height={120} className="h-10 w-auto sm:h-12" />
             <span className="inline-flex items-baseline gap-0">
-              <span className="font-bold text-xl sm:text-2xl tracking-tight text-black">AutoRent</span>
-              <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Go</span>
+              <span className="font-bold text-xl sm:text-2xl tracking-tight text-black">Auto</span>
+              <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Pro</span>
             </span>
           </div>
           <p className="text-sm max-w-sm leading-relaxed">

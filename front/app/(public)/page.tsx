@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 import { useCars } from "@/hooks/useCars";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -11,6 +13,16 @@ export default function HomePage() {
   const { t } = useTranslation();
   const { data, isLoading } = useCars();
   const cars = data?.items || [];
+
+  const [currentImage, setCurrentImage] = useState(0);
+  const heroImages = ["/car.png", "/car-2.png", "/car-3.png", "/car-4.png"];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % heroImages.length);
+    }, 4000); // 4 seconds
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div className="space-y-20 pb-20">
@@ -36,14 +48,21 @@ export default function HomePage() {
           {/* Мобильная: 2. Машина | Десктоп: правая колонка на всю высоту */}
           <div className="relative w-full h-[250px] sm:h-[300px] lg:h-[400px] flex items-center justify-center order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[70%] bg-zinc-400/10 rounded-full blur-[100px] pointer-events-none" />
-            <Image
-              src="/car.png"
-              alt="Premium Car Rental"
-              fill
-              className="object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.8)] z-10 scale-110 lg:scale-[1.45] lg:translate-x-2 lg:translate-y-[8%]"
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
+            {heroImages.map((src, idx) => (
+              <Image
+                key={src}
+                src={src}
+                alt="Premium Car Rental"
+                fill
+                className={`object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.8)] z-10 transition-all duration-1000 ease-in-out lg:translate-x-2 lg:translate-y-[8%] ${
+                  idx === currentImage 
+                    ? 'opacity-100 scale-110 lg:scale-[1.45]' 
+                    : 'opacity-0 scale-95 lg:scale-[1.30]'
+                }`}
+                priority={idx === 0}
+                sizes="(max-width: 1024px) 100vw, 50vw"
+              />
+            ))}
           </div>
 
           {/* Мобильная: 3. Кнопки | Десктоп: левая колонка, под текстом */}

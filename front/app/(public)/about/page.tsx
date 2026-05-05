@@ -1,41 +1,37 @@
-"use client";
-
-import { useTranslation } from "@/hooks/useTranslation";
-
 export default function AboutPage() {
-    const { t } = useTranslation();
-
     return (
         <div className="container max-w-4xl py-16">
-            <h1 className="text-4xl font-black mb-8">{t("about.title")}</h1>
+            <h1 className="text-4xl font-black mb-8">О нас</h1>
 
             <div className="prose prose-slate max-w-none space-y-6">
                 <p className="text-lg text-slate-600">
-                    {t("about.description")}
+                    AutoPro — это современная платформа для продажи и покупки автомобилей в Казахстане.
+                    Мы создали удобный сервис, который помогает тысячам людей найти автомобиль своей мечты.
                 </p>
 
-                <h2 className="text-2xl font-bold mt-8 mb-4">{t("about.mission_title")}</h2>
+                <h2 className="text-2xl font-bold mt-8 mb-4">Наша миссия</h2>
                 <p className="text-slate-600">
-                    {t("about.mission_desc")}
+                    Сделать процесс покупки и продажи автомобилей простым, безопасным и прозрачным.
+                    Мы стремимся обеспечить лучший пользовательский опыт и качественный сервис для всех наших клиентов.
                 </p>
 
-                <h2 className="text-2xl font-bold mt-8 mb-4">{t("about.why_us_title")}</h2>
+                <h2 className="text-2xl font-bold mt-8 mb-4">Почему выбирают нас?</h2>
                 <ul className="list-disc list-inside space-y-2 text-slate-600">
-                    <li>{t("about.why_1")}</li>
-                    <li>{t("about.why_2")}</li>
-                    <li>{t("about.why_3")}</li>
-                    <li>{t("about.why_4")}</li>
-                    <li>{t("about.why_5")}</li>
+                    <li>Проверенные объявления</li>
+                    <li>Удобный поиск и фильтры</li>
+                    <li>Безопасные сделки</li>
+                    <li>Поддержка 24/7</li>
+                    <li>Широкий выбор автомобилей</li>
                 </ul>
 
-                <h2 className="text-2xl font-bold mt-8 mb-4">{t("about.contacts_title")}</h2>
+                <h2 className="text-2xl font-bold mt-8 mb-4">Контакты</h2>
                 <p className="text-slate-600">
-                    {t("about.contacts_desc")}
+                    Если у вас есть вопросы или предложения, свяжитесь с нами:
                 </p>
                 <ul className="list-none space-y-2 text-slate-600">
-                    <li>📞 {t("about.phone")}: +7 (777) 123-45-67</li>
-                    <li>📧 {t("about.email")}: support@autopro.kz</li>
-                    <li>📍 {t("about.address")}: {t("about.address_val")}</li>
+                    <li>📞 Телефон: +7 (777) 123-45-67</li>
+                    <li>📧 Email: support@autopro.kz</li>
+                    <li>📍 Адрес: г. Алматы, пр. Абая 150</li>
                 </ul>
             </div>
         </div>

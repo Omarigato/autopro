@@ -1,6 +1,10 @@
 # General
 .DS_Store
 Thumbs.db
+app.log
+*.log
+node_modules/
+tsconfig.tsbuildinfo
 
 # VS Code
 .vscode/

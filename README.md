@@ -1,43 +1,36 @@
 # AutoPro
 
-Backend‑MVP для сервиса аренды автомобилей, спецтехники, водного транспорта,
-оборудования и грузового транспорта.
+Полноценный сервис аренды автомобилей, спецтехники и оборудования. Включает в себя веб-фронтенд (Next.js), мощный API-бэкенд (FastAPI), а также микросервис WhatsApp Gateway для отправки сервисных уведомлений.
 
-## Запуск
+## Продакшен-домены
+- Frontend: `https://autopro.kz`
+- Backend Swagger: `https://api.autopro.kz/docs`
+- WhatsApp Gateway: `https://gateway.autopro.kz`
 
-1. Установить зависимости:
+## Запуск через Docker Compose (Локально)
 
-```bash
-pip install -r requirements.txt
-```
-
-2. Создать `.env` по примеру `.env.example`.
-
-3. Инициализировать БД (SQLite создаётся автоматически):
-
-```bash
-python -m app.init_db
-```
-
-4. Запустить сервер:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-Основной API: `http://localhost:8000/api/v1`.
-
-## Запуск через Docker
-
-Запуск всего проекта одной командой:
+Запуск всего проекта (БД, Backend, Frontend, WhatsApp Gateway):
 
 ```bash
 docker-compose up --build -d
 ```
 
 После запуска:
-- Frontend: `http://localhost`
-- Backend API: `http://localhost/api/`
-- API документация: `http://localhost/docs`
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:8000/api/v1`
+- Swagger документация: `http://localhost:8000/docs`
+- WhatsApp Gateway: `http://localhost:3001` (откройте `/` для авторизации и сканирования QR-кода)
 
+## Инициализация БД
+База данных создается автоматически, но для загрузки справочников марок, моделей и тестовых тарифов выполните:
 
+```bash
+docker-compose exec back python -m app.init_db
+```
+
+## Конфигурация (.env)
+Скопируйте `.env.example` в `.env` и укажите необходимые токены:
+- Cloudinary (для хранения картинок)
+- Kassa24 (для онлайн-оплат)
+- WhatsApp Gateway Token (для защиты отправки сообщений)
+- JWT ключи (для авторизации)
