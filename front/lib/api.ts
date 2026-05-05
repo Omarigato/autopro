@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://192.168.0.18:8000/api/v1";
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -18,7 +18,7 @@ apiClient.interceptors.request.use((config) => {
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    const lang = window.localStorage.getItem("lang") || "ru";
+    const lang = window.localStorage.getItem("lang") || "kk";
     config.params = { ...config.params, lang };
   }
   return config;

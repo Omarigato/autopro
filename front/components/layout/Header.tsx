@@ -28,17 +28,21 @@ import {
 const DropdownMenuItem = DropdownMenuItemBase as React.ComponentType<React.PropsWithChildren<Record<string, unknown>>>;
 const DropdownMenuLabel = DropdownMenuLabelBase as React.ComponentType<React.PropsWithChildren<Record<string, unknown>>>;
 import { useAppState } from "@/lib/store";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LanguageSelector } from "@/components/shared/LanguageSelector";
 import { apiClient } from "@/lib/api";
 import { usePublicSettings } from "@/hooks/usePublicSettings";
+import { Languages } from "lucide-react";
 
 export function Header() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout, refreshUser } = useAuth();
-  const { city, setCity } = useAppState();
+  const { city, setCity, lang, setLang } = useAppState();
   const [cities, setCities] = useState<any[]>([]);
   const [applicationsCount, setApplicationsCount] = useState<number>(0);
   const { subscriptionsEnabled } = usePublicSettings();
+  const { t } = useTranslation();
 
   useEffect(() => {
     apiClient.get('/dictionaries', { params: { type: 'CITY' } })
@@ -70,11 +74,11 @@ export function Header() {
   }, [user, cities]);
 
   const routes = [
-    { href: "/", label: "Главная" },
-    { href: "/catalog", label: "Каталог" },
-    { href: "/find", label: "Найти авто" },
-    { href: "/add", label: "Сдать авто" },
-    ...(subscriptionsEnabled ? [{ href: "/subscriptions", label: "Тарифы" }] : []),
+    { href: "/", label: t("menu.home") },
+    { href: "/catalog", label: t("menu.catalog") },
+    { href: "/find", label: t("menu.find") },
+    { href: "/add", label: t("menu.add") },
+    ...(subscriptionsEnabled ? [{ href: "/subscriptions", label: t("menu.tariffs") }] : []),
   ];
 
   const handleCitySelect = (c: { id: number; name: string }) => {
@@ -89,16 +93,17 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <Image
-            src="/logo-light.png"
+            src="/logo-dark.png"
             alt=""
-            width={220}
-            height={60}
+            width={480}
+            height={120}
             className="h-10 w-auto sm:h-12"
             priority
           />
           <span className="inline-flex items-baseline gap-0">
             <span className="font-bold text-xl sm:text-2xl tracking-tight text-black">Auto</span>
-            <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Pro</span>
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Rent</span>
+            <span className="font-bold text-xl sm:text-2xl tracking-tight text-blue-700">Go</span>
           </span>
         </Link>
 
@@ -121,6 +126,8 @@ export function Header() {
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-4">
+          <LanguageSelector />
+
           {/* City Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -162,10 +169,11 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild><Link href="/profile">Профиль</Link></DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild><Link href="/profile">{t("menu.profile")}</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/applications" className="flex items-center justify-between">
-                    Заявки
+                    {t("menu.applications")}
                     {applicationsCount > 0 && (
                       <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
                         +{applicationsCount}
@@ -174,21 +182,21 @@ export function Header() {
                   </Link>
                 </DropdownMenuItem>
                 {user.role === 'admin' && (
-                  <DropdownMenuItem asChild><Link href="/admin-supersecret">Админ панель</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/admin-supersecret">{t("menu.admin")}</Link></DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => logout()} className="text-red-600 focus:text-red-600">
-                  Выйти
+                  {t("menu.logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/login">Войти</Link>
+                <Link href="/login">{t("menu.login")}</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href="/register">Регистрация</Link>
+                <Link href="/register">{t("menu.register")}</Link>
               </Button>
             </div>
           )}
@@ -220,6 +228,7 @@ export function Header() {
           >
             {isMobileMenuOpen ? <X /> : <Menu />}
           </button>
+          <LanguageSelector className="w-9 h-9 p-0 rounded-full border border-slate-200" />
         </div>
       </div>
 
@@ -245,27 +254,27 @@ export function Header() {
             {user ? (
               <>
                 <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-sm font-medium hover:bg-accent rounded-md">
-                  <User size={16} /> Профиль
+                  <User size={16} /> {t("menu.profile")}
                 </Link>
                 <Link href="/applications" className="flex items-center gap-2 px-4 py-2 text-sm font-medium hover:bg-accent rounded-md">
-                  <FileText size={16} /> Заявки
+                  <FileText size={16} /> {t("menu.applications")}
                   {applicationsCount > 0 && (
                     <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">+{applicationsCount}</span>
                   )}
                 </Link>
                 {user.role === "admin" && (
                   <Link href="/admin-supersecret" className="flex items-center gap-2 px-4 py-2 text-sm font-medium hover:bg-accent rounded-md" onClick={() => setIsMobileMenuOpen(false)}>
-                    <LayoutDashboard size={16} /> Админ панель
+                    <LayoutDashboard size={16} /> {t("menu.admin")}
                   </Link>
                 )}
                 <button onClick={() => logout()} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md text-left">
-                  Выйти
+                  <X size={16} className="text-red-500" /> {t("menu.logout")}
                 </button>
               </>
             ) : (
               <>
-                <Button className="w-full" asChild><Link href="/login">Войти</Link></Button>
-                <Button variant="outline" className="w-full" asChild><Link href="/register">Регистрация</Link></Button>
+                <Button className="w-full" asChild><Link href="/login">{t("menu.login")}</Link></Button>
+                <Button variant="outline" className="w-full" asChild><Link href="/register">{t("menu.register")}</Link></Button>
               </>
             )}
           </div>

@@ -14,12 +14,16 @@ import { useAppState } from "@/lib/store";
 import { getCachedDictionaries } from "@/lib/dictionaries";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+import { DictionarySelect } from "@/components/shared/DictionarySelect";
+import { useTranslation } from "@/hooks/useTranslation";
+
 
 function AddCarContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { city } = useAppState();
     const { user, isLoading: authLoading } = useAuth();
+    const { t, formatMessage } = useTranslation();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -96,9 +100,8 @@ function AddCarContent() {
     const loadDictionaries = async () => {
         setLoading(true);
         try {
-            const [categoriesData, marksData, citiesData, enginesData, bodiesData, transmissionsData, colorsData, steeringData, conditionData, carClassData] = await Promise.all([
+            const [categoriesData, citiesData, enginesData, bodiesData, transmissionsData, colorsData, steeringData, conditionData, carClassData] = await Promise.all([
                 getCachedDictionaries("CATEGORY"),
-                getCachedDictionaries("MARKA"),
                 getCachedDictionaries("CITY"),
                 getCachedDictionaries("FUEL"),
                 getCachedDictionaries("BODY"),
@@ -109,19 +112,21 @@ function AddCarContent() {
                 getCachedDictionaries("CAR_CLASS")
             ]);
 
+
             // Все справочники берём только из бэка. Если что‑то не вернулось — показываем пустой список.
             setCategories(categoriesData || []);
-            setMarks(marksData || []);
             setCities(citiesData || []);
+
             setEngines(enginesData || []);
             setBodies(bodiesData || []);
             setTransmissions(transmissionsData || []);
             setColors(colorsData || []);
             setSteeringOptions(steeringData || []);
             setConditionOptions(conditionData || []);
+            setConditionOptions(conditionData || []);
             setCarClassOptions(carClassData || []);
         } catch (err) {
-            toast.error('Ошибка загрузки справочников');
+            toast.error(t('common.error_loading_dictionaries'));
         } finally {
             setLoading(false);
         }
@@ -155,7 +160,12 @@ function AddCarContent() {
             if (!isNaN(num) && num < 0) return;
             if (name === 'release_year' && !isNaN(num) && num > 2026) return;
         }
-        setFormData({ ...formData, [name]: value });
+
+        if (name === 'vehicle_mark_id') {
+            setFormData((prev: any) => ({ ...prev, vehicle_mark_id: value, vehicle_model_id: "" }));
+        } else {
+            setFormData({ ...formData, [name]: value });
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,24 +192,24 @@ function AddCarContent() {
     const handleNext = () => {
         if (step === 1) {
             if (!formData.category_id || formData.category_id === '') {
-                toast.error('Выберите категорию');
+                toast.error(t('add_car.category_placeholder'));
                 return;
             }
             if (!formData.vehicle_mark_id || formData.vehicle_mark_id === '') {
-                toast.error('Выберите марку');
+                toast.error(t('add_car.marka_placeholder'));
                 return;
             }
             if (!formData.name?.trim()) {
-                toast.error('Введите заголовок');
+                toast.error(t('add_car.header_placeholder'));
                 return;
             }
             if (formData.price_per_day == null || formData.price_per_day === '') {
-                toast.error('Укажите цену');
+                toast.error(t('add_car.price_placeholder'));
                 return;
             }
             const hasPhoto = (formData.images?.length ?? 0) > 0;
             if (!hasPhoto) {
-                setPhotoError('Поставьте хоть одну фотографию');
+                setPhotoError(t('add_car.photo_error'));
                 return;
             }
             setPhotoError('');
@@ -217,15 +227,7 @@ function AddCarContent() {
                 toast.error("Не удалось получить ссылку на оплату");
             }
         } catch (e: any) {
-            // e = { data, code, message } с message {ru, kk, en} или строкой
-            const msgObj = e?.message;
-            let msg = "Ошибка при создании платежа";
-            if (typeof msgObj === "string") {
-                msg = msgObj;
-            } else if (msgObj && typeof msgObj === "object") {
-                msg = msgObj.ru || msgObj.en || Object.values(msgObj)[0] || msg;
-            }
-            toast.error(msg);
+            toast.error(formatMessage(e?.message) || t('add_car.pay_error'));
         }
     };
 
@@ -245,7 +247,7 @@ function AddCarContent() {
                 formData.car_class_id,
             ];
             if (required.some((v) => !v)) {
-                toast.error('Пожалуйста, заполните все обязательные поля');
+                toast.error(t('common.enter_all_fields'));
                 return;
             }
         }
@@ -279,9 +281,9 @@ function AddCarContent() {
             }
 
             if (saveAsDraft) {
-                toast.success('Сохранено в черновики');
+                toast.success(t('common.saved_draft'));
             } else {
-                toast.success('Объявление отправлено на модерацию!');
+                toast.success(t('common.moderation'));
             }
 
             if (!options?.stayOnPage) {
@@ -289,30 +291,23 @@ function AddCarContent() {
             }
         } catch (error: any) {
             console.error(error);
-            const msgObj = error?.message || error?.response?.data?.message;
-            let msg = 'Ошибка при создании объявления';
-            if (typeof msgObj === 'string') {
-                msg = msgObj;
-            } else if (msgObj && typeof msgObj === 'object') {
-                msg = msgObj.ru || msgObj.en || Object.values(msgObj)[0] || msg;
-            }
-            toast.error(msg);
+            toast.error(formatMessage(error?.message || error?.response?.data?.message) || t('common.error'));
         } finally {
             setSubmitting(false);
         }
     };
 
     if (!user && !authLoading) {
-        return <div className="container px-4 py-12 sm:py-20 text-center text-slate-600">Перенаправление на вход...</div>;
+        return <div className="container px-4 py-12 sm:py-20 text-center text-slate-600">{t('common.redirecting_to_login')}</div>;
     }
     if (loading && !subscriptionCheck && user) {
-        return <div className="container px-4 py-12 sm:py-20 text-center text-slate-600">Загрузка...</div>;
+        return <div className="container px-4 py-12 sm:py-20 text-center text-slate-600">{t('common.loading')}</div>;
     }
 
     return (
         <div className="container max-w-3xl px-4 sm:px-6 py-6 sm:py-12 pb-20 sm:pb-12">
             <div className="mb-6 sm:mb-8">
-                <h1 className="text-2xl sm:text-3xl font-black mb-2">Подать объявление</h1>
+                <h1 className="text-2xl sm:text-3xl font-black mb-2">{t('add_car.title')}</h1>
                 <div className="flex items-center gap-1 sm:gap-2 mt-4 sm:mt-6">
                     <div className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 text-sm sm:text-base ${step >= 1 ? 'border-primary bg-primary text-white' : 'border-slate-300 text-slate-300'}`}>1</div>
                     <div className={`flex-1 h-1 min-w-2 ${step >= 2 ? 'bg-primary' : 'bg-slate-200'}`} />
@@ -331,33 +326,33 @@ function AddCarContent() {
                     <div className="space-y-4 sm:space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                             <div className="space-y-2">
-                                <Label className="text-sm">Заголовок <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.header')} <span className="text-red-500">*</span></Label>
                                 <Input
-                                    placeholder="Введите заголовок"
+                                    placeholder={t('add_car.header_placeholder')}
                                     value={formData.name || ''}
                                     onChange={(e) => handleChange('name', e.target.value)}
-                                    className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent touch-manipulation"
+                                    className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 touch-manipulation shadow-sm"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-sm">Цена <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.price')} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="number"
-                                    placeholder="Укажите цену"
+                                    placeholder={t('add_car.price_placeholder')}
                                     min={0}
                                     value={formData.price_per_day || ''}
                                     onChange={(e) => handleChange('price_per_day', e.target.value)}
-                                    className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent touch-manipulation"
+                                    className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 touch-manipulation shadow-sm"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-sm">Категория <span className="text-red-500">*</span></Label>
+                            <Label className="text-sm">{t('add_car.category')} <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('category_id', val)} value={formData.category_id != null ? String(formData.category_id) : undefined}>
-                                <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                    <SelectValue placeholder="Выберите категорию" />
+                                <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm">
+                                    <SelectValue placeholder={t('add_car.category_placeholder')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {categories.map((c) => (
@@ -368,41 +363,32 @@ function AddCarContent() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-sm">Марка <span className="text-red-500">*</span></Label>
-                                <Select onValueChange={(val) => handleChange('vehicle_mark_id', val)} value={formData.vehicle_mark_id != null ? String(formData.vehicle_mark_id) : undefined}>
-                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Выберите марку" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {marks.map((m) => (
-                                            <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                            <div className="space-y-1">
+                                <Label className="text-sm">{t('add_car.marka')} <span className="text-red-500">*</span></Label>
+                                <DictionarySelect
+                                    type="MARKA"
+                                    value={formData.vehicle_mark_id ? String(formData.vehicle_mark_id) : null}
+                                    onChange={(val) => handleChange('vehicle_mark_id', val)}
+                                    placeholder={t('add_car.marka_placeholder')}
+                                />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-sm">Модель</Label>
-                                <Select
-                                    onValueChange={(val) => handleChange('vehicle_model_id', val)}
-                                    value={formData.vehicle_model_id}
+                            <div className="space-y-1">
+                                <Label className="text-sm">{t('add_car.model')}</Label>
+                                <DictionarySelect
+                                    type="MODEL"
+                                    parentId={formData.vehicle_mark_id ? parseInt(formData.vehicle_mark_id) : undefined}
+                                    value={formData.vehicle_model_id ? String(formData.vehicle_model_id) : null}
+                                    onChange={(val) => handleChange('vehicle_model_id', val)}
+                                    placeholder={t('add_car.model_placeholder')}
                                     disabled={!formData.vehicle_mark_id}
-                                >
-                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Выберите модель" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {models.map((m) => (
-                                            <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                />
                             </div>
                         </div>
 
+
                         <div className="space-y-2">
-                            <Label className="text-sm">Фото <span className="text-red-500">* </span></Label>
+                            <Label className="text-sm">{t('add_car.photos')} <span className="text-red-500">* </span></Label>
                             <div className="space-y-3 sm:space-y-4">
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                                     {formData.images.map((file: File, index: number) => (
@@ -424,7 +410,7 @@ function AddCarContent() {
                                     {formData.images.length < 4 && (
                                         <label className="aspect-square bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors touch-manipulation">
                                             <Upload size={22} className="sm:w-6 sm:h-6 text-slate-400 mb-1 sm:mb-2" />
-                                            <span className="text-xs text-slate-500">Добавить</span>
+                                            <span className="text-xs text-slate-500">{t('add_car.add_photo')}</span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -440,13 +426,13 @@ function AddCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-sm">Описание</Label>
+                            <Label className="text-sm">{t('add_car.description')}</Label>
                             <Textarea
-                                placeholder="Введите описание"
+                                placeholder={t('add_car.description_placeholder')}
                                 value={formData.description || ''}
                                 onChange={(e) => handleChange('description', e.target.value)}
                                 maxLength={250}
-                                className="rounded-xl min-h-[100px] sm:min-h-[120px] bg-slate-50 border-transparent resize-none text-base"
+                                className="rounded-xl min-h-[100px] sm:min-h-[120px] bg-white border-slate-200 shadow-sm resize-none text-base"
                             />
                             <p className="text-xs text-slate-500 text-right">{formData.description?.length || 0}/250</p>
                         </div>
@@ -458,17 +444,17 @@ function AddCarContent() {
                             className="w-full rounded-xl h-12 sm:h-14 text-base sm:text-lg touch-manipulation"
                             disabled={!isStep1Filled}
                         >
-                            Далее
+                            {t('common.next')}
                         </Button>
                     </div>
                 ) : step === 2 ? (
                     <div className="space-y-4 sm:space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                             <div className="space-y-2">
-                                <Label className="text-sm">Город <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.city')} <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('city_id', val)} value={formData.city_id}>
-                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Выберите город" />
+                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm">
+                                        <SelectValue placeholder={t('add_car.city_placeholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {cities.map((c) => (
@@ -479,10 +465,10 @@ function AddCarContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-sm">Цвет <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.color')} <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('color_id', val)} value={formData.color_id}>
-                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Введите цвет" />
+                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm">
+                                        <SelectValue placeholder={t('add_car.color_placeholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {colors.map((c) => (
@@ -495,7 +481,7 @@ function AddCarContent() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                             <div className="space-y-2">
-                                <Label className="text-sm">Год выпуска <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.year')} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="number"
                                     placeholder="2026"
@@ -503,15 +489,15 @@ function AddCarContent() {
                                     max={2026}
                                     value={formData.release_year || ''}
                                     onChange={(e) => handleChange('release_year', e.target.value)}
-                                    className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent touch-manipulation"
+                                    className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm touch-manipulation"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-sm">Двигатель <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.fuel')} <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('fuel_type_id', val)} value={formData.fuel_type_id}>
-                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Выберите двигатель" />
+                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm">
+                                        <SelectValue placeholder={t('add_car.fuel_placeholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {engines.map((e) => (
@@ -524,20 +510,20 @@ function AddCarContent() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                             <div className="space-y-2">
-                                <Label className="text-sm">Кузов <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.body')} <span className="text-red-500">*</span></Label>
                                 <Input
-                                    placeholder="Выберите кузов"
+                                    placeholder={t('add_car.body_placeholder')}
                                     value={formData.body_type || ''}
                                     onChange={(e) => handleChange('body_type', e.target.value)}
-                                    className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent touch-manipulation"
+                                    className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm touch-manipulation"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-sm">Руль <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.steering')} <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('steering_id', val)} value={formData.steering_id ? String(formData.steering_id) : undefined}>
-                                <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Выберите руль" />
+                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm">
+                                        <SelectValue placeholder={t('add_car.steering_placeholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {steeringOptions.map((s) => (
@@ -550,22 +536,22 @@ function AddCarContent() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                             <div className="space-y-2">
-                                <Label className="text-sm">Пробег <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.mileage')} <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="number"
-                                    placeholder="Введите пробег"
+                                    placeholder={t('add_car.mileage_placeholder')}
                                     min={0}
                                     value={formData.mileage || ''}
                                     onChange={(e) => handleChange('mileage', e.target.value)}
-                                    className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent touch-manipulation"
+                                    className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm touch-manipulation"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-sm">Коробка <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.transmission')} <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('transmission_id', val)} value={formData.transmission_id}>
-                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Выберите коробку" />
+                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm">
+                                        <SelectValue placeholder={t('add_car.transmission_placeholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {transmissions.map((t) => (
@@ -578,10 +564,10 @@ function AddCarContent() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                             <div className="space-y-2">
-                                <Label className="text-sm">Состояние <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.condition')} <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('condition_id', val)} value={formData.condition_id ? String(formData.condition_id) : undefined}>
-                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Выберите состояние" />
+                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm">
+                                        <SelectValue placeholder={t('add_car.condition_placeholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {conditionOptions.map((c) => (
@@ -592,10 +578,10 @@ function AddCarContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-sm">Класс машины <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">{t('add_car.car_class')} <span className="text-red-500">*</span></Label>
                                 <Select onValueChange={(val) => handleChange('car_class_id', val)} value={formData.car_class_id ? String(formData.car_class_id) : undefined}>
-                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-slate-50 border-transparent">
-                                        <SelectValue placeholder="Выберите класс" />
+                                    <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200 shadow-sm">
+                                        <SelectValue placeholder={t('add_car.car_class_placeholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {carClassOptions.map((cls) => (
@@ -607,9 +593,9 @@ function AddCarContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-sm">Дополнительно</Label>
+                            <Label className="text-sm">{t('add_car.additional')}</Label>
                             <Textarea
-                                placeholder="Введите дополнительные сведения"
+                                placeholder={t('add_car.additional_placeholder')}
                                 value={formData.additional_info || ''}
                                 onChange={(e) => handleChange('additional_info', e.target.value)}
                                 maxLength={100}
@@ -620,7 +606,7 @@ function AddCarContent() {
 
                         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                             <Button onClick={() => setStep(1)} variant="outline" size="lg" className="flex-1 rounded-xl h-12 sm:h-14 text-base sm:text-lg touch-manipulation">
-                                Назад
+                                {t('common.back')}
                             </Button>
                             {totalSteps === 3 ? (
                                 <Button
@@ -634,15 +620,15 @@ function AddCarContent() {
                                     size="lg"
                                     className="flex-1 rounded-xl h-12 sm:h-14 text-base sm:text-lg touch-manipulation"
                                 >
-                                    {submitting ? 'Сохранение...' : 'Далее — Оплата'}
+                                    {submitting ? t('common.loading') : t('add_car.payment_next')}
                                 </Button>
                             ) : (
                                 <>
                                     <Button onClick={() => handleSubmit(true)} disabled={submitting} variant="outline" size="lg" className="flex-1 rounded-xl h-12 sm:h-14 text-base sm:text-lg touch-manipulation">
-                                        {submitting ? '...' : 'В черновики'}
+                                        {submitting ? '...' : t('common.drafts')}
                                     </Button>
                                     <Button onClick={() => handleSubmit(false)} disabled={submitting} size="lg" className="flex-1 rounded-xl h-12 sm:h-14 text-base sm:text-lg touch-manipulation">
-                                        {submitting ? 'Отправка...' : 'Опубликовать'}
+                                        {submitting ? t('common.loading') : t('common.publish')}
                                     </Button>
                                 </>
                             )}
@@ -650,8 +636,8 @@ function AddCarContent() {
                     </div>
                 ) : step === 3 ? (
                     <div className="space-y-4 sm:space-y-6">
-                        <h2 className="text-lg sm:text-xl font-bold">Подписка</h2>
-                        <p className="text-slate-600 text-sm sm:text-base">Для размещения объявления выберите тариф и оплатите через TipTopPay.</p>
+                        <h2 className="text-lg sm:text-xl font-bold">{t('add_car.subscription')}</h2>
+                        <p className="text-slate-600 text-sm sm:text-base">{t('add_car.subscription_desc')}</p>
                         <div className="space-y-3 sm:space-y-4">
                             {subscriptionCheck?.plans?.map((plan) => (
                                 <div key={plan.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
@@ -660,14 +646,14 @@ function AddCarContent() {
                                         <p className="text-sm text-slate-500">{plan.period_days} дн. · до {plan.price_kzt} ₸</p>
                                     </div>
                                     <Button onClick={() => handleBuyPlan(plan.id)} className="gap-2 w-full sm:w-auto shrink-0 h-11 sm:h-10 touch-manipulation">
-                                        <CreditCard size={18} /> Купить {plan.price_kzt} ₸
+                                        <CreditCard size={18} /> {t('add_car.buy')} {plan.price_kzt} ₸
                                     </Button>
                                 </div>
                             ))}
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                             <Button onClick={() => setStep(2)} variant="outline" size="lg" className="rounded-xl h-12 sm:h-14 w-full sm:w-auto touch-manipulation">
-                                Назад
+                                {t('common.back')}
                             </Button>
                         </div>
                     </div>
@@ -678,8 +664,9 @@ function AddCarContent() {
 }
 
 export default function AddCarPage() {
+    const { t } = useTranslation();
     return (
-        <Suspense fallback={<div className="container py-20 text-center text-slate-500">Загрузка...</div>}>
+        <Suspense fallback={<div className="container py-20 text-center text-slate-500">{t('common.loading')}</div>}>
             <AddCarContent />
         </Suspense>
     );

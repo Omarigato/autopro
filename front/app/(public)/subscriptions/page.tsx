@@ -50,7 +50,7 @@ export default function SubscriptionsPage() {
                 <div className="container relative z-10 space-y-6">
                     <h1 className="text-4xl md:text-7xl font-black tracking-tight leading-tight">
                         Масштабируйте свой <br className="hidden md:block" />
-                        <span className="text-slate-300">бизнес с AutoPro</span>
+                        <span className="text-slate-300">бизнес с AutoRentGo</span>
                     </h1>
                     <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-medium">
                         Выберите тариф, который идеально подходит под ваши цели — от частного арендодателя до крупного автопарка.

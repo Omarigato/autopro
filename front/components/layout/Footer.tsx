@@ -1,38 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { Instagram, Send, MessageCircle } from "lucide-react";
+import { Instagram, Send } from "lucide-react";
 import Image from "next/image";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export function Footer() {
+  const { t } = useTranslation();
 
   return (
     <footer className="bg-blue-50/50 border-t border-blue-100/50 py-12 text-slate-500">
       <div className="container grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
         <div className="space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 h-6 mb-4">
-            <Image src="/logo-light.png" alt="Logo" width={220} height={60}  className="h-10 w-auto sm:h-12" />
+            <Image src="/logo-dark.png" alt="Logo" width={480} height={120} className="h-10 w-auto sm:h-12" />
             <span className="inline-flex items-baseline gap-0">
-            <span className="font-bold text-xl sm:text-2xl tracking-tight text-black">Auto</span>
-            <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Pro</span>
-          </span>
+              <span className="font-bold text-xl sm:text-2xl tracking-tight text-black">AutoRent</span>
+              <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-500">Go</span>
+            </span>
           </div>
           <p className="text-sm max-w-sm leading-relaxed">
-            Ваш надежный партнер в мире аренды автомобилей. Мы предлагаем лучшие условия и широкий выбор транспорта.
+            {t("footer.description")}
           </p>
         </div>
 
         <div>
-          <h4 className="font-semibold text-foreground mb-4 h-6 flex items-center">Клиентам</h4>
+          <h4 className="font-semibold text-foreground mb-4 h-6 flex items-center">{t("footer.clients_title")}</h4>
           <ul className="space-y-2 text-sm">
-            <li><Link href="/help" className="hover:text-primary">Помощь</Link></li>
-            <li><Link href="/terms" className="hover:text-primary">Условия использования</Link></li>
-            <li><Link href="/privacy" className="hover:text-primary">Конфиденциальность</Link></li>
+            <li><Link href="/help" className="hover:text-primary">{t("footer.help")}</Link></li>
+            <li><Link href="/terms" className="hover:text-primary">{t("footer.terms")}</Link></li>
+            <li><Link href="/privacy" className="hover:text-primary">{t("footer.privacy")}</Link></li>
           </ul>
         </div>
 
         <div>
-          <h4 className="font-semibold text-foreground mb-4 h-6 flex items-center">Контакты</h4>
+          <h4 className="font-semibold text-foreground mb-4 h-6 flex items-center">{t("footer.contacts_title")}</h4>
           <div className="flex gap-4 mb-4">
             <Link
               href="#"
@@ -61,12 +63,12 @@ export function Footer() {
               </svg>
             </Link>
           </div>
-          <p className="text-sm">support@autopro.kz</p>
+          <p className="text-sm">support@autorentgo.kz</p>
         </div>
       </div>
       <div className="container mt-12 pt-8 border-t border-slate-200 text-center text-xs">
-        &copy; {new Date().getFullYear()} AutoPro. All rights reserved.
+        &copy; {new Date().getFullYear()} AutoRentGo. {t("footer.rights")}
       </div>
-    </footer>
+    </footer >
   );
 }

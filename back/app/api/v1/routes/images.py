@@ -9,7 +9,7 @@ async def upload_car_image(request: Request, file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
         return create_response(code=400, message="File must be an image", lang=request.state.lang)
 
-    url, public_id = CloudinaryService.upload_image(file.file, folder="autopro/cars")
+    url, public_id = CloudinaryService.upload_image(file.file, folder="autorentgo/cars")
     if not url:
         return create_response(code=500, message="Upload failed", lang=request.state.lang)
     

@@ -21,8 +21,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import InputMask from "react-input-mask";
+import { useTranslation } from "@/hooks/useTranslation";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 function LoginContent() {
+  const { t, formatMessage } = useTranslation();
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -36,7 +39,7 @@ function LoginContent() {
 
   const formSchema = z.object({
     phone_number: z.string().optional(),
-    email: z.string().email("Введите корректный email").optional().or(z.literal("")),
+    email: z.string().email(t("login.email_error")).optional().or(z.literal("")),
     password: z.string().optional(),
     otp_code: z.string().optional(),
   });
@@ -55,24 +58,15 @@ function LoginContent() {
     const values = form.getValues();
     const target = mode === "PHONE" ? values.phone_number : values.email;
     if (!target) {
-      toast.error(mode === "PHONE" ? "Введите номер телефона" : "Введите email");
+      toast.error(mode === "PHONE" ? t("login.phone_empty") : t("login.email_empty"));
       return;
     }
     try {
       await apiClient.post("/auth/otp/request", { target });
       setOtpSent(true);
-      toast.success("Код отправлен");
+      toast.success(t("login.otp_sent"));
     } catch (e: any) {
-      // Клиентский interceptor уже отдаёт payload бэкенда:
-      // { data, code, message: { ru, kk, en } }
-      const msgObj = e?.message;
-      let msg = "Ошибка отправки кода";
-      if (typeof msgObj === "string") {
-        msg = msgObj;
-      } else if (msgObj && typeof msgObj === "object") {
-        msg = msgObj.ru || msgObj.en || Object.values(msgObj)[0] || msg;
-      }
-      toast.error(msg);
+      toast.error(formatMessage(e?.message) || t("login.otp_error"));
     }
   };
 
@@ -80,11 +74,11 @@ function LoginContent() {
     try {
       // Валидация по режимам
       if (mode === "EMAIL" && emailMode === "PASSWORD" && !values.password) {
-        form.setError("password", { message: "Введите пароль" });
+        form.setError("password", { message: t("login.password_empty") });
         return;
       }
       if ((mode === "PHONE" || (mode === "EMAIL" && emailMode === "OTP")) && !values.otp_code) {
-        form.setError("otp_code", { message: "Введите код" });
+        form.setError("otp_code", { message: t("login.otp_empty") });
         return;
       }
 
@@ -96,7 +90,7 @@ function LoginContent() {
       }
 
       if (!loginIdentifier) {
-        toast.error(mode === "PHONE" ? "Укажите номер телефона" : "Укажите email");
+        toast.error(mode === "PHONE" ? t("login.phone_empty") : t("login.email_empty"));
         return;
       }
 
@@ -105,27 +99,19 @@ function LoginContent() {
         password: mode === "EMAIL" && emailMode === "PASSWORD" ? values.password : undefined,
         otp_code: (mode === "PHONE" || (mode === "EMAIL" && emailMode === "OTP")) ? values.otp_code : undefined
       });
-      toast.success("Вы успешно вошли!");
+      toast.success(t("login.success"));
       router.push(returnUrl);
     } catch (error: any) {
       console.log(error);
-      // Ошибка логина также приходит как { data, code, message: { ru, kk, en } }
-      const msgObj = error?.message;
-      let msg = "Неверный логин или пароль";
-      if (typeof msgObj === "string") {
-        msg = msgObj;
-      } else if (msgObj && typeof msgObj === "object") {
-        msg = msgObj.ru || msgObj.en || Object.values(msgObj)[0] || msg;
-      }
-      toast.error(msg);
+      toast.error(formatMessage(error?.message) || t("login.error"));
     }
   }
 
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">С возвращением</h1>
-        <p className="text-muted-foreground">Введите данные для входа в систему</p>
+        <h1 className="text-3xl font-bold">{t("login.title")}</h1>
+        <p className="text-muted-foreground">{t("login.subtitle")}</p>
       </div>
 
       <div className="space-y-4">
@@ -138,8 +124,8 @@ function LoginContent() {
           className="w-full"
         >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="PHONE">Телефон</TabsTrigger>
-            <TabsTrigger value="EMAIL">Email</TabsTrigger>
+            <TabsTrigger value="PHONE">{t("login.phone_tab")}</TabsTrigger>
+            <TabsTrigger value="EMAIL">{t("login.email_tab")}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -152,7 +138,7 @@ function LoginContent() {
               name="phone_number"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Номер телефона</FormLabel>
+                  <FormLabel>{t("login.phone_label")}</FormLabel>
                   <FormControl>
                     <InputMask
                       mask="+7 (999) 999-99-99"
@@ -180,7 +166,7 @@ function LoginContent() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t("login.email_tab")}</FormLabel>
                   <FormControl>
                     <Input placeholder="user@example.com" {...field} />
                   </FormControl>
@@ -198,13 +184,13 @@ function LoginContent() {
                 render={({ field }) => (
                   <FormItem>
                     <div className="flex items-center justify-between">
-                      <FormLabel>Пароль</FormLabel>
+                      <FormLabel>{t("login.password_label")}</FormLabel>
                       <Link
                         href="/forgot-password"
                         className="text-sm font-medium text-primary hover:underline"
                         tabIndex={-1}
                       >
-                        Забыли пароль?
+                        {t("login.forgot_password")}
                       </Link>
                     </div>
                     <FormControl>
@@ -237,7 +223,7 @@ function LoginContent() {
                   onClick={() => { setEmailMode("OTP"); setOtpSent(false); }}
                   className="text-primary hover:underline"
                 >
-                  Войти по коду
+                  {t("login.login_by_code")}
                 </button>
               </div>
             </>
@@ -247,7 +233,7 @@ function LoginContent() {
             <div className="space-y-4">
               {!otpSent ? (
                 <Button type="button" variant="secondary" onClick={handleRequestOtp} className="w-full">
-                  Получить код
+                  {t("login.get_code")}
                 </Button>
               ) : (
                 <FormField
@@ -255,7 +241,7 @@ function LoginContent() {
                   name="otp_code"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Код подтверждения</FormLabel>
+                      <FormLabel>{t("login.otp_label")}</FormLabel>
                       <FormControl>
                         <Input placeholder="123456" {...field} />
                       </FormControl>
@@ -271,7 +257,7 @@ function LoginContent() {
                     onClick={() => setOtpSent(false)}
                     className="text-primary hover:underline"
                   >
-                    Отправить повторно
+                    {t("login.resend_code")}
                   </button>
                   {mode === "EMAIL" && (
                     <button
@@ -279,7 +265,7 @@ function LoginContent() {
                       onClick={() => setEmailMode("PASSWORD")}
                       className="text-muted-foreground hover:text-foreground"
                     >
-                      Войти по паролю
+                      {t("login.login_by_password")}
                     </button>
                   )}
                 </div>
@@ -291,7 +277,7 @@ function LoginContent() {
                     onClick={() => setEmailMode("PASSWORD")}
                     className="text-muted-foreground hover:text-foreground"
                   >
-                    Войти по паролю
+                    {t("login.login_by_password")}
                   </button>
                 </div>
               )}
@@ -299,14 +285,14 @@ function LoginContent() {
           )}
 
           <Button type="submit" className="w-full">
-            Войти
+            {t("login.submit")}
           </Button>
         </form>
       </Form>
       <div className="text-center text-sm">
-        Нет аккаунта?{" "}
+        {t("login.no_account")}{" "}
         <Link href="/register" className="font-medium text-primary hover:underline">
-          Зарегистрироваться
+          {t("login.register")}
         </Link>
       </div>
     </div>
@@ -314,51 +300,11 @@ function LoginContent() {
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   return (
-    <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center text-slate-500">Загрузка...</div>}>
+    <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center text-slate-500">{t("common.loading")}</div>}>
       <LoginContent />
     </Suspense>
   );
 }
 
-function EyeIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-
-function EyeOffIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7c.44 0 .87-.022 1.28-.07" />
-      <line x1="2" x2="22" y1="2" y2="22" />
-    </svg>
-  )
-}

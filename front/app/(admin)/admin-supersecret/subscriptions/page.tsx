@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Sparkles } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 type Plan = {
   id: number;
@@ -43,6 +44,7 @@ const emptyForm: Partial<Plan> = {
 const inputNum = "h-11 rounded-xl border-slate-200 focus-visible:ring-slate-400 bg-slate-50/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
 export default function AdminSubscriptionsPage() {
+  const { t } = useTranslation();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -96,11 +98,11 @@ export default function AdminSubscriptionsPage() {
 
   const handleAdd = async () => {
     if (!form.code?.trim() || !form.name?.trim()) {
-      toast.error("Заполните код и название");
+      toast.error(t("admin.subscriptions_page.toast.fill_required"));
       return;
     }
     if (form.price_kzt == null || Number(form.price_kzt) < 0) {
-      toast.error("Укажите цену (₸)");
+      toast.error(t("admin.subscriptions_page.toast.fill_price"));
       return;
     }
     setSubmitting(true);
@@ -115,12 +117,12 @@ export default function AdminSubscriptionsPage() {
         max_cars: form.max_cars != null && form.max_cars.toString().trim() !== "" ? Number(form.max_cars) : null,
         is_active: form.is_active !== false,
       });
-      toast.success("Тариф создан");
+      toast.success(t("admin.subscriptions_page.toast.created"));
       setAddOpen(false);
       load();
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при создании";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при создании");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.dictionaries_page.create_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.dictionaries_page.create_error"));
     } finally {
       setSubmitting(false);
     }
@@ -129,11 +131,11 @@ export default function AdminSubscriptionsPage() {
   const handleEdit = async () => {
     if (!editPlan) return;
     if (!form.code?.trim() || !form.name?.trim()) {
-      toast.error("Заполните код и название");
+      toast.error(t("admin.subscriptions_page.toast.fill_required"));
       return;
     }
     if (form.price_kzt == null || Number(form.price_kzt) < 0) {
-      toast.error("Укажите цену (₸)");
+      toast.error(t("admin.subscriptions_page.toast.fill_price"));
       return;
     }
     setSubmitting(true);
@@ -148,13 +150,13 @@ export default function AdminSubscriptionsPage() {
         max_cars: form.max_cars != null && form.max_cars.toString().trim() !== "" ? Number(form.max_cars) : null,
         is_active: form.is_active !== false,
       });
-      toast.success("Тариф обновлён");
+      toast.success(t("admin.subscriptions_page.toast.updated"));
       setEditOpen(false);
       setEditPlan(null);
       load();
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при сохранении";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при сохранении");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.dictionaries_page.save_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.dictionaries_page.save_error"));
     } finally {
       setSubmitting(false);
     }
@@ -164,27 +166,27 @@ export default function AdminSubscriptionsPage() {
     if (!planToDelete) return;
     try {
       await apiClient.delete(`/admin/subscriptions/plans/${planToDelete.id}`);
-      toast.success("Тариф деактивирован");
+      toast.success(t("admin.subscriptions_page.toast.deactivated"));
       setDeleteOpen(false);
       setPlanToDelete(null);
       load();
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при деактивации";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при деактивации");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.dictionaries_page.delete_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.dictionaries_page.delete_error"));
     }
   };
 
-  if (loading) return <div className="text-slate-500">Загрузка...</div>;
+  if (loading) return <div className="text-slate-500">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
-            Тарифы подписок
+            {t("admin.subscriptions_page.title")}
           </h2>
           <p className="text-slate-500 mt-1 text-xs sm:text-base font-medium max-w-2xl">
-            Условия: период, сумма, лимит объявлений. Редактирование и деактивация через диалоги.
+            {t("admin.subscriptions_page.subtitle")}
           </p>
         </div>
         <Button
@@ -192,7 +194,7 @@ export default function AdminSubscriptionsPage() {
           onClick={openAdd}
         >
           <Plus className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-          Добавить тариф
+          {t("admin.subscriptions_page.add_button")}
         </Button>
       </div>
 
@@ -201,14 +203,14 @@ export default function AdminSubscriptionsPage() {
           <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-slate-50/80 border-b border-slate-100">
               <tr>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Код</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Название</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Цена (₸)</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Дней</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Макс. машин</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Активен</th>
-                <th className="text-right p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Действия</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.subscriptions_page.table.id")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.subscriptions_page.table.code")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.subscriptions_page.table.name")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.subscriptions_page.table.price")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.subscriptions_page.table.days")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.subscriptions_page.table.max_cars")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.subscriptions_page.table.active")}</th>
+                <th className="text-right p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.subscriptions_page.table.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -224,7 +226,7 @@ export default function AdminSubscriptionsPage() {
                   <td className="p-4 text-slate-600">{p.max_cars ?? "—"}</td>
                   <td className="p-4">
                     <span className={p.is_active ? "text-blue-600 font-medium" : "text-red-400"}>
-                      {p.is_active ? "Да" : "Нет"}
+                      {p.is_active ? t("admin.users_page.yes") : t("admin.users_page.no")}
                     </span>
                   </td>
                   <td className="p-4 text-right">
@@ -234,7 +236,7 @@ export default function AdminSubscriptionsPage() {
                         size="sm"
                         className="rounded-xl hover:bg-slate-100"
                         onClick={() => openEdit(p)}
-                        title="Редактировать"
+                        title={t("admin.users_page.edit")}
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
@@ -244,7 +246,7 @@ export default function AdminSubscriptionsPage() {
                           size="sm"
                           className="rounded-xl hover:bg-red-50 hover:text-red-600"
                           onClick={() => openDelete(p)}
-                          title="Деактивировать"
+                          title={t("admin.subscriptions_page.dialog.deactivate")}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -257,7 +259,7 @@ export default function AdminSubscriptionsPage() {
           </table>
         </div>
         {plans.length === 0 && (
-          <div className="p-8 text-center text-slate-500 font-medium">Нет тарифов</div>
+          <div className="p-8 text-center text-slate-500 font-medium">{t("admin.subscriptions_page.no_plans")}</div>
         )}
       </div>
 
@@ -270,18 +272,18 @@ export default function AdminSubscriptionsPage() {
                 <Sparkles className="h-5 w-5 text-slate-600" />
               </div>
               <div>
-                <DialogTitle>Новый тариф</DialogTitle>
-                <DialogDescription>Заполните код, название и цену. Остальные поля — по желанию.</DialogDescription>
+                <DialogTitle>{t("admin.subscriptions_page.dialog.new_title")}</DialogTitle>
+                <DialogDescription>{t("admin.subscriptions_page.dialog.new_desc")}</DialogDescription>
               </div>
             </div>
           </DialogHeader>
-          <PlanForm form={form} setForm={setForm} inputNum={inputNum} showActive={false} />
+          <PlanForm form={form} setForm={setForm} inputNum={inputNum} showActive={false} t={t} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)} className="rounded-xl">
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleAdd} disabled={submitting} className="rounded-xl">
-              {submitting ? "Сохранение..." : "Добавить"}
+              {submitting ? t("common.saving") : t("admin.users_page.add")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -302,18 +304,18 @@ export default function AdminSubscriptionsPage() {
                 <Sparkles className="h-5 w-5 text-slate-600" />
               </div>
               <div>
-                <DialogTitle>Редактировать тариф</DialogTitle>
-                <DialogDescription>Измените данные тарифа и сохраните.</DialogDescription>
+                <DialogTitle>{t("admin.subscriptions_page.dialog.edit_title")}</DialogTitle>
+                <DialogDescription>{t("admin.subscriptions_page.dialog.edit_desc")}</DialogDescription>
               </div>
             </div>
           </DialogHeader>
-          <PlanForm form={form} setForm={setForm} inputNum={inputNum} showActive />
+          <PlanForm form={form} setForm={setForm} inputNum={inputNum} showActive t={t} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} className="rounded-xl">
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleEdit} disabled={submitting} className="rounded-xl">
-              {submitting ? "Сохранение..." : "Сохранить"}
+              {submitting ? t("common.saving") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -323,17 +325,17 @@ export default function AdminSubscriptionsPage() {
       <Dialog open={deleteOpen} onOpenChange={(open) => { if (!open) setPlanToDelete(null); setDeleteOpen(open); }}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Деактивировать тариф?</DialogTitle>
+            <DialogTitle>{t("admin.subscriptions_page.dialog.delete_title")}</DialogTitle>
             <DialogDescription>
-              Тариф «{planToDelete?.name}» ({planToDelete?.code}) будет скрыт из выбора для пользователей. Существующие подписки не затронуты.
+              {t("admin.subscriptions_page.dialog.delete_desc", { name: planToDelete?.name, code: planToDelete?.code })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)} className="rounded-xl">
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button variant="destructive" onClick={handleDelete} className="rounded-xl">
-              Деактивировать
+              {t("admin.subscriptions_page.dialog.deactivate")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -347,16 +349,18 @@ function PlanForm({
   setForm,
   inputNum,
   showActive,
+  t,
 }: {
   form: Partial<Plan>;
   setForm: React.Dispatch<React.SetStateAction<Partial<Plan>>>;
   inputNum: string;
   showActive: boolean;
+  t: (key: string, data?: any) => string;
 }) {
   return (
     <div className="grid gap-4 py-4">
       <div className="grid gap-2">
-        <Label>Код (например PREMIUM)</Label>
+        <Label>{t("admin.subscriptions_page.form.code")}</Label>
         <Input
           value={form.code ?? ""}
           onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
@@ -365,26 +369,26 @@ function PlanForm({
         />
       </div>
       <div className="grid gap-2">
-        <Label>Название</Label>
+        <Label>{t("admin.subscriptions_page.form.name")}</Label>
         <Input
           value={form.name ?? ""}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          placeholder="Премиум"
+          placeholder={t("admin.subscriptions_page.form.name")}
           className="h-11 rounded-xl"
         />
       </div>
       <div className="grid gap-2">
-        <Label>Описание (необязательно)</Label>
+        <Label>{t("admin.subscriptions_page.form.desc")}</Label>
         <Input
           value={form.description ?? ""}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          placeholder="Краткое описание"
+          placeholder={t("admin.subscriptions_page.form.desc")}
           className="h-11 rounded-xl"
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label>Цена (₸)</Label>
+          <Label>{t("admin.subscriptions_page.form.price")}</Label>
           <Input
             type="number"
             inputMode="decimal"
@@ -402,7 +406,7 @@ function PlanForm({
           />
         </div>
         <div className="grid gap-2">
-          <Label>Дней</Label>
+          <Label>{t("admin.subscriptions_page.form.days")}</Label>
           <Input
             type="number"
             inputMode="numeric"
@@ -422,7 +426,7 @@ function PlanForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label>Бесплатных дней</Label>
+          <Label>{t("admin.subscriptions_page.form.free_days")}</Label>
           <Input
             type="number"
             inputMode="numeric"
@@ -440,7 +444,7 @@ function PlanForm({
           />
         </div>
         <div className="grid gap-2">
-          <Label>Макс. объявлений</Label>
+          <Label>{t("admin.subscriptions_page.form.max_cars")}</Label>
           <Input
             type="number"
             inputMode="numeric"
@@ -453,7 +457,7 @@ function PlanForm({
                 if (!Number.isNaN(n)) setForm((f) => ({ ...f, max_cars: n }));
               }
             }}
-            placeholder="Пусто = безлимит"
+            placeholder={t("admin.subscriptions_page.form.max_cars_hint")}
             className={inputNum}
           />
         </div>
@@ -468,7 +472,7 @@ function PlanForm({
             className="rounded border-slate-300"
           />
           <Label htmlFor="plan-active" className="font-normal cursor-pointer">
-            Тариф активен и доступен пользователям
+            {t("admin.subscriptions_page.form.active")}
           </Label>
         </div>
       )}

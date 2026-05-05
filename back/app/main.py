@@ -41,9 +41,9 @@ def create_app() -> FastAPI:
         """
         lang = request.query_params.get("lang")
         if not lang:
-            lang_header = request.headers.get("Accept-Language", "ru")
+            lang_header = request.headers.get("Accept-Language", "kk")
             lang = lang_header.split(",")[0].split("-")[0]
-        request.state.lang = lang or "ru"
+        request.state.lang = lang or "kk"
         response = await call_next(request)
         return response
 

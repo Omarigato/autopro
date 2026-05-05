@@ -1,10 +1,10 @@
 import sys
 import asyncio
 from app.db.session import Base, engine, SessionLocal
-from app.models import entities
+from app import models
 from app.core.security import get_password_hash
 from app.services.dictionary_service import dictionary_service
-from app.models.entities import AppSetting, Dictionary, User
+from app.models import AppSetting, Dictionary, User
 
 def init_db(recreate: bool = False) -> None:
     if recreate:
@@ -17,14 +17,14 @@ def init_db(recreate: bool = False) -> None:
     db = SessionLocal()
     try:
         # 1. Администратор
-        admin = db.query(entities.User).filter(entities.User.role == "admin").first()
+        admin = db.query(models.User).filter(models.User.role == "admin").first()
         if not admin:
             print("Creating admin...")
-            admin = entities.User(
+            admin = models.User(
                 name="Admin System",
-                phone_number="777",
-                email="adminautopro@autopro.kz",
-                password_hash=get_password_hash("admin123"),
+                phone_number="+7 (777) 777-77-77",
+                email="admin@autorentgo.kz",
+                password_hash=get_password_hash("adminautorentgo2026@@!"),
                 role="admin",
                 is_active=True,
             )
@@ -41,9 +41,9 @@ def init_db(recreate: bool = False) -> None:
         asyncio.run(dictionary_service.sync_defaults(db))
         
         # 4. Синхронизация (cars)
-        # if "--sync-cars" in sys.argv:
-        print("Syncing marks/models (this may take 1-2 mins)...")
-        asyncio.run(dictionary_service.sync_from_json(db))
+        if "--sync-cars" in sys.argv:
+            print("Syncing marks/models (this may take 1-2 mins)...")
+            asyncio.run(dictionary_service.sync_from_json(db))
             
     finally:
         db.close()

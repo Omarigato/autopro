@@ -99,40 +99,6 @@
             "description": "Безлимитный план с приоритетным размещением"
         }
     ],
-    "car_types": [
-        {
-            "code": "SEDAN",
-            "names": {
-                "ru": "Седан",
-                "en": "Sedan",
-                "kk": "Седан"
-            }
-        },
-        {
-            "code": "SUV",
-            "names": {
-                "ru": "Внедорожник",
-                "en": "SUV",
-                "kk": "Жол талғамайтын көлік"
-            }
-        },
-        {
-            "code": "COUPE",
-            "names": {
-                "ru": "Купе",
-                "en": "Coupe",
-                "kk": "Купе"
-            }
-        },
-        {
-            "code": "MINIVAN",
-            "names": {
-                "ru": "Минивэн",
-                "en": "Minivan",
-                "kk": "Минивэн"
-            }
-        }
-    ],
     "transmissions": [
         {
             "code": "AUTO",
@@ -260,20 +226,90 @@
         }
     ],
     "steering": [
-        { "code": "LEFT", "names": { "ru": "Слева", "en": "Left", "kk": "Солда" } },
-        { "code": "RIGHT", "names": { "ru": "Справа", "en": "Right", "kk": "Оңда" } }
+        {
+            "code": "LEFT",
+            "names": {
+                "ru": "Слева",
+                "en": "Left",
+                "kk": "Солда"
+            }
+        },
+        {
+            "code": "RIGHT",
+            "names": {
+                "ru": "Справа",
+                "en": "Right",
+                "kk": "Оңда"
+            }
+        }
     ],
     "condition": [
-        { "code": "EXCELLENT", "names": { "ru": "Отличное", "en": "Excellent", "kk": "Жақсы" } },
-        { "code": "GOOD", "names": { "ru": "Хорошее", "en": "Good", "kk": "Жақсы" } },
-        { "code": "FAIR", "names": { "ru": "Удовлетворительное", "en": "Fair", "kk": "Қанағаттанарлық" } }
+        {
+            "code": "EXCELLENT",
+            "names": {
+                "ru": "Отличное",
+                "en": "Excellent",
+                "kk": "Жақсы"
+            }
+        },
+        {
+            "code": "GOOD",
+            "names": {
+                "ru": "Хорошее",
+                "en": "Good",
+                "kk": "Жақсы"
+            }
+        },
+        {
+            "code": "FAIR",
+            "names": {
+                "ru": "Удовлетворительное",
+                "en": "Fair",
+                "kk": "Қанағаттанарлық"
+            }
+        }
     ],
     "car_class": [
-        { "code": "ECONOMY", "names": { "ru": "Эконом", "en": "Economy", "kk": "Эконом" } },
-        { "code": "COMFORT", "names": { "ru": "Комфорт", "en": "Comfort", "kk": "Комфорт" } },
-        { "code": "BUSINESS", "names": { "ru": "Бизнес", "en": "Business", "kk": "Бизнес" } },
-        { "code": "PREMIUM", "names": { "ru": "Премиум", "en": "Premium", "kk": "Премиум" } },
-        { "code": "SUV", "names": { "ru": "Внедорожник", "en": "SUV", "kk": "ДЖИП" } }
+        {
+            "code": "ECONOMY",
+            "names": {
+                "ru": "Эконом",
+                "en": "Economy",
+                "kk": "Эконом"
+            }
+        },
+        {
+            "code": "COMFORT",
+            "names": {
+                "ru": "Комфорт",
+                "en": "Comfort",
+                "kk": "Комфорт"
+            }
+        },
+        {
+            "code": "BUSINESS",
+            "names": {
+                "ru": "Бизнес",
+                "en": "Business",
+                "kk": "Бизнес"
+            }
+        },
+        {
+            "code": "PREMIUM",
+            "names": {
+                "ru": "Премиум",
+                "en": "Premium",
+                "kk": "Премиум"
+            }
+        },
+        {
+            "code": "SUV",
+            "names": {
+                "ru": "Внедорожник",
+                "en": "SUV",
+                "kk": "ДЖИП"
+            }
+        }
     ],
     "categories": [
         {

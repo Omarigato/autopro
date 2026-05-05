@@ -1,0 +1,25 @@
+2026-03-03 15:31:10,945 - autorentgo - INFO - [EMAIL] Sending to omarakim2005@gmail.com | subject=Ваш код подтверждения AutoRentGo
+2026-03-03 15:31:11,937 - autorentgo - ERROR - [EMAIL] Error sending to omarakim2005@gmail.com: (535, '5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials 2adb3069b0e04-5a12357d2d3sm486718e87.37 - gsmtp')
+2026-03-03 15:40:20,621 - autorentgo - INFO - [EMAIL] Sending to omarakim2005@gmail.com | subject=Ваш код подтверждения AutoRentGo
+2026-03-03 16:33:43,141 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\Akim.O\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2026-03-03 16:33:48,107 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\Akim.O\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2026-03-03 16:46:17,178 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\Akim.O\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2026-03-03 17:19:39,677 - autorentgo - INFO - [EMAIL] Sending to omarakim2005@gmail.com | subject=Новый пароль для входа в AutoRentGo
+2026-03-11 11:39:25,043 - autorentgo - INFO - [EMAIL] Sending to kengesbaeve28@gmail.com | subject=Ваш код подтверждения AutoRentGo
+2026-03-11 11:42:10,582 - autorentgo - INFO - [EMAIL] Sending to omarakim2005@gmail.com | subject=Ваш код подтверждения AutoRentGo
+2026-03-11 11:43:59,811 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8733136965:AAHDoy9vlcQ2b7S7vckc1iBHIdhLA6SRrZY/sendMessage "HTTP/1.1 200 OK"

@@ -12,7 +12,7 @@ cloudinary.config(
 
 class CloudinaryService:
     @staticmethod
-    def upload_image(file_obj, folder: str = "autopro/cars") -> tuple[str, str] | tuple[None, None]:
+    def upload_image(file_obj, folder: str = "autorentgo/cars") -> tuple[str, str] | tuple[None, None]:
         """
         Uploads a file-like object to Cloudinary.
         Returns (url, public_id) or (None, None) on failure.

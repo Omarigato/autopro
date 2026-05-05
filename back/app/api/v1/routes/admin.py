@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.db.session import get_db
-from app.models.entities import (
+from app.models import (
     User,
     Car,
     Application,
@@ -18,7 +18,6 @@ from app.models.entities import (
     SubscriptionPlan,
     AppSetting,
     OTPVerification,
-
     Review,
 )
 from app.core.security import get_current_user, get_password_hash
@@ -76,10 +75,16 @@ async def trigger_sync(db: Session = Depends(get_db), admin: User = Depends(chec
 
 # --- Управление справочниками (Dictionaries) ---
 
-def _dict_item_to_response(d: Dictionary, db: Session) -> dict:
-    """Собирает элемент словаря с переводами name_ru, name_en, name_kk."""
-    translations = db.query(DictionaryTranslation).filter(DictionaryTranslation.dictionary_id == d.id).all()
-    by_lang = {t.lang: t.name for t in translations}
+from sqlalchemy.orm import joinedload
+
+def _dict_item_to_response(d: Dictionary) -> dict:
+    """Collect dictionary item with translations from joined object."""
+    by_lang = {t.lang: t.name for t in d.translations}
+    parent_name = None
+    if d.parent:
+        parent_trans = next((t for t in d.parent.translations if t.lang == "ru"), None)
+        parent_name = parent_trans.name if parent_trans else d.parent.name
+
     return {
         "id": d.id,
         "name": d.name,
@@ -89,6 +94,7 @@ def _dict_item_to_response(d: Dictionary, db: Session) -> dict:
         "code": d.code,
         "type": d.type,
         "parent_id": d.parent_id,
+        "parent_name": parent_name,
         "icon": d.icon,
         "color": d.color,
         "display_order": d.display_order,
@@ -100,20 +106,34 @@ def _dict_item_to_response(d: Dictionary, db: Session) -> dict:
 def list_dictionaries(
     type: str | None = None,
     parent_id: int | None = None,
+    q: str | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
     admin: User = Depends(check_admin),
 ):
     """
-    Список элементов словаря для админ‑панели с переводами (ru, en, kk).
+    List dictionary items for admin panel with translations and pagination.
     """
-    query = db.query(Dictionary)
+    query = db.query(Dictionary).options(joinedload(Dictionary.translations))
     if type:
         query = query.filter(Dictionary.type == type)
     if parent_id:
         query = query.filter(Dictionary.parent_id == parent_id)
-    items = query.order_by(Dictionary.display_order.asc(), Dictionary.id.asc()).all()
-    data = [_dict_item_to_response(d, db) for d in items]
-    return create_response(data=data)
+    if q:
+        search_term = f"%{q.lower()}%"
+        query = query.join(DictionaryTranslation, isouter=True).filter(
+            or_(
+                Dictionary.name.ilike(search_term),
+                Dictionary.code.ilike(search_term),
+                DictionaryTranslation.name.ilike(search_term)
+            )
+        ).distinct()
+        
+    total = query.count()
+    items = query.order_by(Dictionary.display_order.asc(), Dictionary.id.asc()).offset(skip).limit(limit).all()
+    data = [_dict_item_to_response(d) for d in items]
+    return create_response(data={"items": data, "total": total})
 
 
 @router.post("/dictionaries")
@@ -436,13 +456,17 @@ def list_cars_admin(db: Session = Depends(get_db), admin: User = Depends(check_a
     } for c in cars])
 
 @router.post("/cars/{car_id}/approve")
-def approve_car(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
+async def approve_car(car_id: int, db: Session = Depends(get_db), admin: User = Depends(check_admin)):
     """Одобрить объявление — статус ACTIVE (показывается в каталоге)."""
     car = db.query(Car).filter(Car.id == car_id).first()
     if not car:
         raise HTTPException(404)
     car.status = "ACTIVE"
     car.update_date = datetime.utcnow()
+    try:
+        await email_service.send_new_car_for_applications(car)
+    except Exception as e:
+        logger.error(f"Error sending new car for applications: {e}")
     db.commit()
     return create_response(data={"id": car.id, "status": car.status})
 
@@ -518,7 +542,7 @@ def list_applications_admin(
             "create_date": app.create_date.isoformat() if app.create_date else None,
             "views_count": app.views_count,
             "matching_cars_count": ac_count,
-            "images": [{"url": img.url} for img in app.images]
+            "images": [{"url": img.url} for img in app.application_images]
         })
     return create_response(data={"items": result, "total": total})
 
@@ -607,7 +631,7 @@ def get_car_detail_admin(car_id: int, db: Session = Depends(get_db), admin: User
     return create_response(data={
         "id": car.id,
         "name": car.name,
-        "images": [{"url": i.url, "id": i.id} for i in car.images],
+        "images": [{"url": i.url, "id": i.id} for i in car.car_images],
         "status": car.status,
         "views": car.views_count,
         "create_date": car.create_date.isoformat() if car.create_date else None,

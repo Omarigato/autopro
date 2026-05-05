@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Общие настройки
-    APP_NAME: str = "AUTOPRO API"
+    APP_NAME: str = "AutoRentGo API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
@@ -52,9 +52,28 @@ class Settings(BaseSettings):
     # WhatsApp API (внешний провайдер / собственный шлюз)
     WHATSAPP_API_URL: str | None = None
     WHATSAPP_API_TOKEN: str | None = None
+    # Альтернативный WhatsApp API (POST /api/messages/text, body: { to, body })
+    WHATSAPP_ALT_API_URL: str | None = None
+    WHATSAPP_ALT_API_TOKEN: str | None = None
 
     # Базовый URL фронтенда (для ссылок в Telegram)
-    FRONTEND_BASE_URL: str | None = None  # например, https://autopro.kz или http://localhost:3000
+    FRONTEND_BASE_URL: str | None = None  # например, https://autorentgo.kz или http://localhost:3000
+
+    @field_validator("SMTP_PORT", mode="before")
+    @classmethod
+    def parse_smtp_port(cls, v):
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return int(v) if isinstance(v, str) else v
+
+    @field_validator("SMTP_USE_TLS", mode="before")
+    @classmethod
+    def parse_smtp_use_tls(cls, v):
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return True
+        if isinstance(v, str):
+            return v.strip().lower() in ("true", "1", "yes")
+        return bool(v)
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

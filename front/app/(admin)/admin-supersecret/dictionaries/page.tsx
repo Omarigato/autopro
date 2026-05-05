@@ -15,18 +15,30 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Search,
   Plus,
   Pencil,
   Trash2,
-  Search,
   Layers,
   Palette,
   Settings,
   MapPin,
   Car,
   BookOpen,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  RefreshCw,
+  Eye,
+  X,
+  PlusCircle,
+  MoreVertical,
 } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { DictionarySelect } from "@/components/shared/DictionarySelect";
 import { toast } from "sonner";
+
 
 const DICT_TYPES: { value: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: "CATEGORY", label: "Категории", icon: Layers },
@@ -51,6 +63,7 @@ type DictItem = {
   code: string;
   type: string;
   parent_id: number | null;
+  parent_name?: string | null;
   icon: string | null;
   color: string | null;
   display_order: number;
@@ -70,7 +83,25 @@ const emptyForm = {
 };
 
 export default function AdminDictionariesPage() {
+  const { t, lang } = useTranslation();
+
+  const DICT_TYPES_VALS: { value: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { value: "CATEGORY", label: t("admin.dictionaries_page.types.CATEGORY"), icon: Layers },
+    { value: "COLOR", label: t("admin.dictionaries_page.types.COLOR"), icon: Palette },
+    { value: "STEERING", label: t("admin.dictionaries_page.types.STEERING"), icon: Settings },
+    { value: "CONDITION", label: t("admin.dictionaries_page.types.CONDITION"), icon: Settings },
+    { value: "CAR_CLASS", label: t("admin.dictionaries_page.types.CAR_CLASS"), icon: Car },
+    { value: "CITY", label: t("admin.dictionaries_page.types.CITY"), icon: MapPin },
+    { value: "TRANSMISSION", label: t("admin.dictionaries_page.types.TRANSMISSION"), icon: Settings },
+    { value: "FUEL", label: t("admin.dictionaries_page.types.FUEL"), icon: Settings },
+    { value: "BODY", label: t("admin.dictionaries_page.types.BODY"), icon: Car },
+    { value: "MARKA", label: t("admin.dictionaries_page.types.MARKA"), icon: Car },
+    { value: "MODEL", label: t("admin.dictionaries_page.types.MODEL"), icon: Car },
+  ];
+
   const [itemsByType, setItemsByType] = useState<Record<string, DictItem[]>>({});
+  const [totalItems, setTotalItems] = useState<Record<string, number>>({});
+
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("CATEGORY");
@@ -82,19 +113,28 @@ export default function AdminDictionariesPage() {
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 20;
 
-  const load = (type: string) => {
+  const load = (type: string, page = 1, q = "") => {
     setLoading((p) => ({ ...p, [type]: true }));
     apiClient
-      .get("/admin/dictionaries", { params: { type } })
+      .get("/admin/dictionaries", {
+        params: {
+          type,
+          skip: (page - 1) * ITEMS_PER_PAGE,
+          limit: ITEMS_PER_PAGE,
+          q: q || undefined
+        }
+      })
       .then((res: any) => {
-        const d = res?.data ?? res;
+        const d = res?.data?.items ?? res?.items ?? [];
+        const total = res?.data?.total ?? res?.total ?? 0;
         setItemsByType((p) => ({ ...p, [type]: Array.isArray(d) ? d : [] }));
+        setTotalItems((p) => ({ ...p, [type]: total }));
       })
       .catch(() => {
         setItemsByType((p) => ({ ...p, [type]: [] }));
-        toast.error("Ошибка при загрузке данных");
+        toast.error(t("admin.dictionaries_page.load_error"));
       })
       .finally(() => setLoading((p) => ({ ...p, [type]: false })));
   };
@@ -102,15 +142,18 @@ export default function AdminDictionariesPage() {
   const handleTab = (type: string) => {
     setActiveTab(type);
     setCurrentPage(1);
-    if (!itemsByType[type] && !loading[type]) load(type);
+    setSearchQuery("");
   };
 
   useEffect(() => {
-    load("CATEGORY");
-  }, []);
+    const timer = setTimeout(() => {
+      load(activeTab, currentPage, searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [activeTab, currentPage, searchQuery]);
 
   const openAdd = () => {
-    setForm({ ...emptyForm, display_order: (itemsByType[activeTab]?.length ?? 0) });
+    setForm({ ...emptyForm, display_order: (totalItems[activeTab] ?? 0) });
     setAddOpen(true);
   };
 
@@ -137,11 +180,11 @@ export default function AdminDictionariesPage() {
 
   const handleAdd = async () => {
     if (!form.name_ru?.trim() || !form.name_en?.trim() || !form.name_kk?.trim()) {
-      toast.error("Укажите названия на трёх языках (RU, EN, KK)");
+      toast.error(t("admin.dictionaries_page.three_langs_required"));
       return;
     }
     if (!form.code?.trim()) {
-      toast.error("Укажите код");
+      toast.error(t("admin.dictionaries_page.code_required"));
       return;
     }
     setSubmitting(true);
@@ -158,12 +201,12 @@ export default function AdminDictionariesPage() {
         color: form.color?.trim() || undefined,
         is_active: form.is_active,
       });
-      toast.success("Запись создана");
+      toast.success(t("admin.dictionaries_page.created_success"));
       setAddOpen(false);
-      load(activeTab);
+      load(activeTab, currentPage, searchQuery);
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при создании";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при создании");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.dictionaries_page.create_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.dictionaries_page.create_error"));
     } finally {
       setSubmitting(false);
     }
@@ -172,11 +215,11 @@ export default function AdminDictionariesPage() {
   const handleEdit = async () => {
     if (!editItem) return;
     if (!form.name_ru?.trim() || !form.name_en?.trim() || !form.name_kk?.trim()) {
-      toast.error("Укажите названия на трёх языках (RU, EN, KK)");
+      toast.error(t("admin.dictionaries_page.three_langs_required"));
       return;
     }
     if (!form.code?.trim()) {
-      toast.error("Укажите код");
+      toast.error(t("admin.dictionaries_page.code_required"));
       return;
     }
     setSubmitting(true);
@@ -192,13 +235,13 @@ export default function AdminDictionariesPage() {
         color: form.color?.trim() || undefined,
         is_active: form.is_active,
       });
-      toast.success("Запись обновлена");
+      toast.success(t("admin.dictionaries_page.updated_success"));
       setEditOpen(false);
       setEditItem(null);
-      load(activeTab);
+      load(activeTab, currentPage, searchQuery);
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при сохранении";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при сохранении");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.dictionaries_page.save_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.dictionaries_page.save_error"));
     } finally {
       setSubmitting(false);
     }
@@ -208,47 +251,37 @@ export default function AdminDictionariesPage() {
     if (!itemToDelete) return;
     try {
       await apiClient.delete(`/admin/dictionaries/${itemToDelete.id}`);
-      toast.success("Запись удалена");
+      toast.success(t("admin.dictionaries_page.deleted_success"));
       setDeleteOpen(false);
       setItemToDelete(null);
-      load(activeTab);
+      load(activeTab, currentPage, searchQuery);
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при удалении";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при удалении");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.dictionaries_page.delete_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.dictionaries_page.delete_error"));
     }
   };
 
-  const filteredItems = (itemsByType[activeTab] || []).filter(
-    (item) =>
-      !searchQuery ||
-      (item.name_ru || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.name_en || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.name_kk || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.code || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE) || 1;
-  const paginatedItems = filteredItems.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const filteredItems = itemsByType[activeTab] || [];
+  const totalCount = totalItems[activeTab] || 0;
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+  const paginatedItems = filteredItems; // Already paginated from server
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
-            Словари
+            {t("admin.dictionaries_page.title")}
           </h2>
           <p className="text-slate-500 mt-1 text-xs sm:text-base font-medium">
-            Управление справочниками: три названия (RU, EN, KK), порядок отображения, иконка и цвет.
+            {t("admin.dictionaries_page.subtitle")}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0 min-w-0">
           <div className="relative min-w-0">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <Input
-              placeholder="Поиск..."
+              placeholder={t("admin.dictionaries_page.search_placeholder")}
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="pl-10 sm:pl-11 pr-4 h-11 w-full sm:w-72 bg-white border-slate-200 rounded-xl sm:rounded-2xl shadow-sm focus-visible:ring-slate-400 font-medium text-base"
@@ -259,16 +292,16 @@ export default function AdminDictionariesPage() {
             onClick={openAdd}
           >
             <Plus className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-            Добавить
+            {t("admin.dictionaries_page.add_button")}
           </Button>
         </div>
       </div>
 
       <div className="space-y-4">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Раздел словаря</p>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.dictionaries_page.section_label")}</p>
         <Tabs value={activeTab} onValueChange={handleTab} className="w-full">
           <TabsList className="flex flex-wrap items-center justify-start w-full h-auto p-2 bg-slate-100/80 rounded-2xl border border-slate-200/60 gap-2">
-            {DICT_TYPES.map(({ value, label, icon: Icon }) => (
+            {DICT_TYPES_VALS.map(({ value, label, icon: Icon }) => (
               <TabsTrigger
                 key={value}
                 value={value}
@@ -280,12 +313,12 @@ export default function AdminDictionariesPage() {
             ))}
           </TabsList>
 
-          {DICT_TYPES.map(({ value }) => (
+          {DICT_TYPES_VALS.map(({ value }) => (
             <div key={value} className={value !== activeTab ? "hidden" : "mt-4"}>
               {loading[value] ? (
                 <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-100">
                   <div className="h-9 w-9 animate-spin rounded-full border-4 border-slate-200 border-t-slate-600" />
-                  <p className="mt-4 text-slate-500 font-bold text-sm">Загрузка...</p>
+                  <p className="mt-4 text-slate-500 font-bold text-sm">{t("admin.loading")}</p>
                 </div>
               ) : (
                 <>
@@ -302,10 +335,10 @@ export default function AdminDictionariesPage() {
                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                         className="rounded-xl"
                       >
-                        Назад
+                        {t("common.back")}
                       </Button>
                       <span className="text-sm font-medium text-slate-500">
-                        Страница {currentPage} из {totalPages}
+                        {t("admin.users_page.page")} {currentPage} {t("admin.users_page.of")} {totalPages}
                       </span>
                       <Button
                         variant="outline"
@@ -313,7 +346,7 @@ export default function AdminDictionariesPage() {
                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                         className="rounded-xl"
                       >
-                        Вперед
+                        {t("common.next")}
                       </Button>
                     </div>
                   )}
@@ -333,18 +366,18 @@ export default function AdminDictionariesPage() {
                 <BookOpen className="h-5 w-5 text-slate-600" />
               </div>
               <div>
-                <DialogTitle>Новая запись — {DICT_TYPES.find((t) => t.value === activeTab)?.label}</DialogTitle>
-                <DialogDescription>Заполните названия на трёх языках, код и порядок отображения.</DialogDescription>
+                <DialogTitle>{t("admin.dictionaries_page.new_entry_title")} — {DICT_TYPES_VALS.find((t) => t.value === activeTab)?.label}</DialogTitle>
+                <DialogDescription>{t("admin.dictionaries_page.new_entry_desc")}</DialogDescription>
               </div>
             </div>
           </DialogHeader>
           <DictForm form={form} setForm={setForm} type={activeTab} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)} className="rounded-xl">
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleAdd} disabled={submitting} className="rounded-xl">
-              {submitting ? "Сохранение..." : "Добавить"}
+              {submitting ? t("common.saving") : t("admin.dictionaries_page.add_button")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -365,18 +398,18 @@ export default function AdminDictionariesPage() {
                 <BookOpen className="h-5 w-5 text-slate-600" />
               </div>
               <div>
-                <DialogTitle>Редактировать запись</DialogTitle>
-                <DialogDescription>Измените названия, порядок, иконку или цвет.</DialogDescription>
+                <DialogTitle>{t("admin.dictionaries_page.edit_entry_title")}</DialogTitle>
+                <DialogDescription>{t("admin.dictionaries_page.edit_entry_desc")}</DialogDescription>
               </div>
             </div>
           </DialogHeader>
           <DictForm form={form} setForm={setForm} type={activeTab} isEdit />
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} className="rounded-xl">
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleEdit} disabled={submitting} className="rounded-xl">
-              {submitting ? "Сохранение..." : "Сохранить"}
+              {submitting ? t("common.saving") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -386,17 +419,17 @@ export default function AdminDictionariesPage() {
       <Dialog open={deleteOpen} onOpenChange={(open) => { if (!open) setItemToDelete(null); setDeleteOpen(open); }}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Удалить запись?</DialogTitle>
+            <DialogTitle>{t("admin.dictionaries_page.delete_confirm_title")}</DialogTitle>
             <DialogDescription>
-              «{itemToDelete?.name_ru || itemToDelete?.name}» ({itemToDelete?.code}) будет удалена безвозвратно.
+              {t("admin.dictionaries_page.delete_confirm_desc", { name: itemToDelete?.name_ru || itemToDelete?.name, code: itemToDelete?.code })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)} className="rounded-xl">
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button variant="destructive" onClick={handleDelete} className="rounded-xl">
-              Удалить
+              {t("common.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -414,12 +447,13 @@ function DictTable({
   onEdit: (item: DictItem) => void;
   onDelete: (item: DictItem) => void;
 }) {
+  const { t } = useTranslation();
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-slate-200 text-center">
         <Search className="h-10 w-10 text-slate-300 mb-4" />
-        <p className="text-slate-500 font-bold text-lg">Записей не найдено</p>
-        <p className="text-slate-400 text-sm mt-1">Измените поиск или добавьте запись</p>
+        <p className="text-slate-500 font-bold text-lg">{t("admin.dictionaries_page.no_items")}</p>
+        <p className="text-slate-400 text-sm mt-1">{t("admin.dictionaries_page.no_items_desc")}</p>
       </div>
     );
   }
@@ -430,16 +464,13 @@ function DictTable({
         <table className="w-full text-sm min-w-[800px]">
           <thead className="bg-slate-50/80 border-b border-slate-100">
             <tr>
-              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
-              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Код</th>
-              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Название (RU)</th>
-              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Название (EN)</th>
-              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Название (KK)</th>
-              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Порядок</th>
-              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Иконка</th>
-              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Цвет</th>
-              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Активен</th>
-              <th className="text-right p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Действия</th>
+              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.dictionaries_page.id_label")}</th>
+              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.dictionaries_page.code_label")}</th>
+              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.dictionaries_page.name_ru_label")}</th>
+              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Родитель</th>
+              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.dictionaries_page.order_label")}</th>
+              <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.dictionaries_page.active_label")}</th>
+              <th className="text-right p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.dictionaries_page.actions_label")}</th>
             </tr>
           </thead>
           <tbody>
@@ -449,33 +480,36 @@ function DictTable({
                 <td className="p-4">
                   <code className="text-xs font-mono bg-slate-100 text-slate-800 px-2 py-1 rounded-lg">{item.code}</code>
                 </td>
-                <td className="p-4 font-medium text-slate-900">{item.name_ru || item.name || "—"}</td>
-                <td className="p-4 text-slate-700">{item.name_en || "—"}</td>
-                <td className="p-4 text-slate-700">{item.name_kk || "—"}</td>
-                <td className="p-4 text-slate-600">{item.display_order}</td>
-                <td className="p-4 text-slate-600">{item.icon || "—"}</td>
-                <td className="p-4">
-                  {item.color ? (
-                    <span
-                      className="inline-block w-6 h-6 rounded-full border border-slate-200"
-                      style={{ backgroundColor: item.color }}
-                      title={item.color}
-                    />
-                  ) : (
-                    "—"
+                <td className="p-4 font-medium text-slate-900">
+                  {item.name_ru || item.name || "—"}
+                  {(item.name_en || item.name_kk) && (
+                    <div className="text-[10px] text-slate-400 font-normal mt-0.5">
+                      {item.name_en && <span>EN: {item.name_en} </span>}
+                      {item.name_kk && <span>KK: {item.name_kk}</span>}
+                    </div>
                   )}
                 </td>
                 <td className="p-4">
-                  <span className={item.is_active ? "text-blue-600 font-medium" : "text-red-400"}>
-                    {item.is_active ? "Да" : "Нет"}
+                  {item.parent_name ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                        {item.parent_name}
+                      </span>
+                    </div>
+                  ) : "—"}
+                </td>
+                <td className="p-4 text-slate-600 font-bold">{item.display_order}</td>
+                <td className="p-4">
+                  <span className={item.is_active ? "text-blue-600 font-bold" : "text-red-400 font-medium"}>
+                    {item.is_active ? t("admin.users_page.yes") : t("admin.users_page.no")}
                   </span>
                 </td>
                 <td className="p-4 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="sm" className="rounded-xl hover:bg-slate-100" onClick={() => onEdit(item)} title="Редактировать">
+                    <Button variant="ghost" size="sm" className="rounded-xl hover:bg-slate-100" onClick={() => onEdit(item)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="rounded-xl hover:bg-red-50 hover:text-red-600" onClick={() => onDelete(item)} title="Удалить">
+                    <Button variant="ghost" size="sm" className="rounded-xl hover:bg-red-50 hover:text-red-600" onClick={() => onDelete(item)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -500,10 +534,11 @@ function DictForm({
   type: string;
   isEdit?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="grid gap-4 py-4">
       <div className="grid gap-2">
-        <Label>Название (RU) *</Label>
+        <Label>{t("admin.dictionaries_page.name_ru_label")} *</Label>
         <Input
           value={form.name_ru}
           onChange={(e) => setForm((f) => ({ ...f, name_ru: e.target.value }))}
@@ -512,7 +547,7 @@ function DictForm({
         />
       </div>
       <div className="grid gap-2">
-        <Label>Название (EN) *</Label>
+        <Label>{t("admin.dictionaries_page.name_en_label")} *</Label>
         <Input
           value={form.name_en}
           onChange={(e) => setForm((f) => ({ ...f, name_en: e.target.value }))}
@@ -521,7 +556,7 @@ function DictForm({
         />
       </div>
       <div className="grid gap-2">
-        <Label>Название (KK) *</Label>
+        <Label>{t("admin.dictionaries_page.name_kk_label")} *</Label>
         <Input
           value={form.name_kk}
           onChange={(e) => setForm((f) => ({ ...f, name_kk: e.target.value }))}
@@ -530,7 +565,7 @@ function DictForm({
         />
       </div>
       <div className="grid gap-2">
-        <Label>Код *</Label>
+        <Label>{t("admin.dictionaries_page.code_label")} *</Label>
         <Input
           value={form.code}
           onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
@@ -541,7 +576,7 @@ function DictForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label>Порядок отображения</Label>
+          <Label>{t("admin.dictionaries_page.order_label")}</Label>
           <Input
             type="number"
             inputMode="numeric"
@@ -555,7 +590,7 @@ function DictForm({
           />
         </div>
         <div className="grid gap-2">
-          <Label>Иконка (Lucide)</Label>
+          <Label>{t("admin.dictionaries_page.icon_label")} (Lucide)</Label>
           <Input
             value={form.icon}
             onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
@@ -565,7 +600,7 @@ function DictForm({
         </div>
       </div>
       <div className="grid gap-2">
-        <Label>Цвет (Tailwind или #hex)</Label>
+        <Label>{t("admin.dictionaries_page.color_label")} (Tailwind или #hex)</Label>
         <Input
           value={form.color}
           onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
@@ -573,6 +608,18 @@ function DictForm({
           className="rounded-xl"
         />
       </div>
+
+      {type === "MODEL" && (
+        <div className="grid gap-2">
+          <Label>Родительская марка</Label>
+          <DictionarySelect
+            type="MARKA"
+            value={form.parent_id ? String(form.parent_id) : ""}
+            onChange={(v) => setForm((f) => ({ ...f, parent_id: v ? Number(v) : null }))}
+            placeholder="Выберите марку"
+          />
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <input
           type="checkbox"
@@ -582,7 +629,7 @@ function DictForm({
           className="rounded border-slate-300"
         />
         <Label htmlFor="dict-active" className="font-normal cursor-pointer">
-          Запись активна
+          {t("admin.dictionaries_page.active_checkbox")}
         </Label>
       </div>
     </div>

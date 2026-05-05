@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 import { Car, Search } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const { data, isLoading } = useCars();
   const cars = data?.items || [];
 
@@ -23,11 +25,11 @@ export default function HomePage() {
           {/* Мобильная: 1. Текст | Десктоп: левая колонка, сверху */}
           <div className="space-y-6 order-1 lg:col-start-1 lg:row-start-1">
             <h1 className="text-4xl lg:text-6xl font-black tracking-tight leading-[1.1]">
-              Аренда авто <br className="hidden lg:block" />
-              <span className="text-zinc-400">нового поколения</span>
+              {t("home.hero_title")} <br className="hidden lg:block" />
+              <span className="text-zinc-400">{t("home.hero_title_accent")}</span>
             </h1>
             <p className="text-lg text-zinc-400 font-medium max-w-lg">
-              Быстро, безопасно и без лишних документов. Выберите идеальный автомобиль для своих поездок прямо сейчас.
+              {t("home.hero_subtitle")}
             </p>
           </div>
 
@@ -47,10 +49,10 @@ export default function HomePage() {
           {/* Мобильная: 3. Кнопки | Десктоп: левая колонка, под текстом */}
           <div className="flex flex-col sm:flex-row gap-4 pt-4 order-3 lg:col-start-1 lg:row-start-2 lg:pt-0">
             <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border-none" asChild>
-              <Link href="/find">Найти авто</Link>
+              <Link href="/find">{t("menu.find")}</Link>
             </Button>
             <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-zinc-700 bg-transparent text-zinc-400 hover:bg-white hover:text-zinc-900 transition-colors" asChild>
-              <Link href="/add">Сдать своё авто</Link>
+              <Link href="/add">{t("menu.add")}</Link>
             </Button>
           </div>
         </div>
@@ -60,10 +62,10 @@ export default function HomePage() {
       <section className="container">
         <div className="flex items-end justify-between mb-8">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Популярные автомобили</h2>
-            <p className="text-muted-foreground mt-2">Лучшие предложения этой недели</p>
+            <h2 className="text-3xl font-bold tracking-tight">{t("home.popular_title")}</h2>
+            <p className="text-muted-foreground mt-2">{t("home.popular_subtitle")}</p>
           </div>
-          <Link href="/catalog" className="text-primary font-medium hover:underline">Смотреть все</Link>
+          <Link href="/catalog" className="text-primary font-medium hover:underline">{t("home.view_all")}</Link>
         </div>
 
         {isLoading ? (
@@ -88,7 +90,7 @@ export default function HomePage() {
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="text-primary font-black text-xl">{car.price_per_day} ₸</span>
-                    <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">/ сутки</span>
+                    <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">{t("home.per_day")}</span>
                   </div>
                 </div>
               </Link>

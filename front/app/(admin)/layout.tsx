@@ -15,30 +15,34 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LanguageSelector } from "@/components/shared/LanguageSelector";
 
-const navLink = (href: string, label: string, Icon: LucideIcon) => ({
+
+const navLink = (href: string, labelKey: string, Icon: LucideIcon) => ({
   href,
-  label,
+  labelKey,
   Icon,
 });
 
 const nav = [
-  navLink("/admin-supersecret", "Обзор", LayoutDashboard),
-  navLink("/admin-supersecret/users", "Пользователи", Users),
-  navLink("/admin-supersecret/cars", "Объявления", FileText),
-  navLink("/admin-supersecret/applications", "Заявки", FileText),
-  navLink("/admin-supersecret/payments", "Платежи", CreditCard),
-  navLink("/admin-supersecret/subscriptions", "Подписки", Package),
-  navLink("/admin-supersecret/dictionaries", "Словари", BookOpen),
-  navLink("/admin-supersecret/otp", "OTP коды", KeyRound),
-  navLink("/admin-supersecret/settings", "Настройки", Settings),
+  navLink("/admin-supersecret", "admin.overview", LayoutDashboard),
+  navLink("/admin-supersecret/users", "admin.users", Users),
+  navLink("/admin-supersecret/cars", "admin.cars", FileText),
+  navLink("/admin-supersecret/applications", "admin.applications", FileText),
+  navLink("/admin-supersecret/payments", "admin.payments", CreditCard),
+  navLink("/admin-supersecret/subscriptions", "admin.subscriptions", Package),
+  navLink("/admin-supersecret/dictionaries", "admin.dictionaries", BookOpen),
+  navLink("/admin-supersecret/otp", "admin.otp", KeyRound),
+  navLink("/admin-supersecret/settings", "admin.settings", Settings),
 ];
 
 function NavLinks({ onLinkClick }: { onLinkClick?: () => void }) {
   const pathname = usePathname();
+  const { t } = useTranslation();
   return (
     <>
-      {nav.map(({ href, label, Icon }) => (
+      {nav.map(({ href, labelKey, Icon }) => (
         <Link
           key={href}
           href={href}
@@ -46,7 +50,7 @@ function NavLinks({ onLinkClick }: { onLinkClick?: () => void }) {
           className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${pathname === href ? "bg-zinc-800/50 text-white" : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
             }`}
         >
-          <Icon size={22} /> {label}
+          <Icon size={22} /> {t(labelKey)}
         </Link>
       ))}
     </>
@@ -61,6 +65,7 @@ export default function AdminLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "admin")) {
@@ -74,7 +79,7 @@ export default function AdminLayout({
   };
 
   if (authLoading || !user || user.role !== "admin") {
-    return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+    return <div className="min-h-screen flex items-center justify-center">{t("admin.loading")}</div>;
   }
 
   return (
@@ -83,14 +88,14 @@ export default function AdminLayout({
       <aside className="w-64 bg-zinc-900 text-white hidden md:flex flex-col flex-shrink-0">
         <Link href="/" className="p-6 flex items-center gap-2 font-bold text-xl border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors">
           <Image
-            src="/logo-dark.png"
+            src="/logo-light.png"
             alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 object-contain"
+            width={1000}
+            height={1000}
+            className="h-16 w-auto object-contain"
             priority
           />
-          <span className="text-white">AutoPro</span>
+          <span className="text-white">AutoRentGo</span>
         </Link>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <NavLinks />
@@ -101,7 +106,7 @@ export default function AdminLayout({
             onClick={goToMain}
             className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors"
           >
-            <LogOut size={20} /> Выйти
+            <LogOut size={20} /> {t("admin.logout")}
           </button>
         </div>
       </aside>
@@ -128,7 +133,7 @@ export default function AdminLayout({
                         className="h-8 w-8 object-contain"
                         priority
                       />
-                      <span>AutoPro</span>
+                      <span>AutoRentGo</span>
                     </Link>
                   </SheetTitle>
                 </SheetHeader>
@@ -141,14 +146,15 @@ export default function AdminLayout({
                     onClick={goToMain}
                     className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-400 font-medium hover:bg-zinc-800 transition-colors"
                   >
-                    <LogOut size={20} /> Выйти
+                    <LogOut size={20} /> {t("admin.logout")}
                   </button>
                 </div>
               </SheetContent>
             </Sheet>
-            <h1 className="font-bold text-base sm:text-xl truncate">Панель управления</h1>
+            <h1 className="font-bold text-base sm:text-xl truncate">{t("admin.dashboard")}</h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <LanguageSelector />
             <span className="text-xs sm:text-sm font-medium text-slate-600 hidden sm:inline truncate max-w-[180px]">
               {user?.name || "Администратор"}
             </span>

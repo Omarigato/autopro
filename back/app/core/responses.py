@@ -6,7 +6,7 @@ def create_response(
     data: Any = None,
     code: int = 200,
     message_key: Optional[str] = None,
-    lang: str = "ru",
+    lang: str = "kk",
     message: Optional[str] = None
 ) -> JSONResponse:
     # If a specific message is provided, we use it. 

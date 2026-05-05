@@ -8,32 +8,25 @@ from sqlalchemy import and_, or_
 from app.core.responses import create_response
 from app.core.security import get_current_user
 from app.db.session import get_db
-from app.models.entities import (
-    Application,
-    ApplicationCar,
-    ApplicationSelectedCar,
-    Car,
-    Dictionary,
-    Image,
-    User,
-)
+from app import models
 from app.services.cloudinary_service import CloudinaryService
 from app.services.subscriptions_service import get_active_subscription_for_owner
 from app.services.email_service import email_service
 from app.services.whatsapp_service import whatsapp_service
 from app.schemas.applications import ApplicationUpdateStatus
+from app.core.config import settings
 
 router = APIRouter()
 
 
-def _dict_name(d: Optional[Dictionary], lang: str = "ru") -> Optional[str]:
+def _dict_name(d: Optional[models.Dictionary], lang: str = "ru") -> Optional[str]:
     if not d:
         return None
     trans = next((t for t in d.translations if t.lang == lang), None)
     return trans.name if trans else d.name
 
 
-def _application_payload(app: Application, lang: str, include_cars: bool = False, cars_list=None):
+def _application_payload(app: models.Application, lang: str, include_cars: bool = False, cars_list=None):
     cars_list = cars_list or []
     payload = {
         "id": app.id,
@@ -53,16 +46,18 @@ def _application_payload(app: Application, lang: str, include_cars: bool = False
         "category_name": _dict_name(app.category, lang),
         "mark_name": _dict_name(app.mark, lang),
         "model_name": _dict_name(app.model, lang),
-        "images": [{"url": img.url, "id": img.id} for img in app.images],
+        "images": [{"url": img.url, "id": img.id} for img in app.application_images],
         "matching_cars_count": len(cars_list),
         "matching_cars": include_cars and [
             {
                 "id": c.id,
                 "name": c.name,
                 "author_id": c.author_id,
+                "author_name": c.author.name if c.author else "Unknown",
+                "author_phone": c.author.phone_number if c.author else None,
                 "price_per_day": c.price_per_day,
                 "release_year": c.release_year,
-                "images": [{"url": img.url} for img in c.images[:1]],
+                "images": [{"url": img.url} for img in c.car_images[:1]],
             }
             for c in cars_list
         ] or [],
@@ -70,7 +65,7 @@ def _application_payload(app: Application, lang: str, include_cars: bool = False
     return payload
 
 
-def _applicant_contact(user: User, has_subscription: bool) -> Optional[dict]:
+def _applicant_contact(user: models.User, has_subscription: bool) -> Optional[dict]:
     if not has_subscription:
         return None
     return {
@@ -85,7 +80,7 @@ async def create_application(
     request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
     city_id: int = Form(...),
     category_id: Optional[int] = Form(None),
     vehicle_mark_id: Optional[int] = Form(None),
@@ -96,6 +91,18 @@ async def create_application(
 ):
     if message and len(message) > 1000:
         return create_response(code=400, message="Сообщение не более 1000 символов", lang=request.state.lang)
+    
+    # Duplicate check
+    existing = db.query(models.Application).filter(
+        models.Application.user_id == current_user.id,
+        models.Application.city_id == city_id,
+        models.Application.category_id == category_id,
+        models.Application.vehicle_mark_id == vehicle_mark_id,
+        models.Application.vehicle_model_id == vehicle_model_id,
+        models.Application.status == "ACTIVE"
+    ).first()
+    if existing:
+        return create_response(code=400, message=i18n.get(request.state.lang, "application_already_exists"), lang=request.state.lang)
     req_dt = None
     if requested_at:
         try:
@@ -103,7 +110,7 @@ async def create_application(
         except ValueError:
             pass
 
-    app = Application(
+    app = models.Application(
         user_id=current_user.id,
         city_id=city_id,
         category_id=category_id,
@@ -118,9 +125,9 @@ async def create_application(
 
     for idx, img_file in enumerate(images):
         if img_file and img_file.filename:
-            url, public_id = CloudinaryService.upload_image(img_file.file, folder="autopro/applications")
+            url, public_id = CloudinaryService.upload_image(img_file.file, folder="autorentgo/applications")
             if url:
-                db.add(Image(
+                db.add(models.Image(
                     entity_id=app.id,
                     entity_type="APPLICATION",
                     url=url,
@@ -128,22 +135,23 @@ async def create_application(
                     position=idx,
                 ))
 
-    # Matching cars: ACTIVE, same city, category; mark/model optional
-    q = db.query(Car).filter(
-        Car.status == "ACTIVE",
-        Car.delete_date.is_(None),
-        Car.city_id == app.city_id,
+    # Matching cars: ACTIVE, same city, category; mark/model optional, NOT OWN
+    q = db.query(models.Car).filter(
+        models.Car.status == "ACTIVE",
+        models.Car.delete_date.is_(None),
+        models.Car.city_id == app.city_id,
+        models.Car.author_id != current_user.id,
     )
     if app.category_id is not None:
-        q = q.filter(Car.category_id == app.category_id)
+        q = q.filter(models.Car.category_id == app.category_id)
     if app.vehicle_mark_id is not None:
-        q = q.filter(Car.vehicle_mark_id == app.vehicle_mark_id)
+        q = q.filter(models.Car.vehicle_mark_id == app.vehicle_mark_id)
     if app.vehicle_model_id is not None:
-        q = q.filter(Car.vehicle_model_id == app.vehicle_model_id)
+        q = q.filter(models.Car.vehicle_model_id == app.vehicle_model_id)
 
     matching_cars = q.all()
     for car in matching_cars:
-        db.add(ApplicationCar(application_id=app.id, car_id=car.id))
+        db.add(models.ApplicationCar(application_id=app.id, car_id=car.id))
 
     db.commit()
     db.refresh(app)
@@ -151,26 +159,28 @@ async def create_application(
     # Notifications
     owner_dict = {}
     for car in matching_cars:
-        owner = db.query(User).filter(User.id == car.author_id).first()
+        owner = db.query(models.User).filter(models.User.id == car.author_id).first()
         if owner and owner.id not in owner_dict:
             owner_dict[owner.id] = owner
     
     for owner in owner_dict.values():
         text_whatsapp = (
-            f"🔔 *Уведомление AutoPro*\n\n"
-            f"Поступила новая заявка на авто, которая может вас заинтересовать!\n\n"
-            f"👉 Зайдите в приложение (вкладка 'Заявки'), чтобы посмотреть подробности и предложить свой автомобиль."
+            f"🚀 *Новая возможность для вас в AutoRentGo!*\n\n"
+            f"Появилась свежая заявка на автомобиль, которая идеально совпадает с вашим парком. 🚗✨\n\n"
+            f"👉 *Нажмите в приложении на вкладку 'Заявки'*, чтобы увидеть детали и отправить свое предложение.\n\n"
+            f"Желаем успешной аренды!\n_Команда AutoRentGo_"
         )
         text_email = (
             f"Здравствуйте!\n\n"
-            f"В приложении AutoPro появилась новая заявка на поиск автомобиля, которая совпадает с вашими настройками или объявлениями.\n\n"
-            f"Зайдите в приложение (вкладка 'Заявки'), чтобы предложить свой автомобиль!\n\n"
-            f"С уважением,\nКоманда AutoPro"
+            f"В сервисе AutoRentGo появилась новая заявка на аренду автомобиля, которая совпадает с вашими объявлениями.\n\n"
+            f"Не упустите возможность — зайдите в приложение и предложите свой вариант первым!\n\n"
+            f"С уважением,\nКоманда AutoRentGo"
         )
-        subject_email = "🔔 Новая заявка на поиск авто (AutoPro)"
+        subject_email = "🔔 Новая заявка на автомобиль (AutoRentGo)"
         
         if getattr(owner, 'notify_by_email', True) and owner.email:
-            background_tasks.add_task(email_service.send_notification, email=owner.email, subject=subject_email, text=text_email)
+            action_url = f"{settings.FRONTEND_BASE_URL}/applications"
+            background_tasks.add_task(email_service.send_notification, email=owner.email, subject=subject_email, text=text_email, action_url=action_url)
         if getattr(owner, 'notify_by_whatsapp', True) and owner.phone_number:
             background_tasks.add_task(whatsapp_service.send_notification, phone_number=owner.phone_number, text=text_whatsapp)
 
@@ -183,24 +193,35 @@ async def create_application(
 def list_my_applications(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
     status: Optional[str] = None,
 ):
-    q = db.query(Application).filter(Application.user_id == current_user.id)
+    q = db.query(models.Application).filter(models.Application.user_id == current_user.id)
     if status:
-        q = q.filter(Application.status == status)
-    q = q.order_by(Application.create_date.desc())
+        q = q.filter(models.Application.status == status)
+    q = q.order_by(models.Application.create_date.desc())
     apps = q.all()
 
     lang = getattr(request.state, "lang", "ru")
     result = []
     for app in apps:
-        ac_list = db.query(ApplicationCar).filter(ApplicationCar.application_id == app.id).all()
-        cars = [ac.car for ac in ac_list if ac.car]
+        ac_list = db.query(models.ApplicationCar).filter(models.ApplicationCar.application_id == app.id).all()
+        if len(ac_list) == 0:
+            new_ac_list = db.query(models.Car).filter(
+                models.Car.status == "ACTIVE",
+                models.Car.delete_date.is_(None),
+                models.Car.city_id == app.city_id,
+                models.Car.author_id != current_user.id,
+            ).all()
+            for car in new_ac_list:
+                db.add(models.ApplicationCar(application_id=app.id, car_id=car.id))
+            db.commit()
+            ac_list = db.query(models.ApplicationCar).filter(models.ApplicationCar.application_id == app.id).all()
+        cars = [ac.car for ac in ac_list if ac.car and ac.car.author_id != current_user.id]
         
         view_history = []
         for ac in ac_list:
-            if ac.owner_read_at and ac.car and ac.car.author:
+            if ac.owner_read_at and ac.car and ac.car.author and ac.car.author_id != current_user.id:
                 view_history.append({
                     "date": ac.owner_read_at.isoformat(),
                     "name": ac.car.author.name,
@@ -217,21 +238,21 @@ def list_my_applications(
 def count_to_my_ads(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    my_car_ids = [r[0] for r in db.query(Car.id).filter(Car.author_id == current_user.id).all()]
+    my_car_ids = [r[0] for r in db.query(models.Car.id).filter(models.Car.author_id == current_user.id).all()]
     if not my_car_ids:
         return create_response(data={"count": 0}, lang=getattr(request.state, "lang", "ru"))
 
     city_id = getattr(current_user, "city_id", None)
     subq = (
-        db.query(ApplicationCar.application_id)
-        .filter(ApplicationCar.car_id.in_(my_car_ids), ApplicationCar.owner_read_at.is_(None))
+        db.query(models.ApplicationCar.application_id)
+        .filter(models.ApplicationCar.car_id.in_(my_car_ids), models.ApplicationCar.owner_read_at.is_(None))
         .distinct()
     )
-    q = db.query(Application).filter(Application.id.in_(subq))
+    q = db.query(models.Application).filter(models.Application.id.in_(subq))
     if city_id is not None:
-        q = q.filter(Application.city_id == city_id)
+        q = q.filter(models.Application.city_id == city_id)
     count = q.count()
     return create_response(data={"count": count}, lang=getattr(request.state, "lang", "ru"))
 
@@ -240,17 +261,17 @@ def count_to_my_ads(
 def mark_to_my_ads_read(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    my_car_ids = [r[0] for r in db.query(Car.id).filter(Car.author_id == current_user.id).all()]
+    my_car_ids = [r[0] for r in db.query(models.Car.id).filter(models.Car.author_id == current_user.id).all()]
     if not my_car_ids:
         return create_response(message="OK", lang=getattr(request.state, "lang", "ru"))
 
     now = datetime.utcnow()
-    db.query(ApplicationCar).filter(
-        ApplicationCar.car_id.in_(my_car_ids),
-        ApplicationCar.owner_read_at.is_(None),
-    ).update({ApplicationCar.owner_read_at: now}, synchronize_session=False)
+    db.query(models.ApplicationCar).filter(
+        models.ApplicationCar.car_id.in_(my_car_ids),
+        models.ApplicationCar.owner_read_at.is_(None),
+    ).update({models.ApplicationCar.owner_read_at: now}, synchronize_session=False)
     db.commit()
     return create_response(message="OK", lang=getattr(request.state, "lang", "ru"))
 
@@ -259,29 +280,29 @@ def mark_to_my_ads_read(
 def list_to_my_ads(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    my_car_ids = [r[0] for r in db.query(Car.id).filter(Car.author_id == current_user.id).all()]
-    if not my_car_ids:
+    my_car_ids = [r[0] for r in db.query(models.Car.id).filter(models.Car.author_id == current_user.id).all()]
+    if my_car_ids:
         return create_response(data=[], lang=getattr(request.state, "lang", "ru"))
 
-    app_ids = [r[0] for r in db.query(ApplicationCar.application_id).filter(
-        ApplicationCar.car_id.in_(my_car_ids)
+    app_ids = [r[0] for r in db.query(models.ApplicationCar.application_id).filter(
+        models.ApplicationCar.car_id.in_(my_car_ids)
     ).distinct().all()]
     if not app_ids:
         return create_response(data=[], lang=getattr(request.state, "lang", "ru"))
 
     city_id = getattr(current_user, "city_id", None)
-    q = db.query(Application).filter(Application.id.in_(app_ids)).order_by(Application.create_date.desc())
+    q = db.query(models.Application).filter(models.Application.id.in_(app_ids)).order_by(models.Application.create_date.desc())
     if city_id is not None:
-        q = q.filter(Application.city_id == city_id)
+        q = q.filter(models.Application.city_id == city_id)
     apps = q.all()
 
     has_subscription = get_active_subscription_for_owner(db, current_user.id) is not None
     lang = getattr(request.state, "lang", "ru")
     result = []
     for app in apps:
-        ac_list = db.query(ApplicationCar).filter(ApplicationCar.application_id == app.id, ApplicationCar.car_id.in_(my_car_ids)).all()
+        ac_list = db.query(models.ApplicationCar).filter(models.ApplicationCar.application_id == app.id, models.ApplicationCar.car_id.in_(my_car_ids)).all()
         cars = [ac.car for ac in ac_list if ac.car]
         payload = _application_payload(app, lang, include_cars=True, cars_list=cars)
         payload["applicant_contact"] = _applicant_contact(app.user, has_subscription)
@@ -293,20 +314,23 @@ def list_to_my_ads(
 def list_other_applications(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    my_car_ids = [r[0] for r in db.query(Car.id).filter(Car.author_id == current_user.id).all()]
+    my_car_ids = [r[0] for r in db.query(models.Car.id).filter(models.Car.author_id == current_user.id).all()]
     city_id = getattr(current_user, "city_id", None)
 
-    q = db.query(Application).filter(Application.status == "ACTIVE")
+    q = db.query(models.Application).filter(
+        models.Application.status == "ACTIVE",
+        models.Application.user_id != current_user.id
+    )
     if city_id is not None:
-        q = q.filter(Application.city_id == city_id)
+        q = q.filter(models.Application.city_id == city_id)
 
     if my_car_ids:
-        subq = db.query(ApplicationCar.application_id).filter(ApplicationCar.car_id.in_(my_car_ids)).distinct()
-        q = q.filter(~Application.id.in_(subq))
+        subq = db.query(models.ApplicationCar.application_id).filter(models.ApplicationCar.car_id.in_(my_car_ids)).distinct()
+        q = q.filter(~models.Application.id.in_(subq))
 
-    apps = q.order_by(Application.create_date.desc()).limit(100).all()
+    apps = q.order_by(models.Application.create_date.desc()).limit(100).all()
     has_subscription = get_active_subscription_for_owner(db, current_user.id) is not None
     lang = getattr(request.state, "lang", "ru")
     result = []
@@ -322,17 +346,17 @@ def get_application(
     application_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    app = db.query(Application).filter(Application.id == application_id).first()
+    app = db.query(models.Application).filter(models.Application.id == application_id).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
 
     is_author = app.user_id == current_user.id
-    my_car_ids = [r[0] for r in db.query(Car.id).filter(Car.author_id == current_user.id).all()]
-    acs = db.query(ApplicationCar).filter(
-        ApplicationCar.application_id == app.id,
-        ApplicationCar.car_id.in_(my_car_ids),
+    my_car_ids = [r[0] for r in db.query(models.Car.id).filter(models.Car.author_id == current_user.id).all()]
+    acs = db.query(models.ApplicationCar).filter(
+        models.ApplicationCar.application_id == app.id,
+        models.ApplicationCar.car_id.in_(my_car_ids),
     ).all() if my_car_ids else []
 
     is_owner = len(acs) > 0
@@ -348,12 +372,12 @@ def get_application(
         db.commit()
         db.refresh(app)
 
-    ac_list = db.query(ApplicationCar).filter(ApplicationCar.application_id == app.id).all()
+    ac_list = db.query(models.ApplicationCar).filter(models.ApplicationCar.application_id == app.id).all()
     cars = [ac.car for ac in ac_list if ac.car]
 
     selected_car_ids = []
     if app.status == "COMPLETED":
-        sel = db.query(ApplicationSelectedCar).filter(ApplicationSelectedCar.application_id == app.id).all()
+        sel = db.query(models.ApplicationSelectedCar).filter(models.ApplicationSelectedCar.application_id == app.id).all()
         selected_car_ids = [s.car_id for s in sel]
 
     lang = getattr(request.state, "lang", "ru")
@@ -368,12 +392,12 @@ def update_application_status(
     payload: ApplicationUpdateStatus,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
     status = payload.status
     selected_car_ids = payload.selected_car_ids or []
 
-    app = db.query(Application).filter(Application.id == application_id).first()
+    app = db.query(models.Application).filter(models.Application.id == application_id).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
 
@@ -385,8 +409,8 @@ def update_application_status(
         )
 
     is_author = app.user_id == current_user.id
-    my_car_ids = [r[0] for r in db.query(Car.id).filter(Car.author_id == current_user.id).all()]
-    ac_list = db.query(ApplicationCar).filter(ApplicationCar.application_id == app.id).all()
+    my_car_ids = [r[0] for r in db.query(models.Car.id).filter(models.Car.author_id == current_user.id).all()]
+    ac_list = db.query(models.ApplicationCar).filter(models.ApplicationCar.application_id == app.id).all()
     allowed_car_ids = [ac.car_id for ac in ac_list]
     is_owner = any(cid in my_car_ids for cid in allowed_car_ids)
 
@@ -420,11 +444,11 @@ def update_application_status(
                     lang=getattr(request.state, "lang", "ru"),
                 )
         for cid in selected_car_ids:
-            if not db.query(ApplicationSelectedCar).filter(
-                ApplicationSelectedCar.application_id == app.id,
-                ApplicationSelectedCar.car_id == cid,
+            if not db.query(models.ApplicationSelectedCar).filter(
+                models.ApplicationSelectedCar.application_id == app.id,
+                models.ApplicationSelectedCar.car_id == cid,
             ).first():
-                db.add(ApplicationSelectedCar(application_id=app.id, car_id=cid))
+                db.add(models.ApplicationSelectedCar(application_id=app.id, car_id=cid))
         app.status = "COMPLETED"
         app.completed_at = datetime.utcnow()
         app.update_date = datetime.utcnow()

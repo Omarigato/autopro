@@ -23,6 +23,8 @@ import {
 import { Plus, Search, Edit2, Trash2, KeyRound, UserPlus, CheckCircle, Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
 import InputMask from "react-input-mask";
+import { useTranslation } from "@/hooks/useTranslation";
+
 
 const ROLES = [
   { value: "client", label: "Клиент" },
@@ -76,8 +78,10 @@ function formatPhoneForMask(phone: string | null | undefined): string {
 }
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
@@ -105,13 +109,13 @@ export default function AdminUsersPage() {
   };
 
   const handleToggleActive = async (id: number, currentStatus: boolean) => {
-    if (!confirm(currentStatus ? "Заблокировать пользователя?" : "Разблокировать пользователя?")) return;
+    if (!confirm(currentStatus ? t("admin.users_page.confirm_block") : t("admin.users_page.confirm_unblock"))) return;
     try {
       await apiClient.patch(`/admin/users/${id}`, { is_active: !currentStatus });
-      toast.success("Статус изменён");
+      toast.success(t("admin.users_page.status_changed"));
       loadUsers();
     } catch {
-      toast.error("Ошибка при изменении статуса");
+      toast.error(t("admin.users_page.status_error"));
     }
   };
 
@@ -138,15 +142,15 @@ export default function AdminUsersPage() {
     const phoneTrim = form.phone_number?.trim() ?? "";
 
     if (!emailTrim && !phoneTrim) {
-      toast.error("Укажите email или номер телефона");
+      toast.error(t("admin.users_page.email_or_phone_required"));
       return;
     }
     if (emailTrim && !isValidEmail(emailTrim)) {
-      toast.error("Введите корректный email");
+      toast.error(t("admin.users_page.correct_email_required"));
       return;
     }
     if (phoneTrim && !isValidPhone(phoneTrim)) {
-      toast.error("Введите номер в формате +7 (999) 999-99-99");
+      toast.error(t("admin.users_page.phone_format_required"));
       return;
     }
 
@@ -160,12 +164,12 @@ export default function AdminUsersPage() {
         password: form.password || undefined,
         is_active: form.is_active,
       });
-      toast.success("Пользователь добавлен. Пароль отправлен на email, если не был указан.");
+      toast.success(t("admin.users_page.user_added"));
       setAddOpen(false);
       loadUsers();
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при добавлении";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при добавлении");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.users_page.add_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.users_page.add_error"));
     } finally {
       setSubmitting(false);
     }
@@ -178,11 +182,11 @@ export default function AdminUsersPage() {
     const phoneTrim = form.phone_number?.trim() ?? "";
 
     if (emailTrim && !isValidEmail(emailTrim)) {
-      toast.error("Введите корректный email");
+      toast.error(t("admin.users_page.correct_email_required"));
       return;
     }
     if (phoneTrim && !isValidPhone(phoneTrim)) {
-      toast.error("Введите номер в формате +7 (999) 999-99-99");
+      toast.error(t("admin.users_page.phone_format_required"));
       return;
     }
 
@@ -195,13 +199,13 @@ export default function AdminUsersPage() {
         role: form.role,
         is_active: form.is_active,
       });
-      toast.success("Данные сохранены");
+      toast.success(t("admin.users_page.saved"));
       setEditOpen(false);
       setEditUser(null);
       loadUsers();
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при сохранении";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при сохранении");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.users_page.save_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.users_page.save_error"));
     } finally {
       setSubmitting(false);
     }
@@ -209,36 +213,36 @@ export default function AdminUsersPage() {
 
   const handleResetPassword = async (id: number, email: string | null) => {
     if (!email) {
-      toast.error("У пользователя нет email, сброс пароля невозможен");
+      toast.error(t("admin.users_page.no_email_reset"));
       return;
     }
-    if (!confirm("Сгенерировать новый пароль и отправить на email пользователя?")) return;
+    if (!confirm(t("admin.users_page.confirm_reset"))) return;
     setResetPwdLoading(id);
     try {
       const res: any = await apiClient.post(`/admin/users/${id}/reset-password`);
       const d = res?.data ?? res;
       if (d?.sent) {
-        toast.success("Новый пароль отправлен на email пользователя");
+        toast.success(t("admin.users_page.reset_success"));
       } else {
-        toast.warning("Пароль сброшен, но письмо отправить не удалось. Проверьте настройки SMTP.");
+        toast.warning(t("admin.users_page.reset_warning"));
       }
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при сбросе пароля";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при сбросе пароля");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.users_page.reset_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.users_page.reset_error"));
     } finally {
       setResetPwdLoading(null);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Удалить пользователя? Учётная запись будет деактивирована и скрыта из списка.")) return;
+    if (!confirm(t("admin.users_page.confirm_delete"))) return;
     try {
       await apiClient.delete(`/admin/users/${id}`);
-      toast.success("Пользователь удалён");
+      toast.success(t("admin.users_page.deleted"));
       loadUsers();
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? "Ошибка при удалении";
-      toast.error(typeof msg === "string" ? msg : "Ошибка при удалении");
+      const msg = e?.response?.data?.detail ?? e?.message ?? t("admin.users_page.delete_error");
+      toast.error(typeof msg === "string" ? msg : t("admin.users_page.delete_error"));
     }
   };
 
@@ -256,24 +260,24 @@ export default function AdminUsersPage() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  if (loading) return <div className="text-slate-500">Загрузка...</div>;
+  if (loading) return <div className="text-slate-500">{t("admin.loading")}</div>;
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
-            Пользователи
+            {t("admin.users_page.title")}
           </h2>
           <p className="text-slate-500 mt-1 text-xs sm:text-base font-medium">
-            Управление учётными записями
+            {t("admin.users_page.subtitle")}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0 min-w-0">
           <div className="relative min-w-0">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <Input
-              placeholder="Поиск..."
+              placeholder={t("admin.users_page.search")}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -287,7 +291,7 @@ export default function AdminUsersPage() {
             onClick={openAdd}
           >
             <UserPlus className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-            Добавить
+            {t("admin.users_page.add")}
           </Button>
         </div>
       </div>
@@ -296,7 +300,7 @@ export default function AdminUsersPage() {
       <div className="md:hidden space-y-3">
         {paginatedUsers.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-500 font-medium">
-            Нет пользователей
+            {t("admin.users_page.no_users")}
           </div>
         ) : (
           paginatedUsers.map((u) => (
@@ -314,17 +318,17 @@ export default function AdminUsersPage() {
                   <span className="text-slate-900 font-medium truncate text-right">{u.email || "—"}</span>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <span className="text-slate-500 shrink-0">Телефон</span>
+                  <span className="text-slate-500 shrink-0">{t("admin.users_page.phone")}</span>
                   <span className="text-slate-900 font-medium text-right break-all">{u.phone_number || "—"}</span>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <span className="text-slate-500 shrink-0">Роль</span>
-                  <span className="text-slate-900 font-medium">{u.role}</span>
+                  <span className="text-slate-500 shrink-0">{t("admin.users_page.role")}</span>
+                  <span className="text-slate-900 font-medium">{u.role === "admin" ? t("admin.users_page.role_admin") : t("admin.users_page.role_client")}</span>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <span className="text-slate-500 shrink-0">Активен</span>
+                  <span className="text-slate-500 shrink-0">{t("admin.users_page.active")}</span>
                   <span className={u.is_active ? "text-blue-600 font-medium" : "text-red-400"}>
-                    {u.is_active ? "Да" : "Нет"}
+                    {u.is_active ? t("admin.users_page.yes") : t("admin.users_page.no")}
                   </span>
                 </div>
               </div>
@@ -336,7 +340,7 @@ export default function AdminUsersPage() {
                   onClick={() => openEdit(u)}
                 >
                   <Edit2 className="w-4 h-4" />
-                  Изменить
+                  {t("admin.users_page.edit")}
                 </Button>
                 {u.email && (
                   <Button
@@ -347,7 +351,7 @@ export default function AdminUsersPage() {
                     onClick={() => handleResetPassword(u.id, u.email)}
                   >
                     <KeyRound className="w-4 h-4" />
-                    Сброс пароля
+                    {t("admin.users_page.reset_password")}
                   </Button>
                 )}
                 <Button
@@ -369,7 +373,7 @@ export default function AdminUsersPage() {
                   onClick={() => handleDelete(u.id)}
                 >
                   <Trash2 className="w-4 h-4" />
-                  Удалить
+                  {t("admin.users_page.delete")}
                 </Button>
               </div>
             </div>
@@ -383,13 +387,13 @@ export default function AdminUsersPage() {
           <table className="w-full text-sm min-w-[720px]">
             <thead className="bg-slate-50/80 border-b border-slate-100">
               <tr>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Имя</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Телефон</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Роль</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Активен</th>
-                <th className="text-right p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Действия</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.users_page.id")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.users_page.name")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.users_page.email")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.users_page.phone")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.users_page.role")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.users_page.active")}</th>
+                <th className="text-right p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.users_page.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -399,12 +403,12 @@ export default function AdminUsersPage() {
                   <td className="p-4 font-medium text-slate-900">{u.name || "—"}</td>
                   <td className="p-4 text-slate-700">{u.email || "—"}</td>
                   <td className="p-4 text-slate-700">{u.phone_number || "—"}</td>
-                  <td className="p-4 text-slate-700">{u.role}</td>
+                  <td className="p-4 text-slate-700">{u.role === "admin" ? t("admin.users_page.role_admin") : t("admin.users_page.role_client")}</td>
                   <td className="p-4">
                     {u.is_active ? (
-                      <span className="text-blue-600 font-medium">Да</span>
+                      <span className="text-blue-600 font-medium">{t("admin.users_page.yes")}</span>
                     ) : (
-                      <span className="text-red-400">Нет</span>
+                      <span className="text-red-400">{t("admin.users_page.no")}</span>
                     )}
                   </td>
                   <td className="p-4 text-right">
@@ -460,7 +464,7 @@ export default function AdminUsersPage() {
           </table>
         </div>
         {paginatedUsers.length === 0 && (
-          <div className="p-8 text-center text-slate-500 font-medium">Нет пользователей</div>
+          <div className="p-8 text-center text-slate-500 font-medium">{t("admin.users_page.no_users")}</div>
         )}
       </div>
 
@@ -471,17 +475,17 @@ export default function AdminUsersPage() {
             disabled={currentPage === 1}
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
           >
-            Назад
+            {t("common.back")}
           </Button>
           <span className="text-sm font-medium text-slate-500">
-            Страница {currentPage} из {totalPages}
+            {t("admin.users_page.page")} {currentPage} {t("admin.users_page.of")} {totalPages}
           </span>
           <Button
             variant="outline"
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           >
-            Вперед
+            {t("common.next")}
           </Button>
         </div>
       )}
@@ -490,12 +494,12 @@ export default function AdminUsersPage() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Новый пользователь</DialogTitle>
-            <DialogDescription>Укажите данные. Пароль опционален — если не указать, он будет сгенерирован и отправлен на email.</DialogDescription>
+            <DialogTitle>{t("admin.users_page.new_user")}</DialogTitle>
+            <DialogDescription>{t("admin.users_page.new_user_desc")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="add-name">Имя</Label>
+              <Label htmlFor="add-name">{t("admin.users_page.name")}</Label>
               <Input
                 id="add-name"
                 value={form.name}
@@ -505,7 +509,7 @@ export default function AdminUsersPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-email">Email</Label>
+              <Label htmlFor="add-email">{t("admin.users_page.email")}</Label>
               <Input
                 id="add-email"
                 type="email"
@@ -516,7 +520,7 @@ export default function AdminUsersPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-phone">Номер телефона</Label>
+              <Label htmlFor="add-phone">{t("admin.users_page.phone")}</Label>
               <InputMask
                 mask={PHONE_MASK}
                 value={form.phone_number}
@@ -534,7 +538,7 @@ export default function AdminUsersPage() {
               </InputMask>
             </div>
             <div className="grid gap-2">
-              <Label>Роль</Label>
+              <Label>{t("admin.users_page.role")}</Label>
               <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}>
                 <SelectTrigger className="rounded-xl">
                   <SelectValue />
@@ -542,20 +546,20 @@ export default function AdminUsersPage() {
                 <SelectContent>
                   {ROLES.map((r) => (
                     <SelectItem key={r.value} value={r.value}>
-                      {r.label}
+                      {r.value === "admin" ? t("admin.users_page.role_admin") : t("admin.users_page.role_client")}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-password">Пароль (необязательно)</Label>
+              <Label htmlFor="add-password">{t("admin.users_page.password")}</Label>
               <Input
                 id="add-password"
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                placeholder="Оставьте пустым — отправим на email"
+                placeholder={t("admin.users_page.save_password_desc")}
                 className="rounded-xl"
               />
             </div>
@@ -567,15 +571,15 @@ export default function AdminUsersPage() {
                 onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
                 className="rounded border-slate-300"
               />
-              <Label htmlFor="add-active" className="font-normal cursor-pointer">Активен</Label>
+              <Label htmlFor="add-active" className="font-normal cursor-pointer">{t("admin.users_page.active")}</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)} className="rounded-xl">
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleAdd} disabled={submitting} className="rounded-xl">
-              {submitting ? "Сохранение..." : "Добавить"}
+              {submitting ? t("common.saving") : t("admin.users_page.add")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -585,12 +589,12 @@ export default function AdminUsersPage() {
       <Dialog open={editOpen} onOpenChange={(open) => { if (!open) setEditUser(null); setEditOpen(open); }}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Редактировать пользователя</DialogTitle>
-            <DialogDescription>Измените данные и роль. Сброс пароля — отдельная кнопка в таблице.</DialogDescription>
+            <DialogTitle>{t("admin.users_page.edit_user")}</DialogTitle>
+            <DialogDescription>{t("admin.users_page.edit_user_desc")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="edit-name">Имя</Label>
+              <Label htmlFor="edit-name">{t("admin.users_page.name")}</Label>
               <Input
                 id="edit-name"
                 value={form.name}
@@ -600,7 +604,7 @@ export default function AdminUsersPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-email">Email</Label>
+              <Label htmlFor="edit-email">{t("admin.users_page.email")}</Label>
               <Input
                 id="edit-email"
                 type="email"
@@ -611,7 +615,7 @@ export default function AdminUsersPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-phone">Номер телефона</Label>
+              <Label htmlFor="edit-phone">{t("admin.users_page.phone")}</Label>
               <InputMask
                 mask={PHONE_MASK}
                 value={form.phone_number}
@@ -629,7 +633,7 @@ export default function AdminUsersPage() {
               </InputMask>
             </div>
             <div className="grid gap-2">
-              <Label>Роль</Label>
+              <Label>{t("admin.users_page.role")}</Label>
               <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}>
                 <SelectTrigger className="rounded-xl">
                   <SelectValue />
@@ -637,7 +641,7 @@ export default function AdminUsersPage() {
                 <SelectContent>
                   {ROLES.map((r) => (
                     <SelectItem key={r.value} value={r.value}>
-                      {r.label}
+                      {r.value === "admin" ? t("admin.users_page.role_admin") : t("admin.users_page.role_client")}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -651,15 +655,15 @@ export default function AdminUsersPage() {
                 onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
                 className="rounded border-slate-300"
               />
-              <Label htmlFor="edit-active" className="font-normal cursor-pointer">Активен</Label>
+              <Label htmlFor="edit-active" className="font-normal cursor-pointer">{t("admin.users_page.active")}</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} className="rounded-xl">
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleEdit} disabled={submitting} className="rounded-xl">
-              {submitting ? "Сохранение..." : "Сохранить"}
+              {submitting ? t("common.saving") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

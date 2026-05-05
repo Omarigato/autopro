@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.models.entities import Review
+from app.models import Review
 from app.schemas.reviews import ReviewCreateRequest
 from app.core.responses import create_response
 

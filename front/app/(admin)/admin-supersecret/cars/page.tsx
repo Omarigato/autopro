@@ -6,10 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from "@/hooks/useTranslation";
+
 
 export default function AdminCarsPage() {
+  const { t } = useTranslation();
   const [cars, setCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -44,7 +48,7 @@ export default function AdminCarsPage() {
     apiClient.post(`/admin/cars/${carId}/reject`).then(() => load());
   };
 
-  if (loading) return <div className="text-slate-500">Загрузка...</div>;
+  if (loading) return <div className="text-slate-500">{t("admin.loading")}</div>;
 
   const statusClass = (status: string) =>
     status === "PUBLISHED" ? "bg-green-100 text-green-800" :
@@ -56,14 +60,14 @@ export default function AdminCarsPage() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">Объявления (машины)</h2>
-          <p className="text-slate-500 mt-1 text-xs sm:text-base font-medium">Модерация и управление объявлениями</p>
+          <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">{t("admin.cars_page.title")}</h2>
+          <p className="text-slate-500 mt-1 text-xs sm:text-base font-medium">{t("admin.cars_page.subtitle")}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0 min-w-0">
           <div className="relative min-w-0">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <Input
-              placeholder="Поиск..."
+              placeholder={t("admin.cars_page.search_placeholder")}
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="pl-10 sm:pl-11 pr-4 h-11 w-full sm:w-72 bg-white border-slate-200 rounded-xl sm:rounded-2xl shadow-sm focus-visible:ring-slate-400 font-medium text-base"
@@ -72,7 +76,7 @@ export default function AdminCarsPage() {
           <Button className="h-11 px-5 sm:px-6 bg-slate-800 hover:bg-slate-700 text-white rounded-xl sm:rounded-2xl font-black shadow-lg shadow-slate-200 gap-2 text-sm sm:text-base" asChild>
             <Link href="/add">
               <Plus className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-              Добавить
+              {t("admin.cars_page.add_button")}
             </Link>
           </Button>
         </div>
@@ -81,7 +85,7 @@ export default function AdminCarsPage() {
       {/* Мобильная версия: карточки */}
       <div className="md:hidden space-y-3">
         {paginatedCars.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-500 font-medium">Нет объявлений</div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-500 font-medium">{t("admin.cars_page.no_cars")}</div>
         ) : (
           paginatedCars.map((c) => (
             <div key={c.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3">
@@ -93,20 +97,20 @@ export default function AdminCarsPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${statusClass(c.status)}`}>{c.status}</span>
-                <span className="text-slate-500 text-xs">Просмотры: {c.views ?? 0}</span>
-                <span className="text-slate-500 text-xs truncate">Автор: {c.author || "—"}</span>
+                <span className="text-slate-500 text-xs">{t("admin.cars_page.views_label")}: {c.views ?? 0}</span>
+                <span className="text-slate-500 text-xs truncate">{t("admin.cars_page.author_label")}: {c.author || "—"}</span>
               </div>
               <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
                 {c.status !== "ACTIVE" && c.status !== "PUBLISHED" && (
                   <Button size="sm" className="flex-1 min-w-0 h-10 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold gap-1.5" onClick={() => approve(c.id)}>
                     <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                    Одобрить
+                    {t("admin.cars_page.approve_button")}
                   </Button>
                 )}
                 {c.status !== "REJECT" && c.status !== "REJECTED" && (
                   <Button size="sm" className="flex-1 min-w-0 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold gap-1.5" onClick={() => reject(c.id)}>
                     <XCircle className="h-3.5 w-3.5 shrink-0" />
-                    Отклонить
+                    {t("admin.cars_page.reject_button")}
                   </Button>
                 )}
               </div>
@@ -121,12 +125,12 @@ export default function AdminCarsPage() {
           <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-slate-50/80 border-b border-slate-100">
               <tr>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Название</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Статус</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Просмотры</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Автор</th>
-                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Действия</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.cars_page.id_label")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.cars_page.name_label")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.cars_page.status_label")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.cars_page.views_label")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.cars_page.author_label")}</th>
+                <th className="text-left p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.cars_page.actions_label")}</th>
               </tr>
             </thead>
             <tbody>
@@ -145,13 +149,13 @@ export default function AdminCarsPage() {
                     {c.status !== "ACTIVE" && c.status !== "PUBLISHED" && (
                       <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white rounded-xl gap-1.5" onClick={() => approve(c.id)}>
                         <CheckCircle className="h-3.5 w-3.5" />
-                        Одобрить
+                        {t("admin.cars_page.approve_button")}
                       </Button>
                     )}
                     {c.status !== "REJECT" && c.status !== "REJECTED" && (
                       <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white rounded-xl gap-1.5" variant="destructive" onClick={() => reject(c.id)}>
                         <XCircle className="h-3.5 w-3.5" />
-                        Отклонить
+                        {t("admin.cars_page.reject_button")}
                       </Button>
                     )}
                   </td>
@@ -160,7 +164,7 @@ export default function AdminCarsPage() {
             </tbody>
           </table>
         </div>
-        {paginatedCars.length === 0 && <div className="p-8 text-center text-slate-500 font-medium">Нет объявлений</div>}
+        {paginatedCars.length === 0 && <div className="p-8 text-center text-slate-500 font-medium">{t("admin.cars_page.no_cars")}</div>}
       </div>
 
       {totalPages > 1 && (
@@ -170,17 +174,17 @@ export default function AdminCarsPage() {
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
           >
-            Назад
+            {t("common.back")}
           </Button>
           <span className="text-sm font-medium text-slate-500">
-            Страница {currentPage} из {totalPages}
+            {t("admin.users_page.page")} {currentPage} {t("admin.users_page.of")} {totalPages}
           </span>
           <Button
             variant="outline"
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
           >
-            Вперед
+            {t("common.next")}
           </Button>
         </div>
       )}

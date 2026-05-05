@@ -7,10 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Search, Edit, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/useTranslation";
+
 
 export default function AdminApplicationsPage() {
+    const { t, lang } = useTranslation();
     const [applications, setApplications] = useState<any[]>([]);
+
     const [loading, setLoading] = useState(true);
+
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -42,42 +47,42 @@ export default function AdminApplicationsPage() {
     }, [currentPage]);
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Удалить заявку?")) return;
+        if (!confirm(t("admin.applications_page.delete_confirm"))) return;
         try {
             await apiClient.delete(`/admin/applications/${id}`);
-            toast.success("Заявка удалена");
+            toast.success(t("admin.applications_page.deleted_success"));
             loadApps();
         } catch {
-            toast.error("Ошибка удаления");
+            toast.error(t("admin.applications_page.delete_error"));
         }
     };
 
     const handleStatusChange = async (id: number, newStatus: string) => {
         try {
             await apiClient.patch(`/admin/applications/${id}`, { status: newStatus });
-            toast.success("Статус обновлен");
+            toast.success(t("admin.applications_page.status_updated"));
             loadApps();
         } catch {
-            toast.error("Ошибка при обновлении");
+            toast.error(t("admin.applications_page.status_update_error"));
         }
     };
 
     const paginatedApps = applications;
 
-    if (loading) return <div className="text-slate-500">Загрузка...</div>;
+    if (loading) return <div className="text-slate-500">{t("admin.loading")}</div>;
 
     return (
         <div className="space-y-4 sm:space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                 <div className="min-w-0">
-                    <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">Заявки</h2>
-                    <p className="text-slate-500 mt-1 text-xs sm:text-base font-medium">Управление заявками на авто</p>
+                    <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">{t("admin.applications_page.title")}</h2>
+                    <p className="text-slate-500 mt-1 text-xs sm:text-base font-medium">{t("admin.applications_page.subtitle")}</p>
                 </div>
                 <div className="flex gap-3 flex-shrink-0">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                         <Input
-                            placeholder="Поиск по имени или тексту..."
+                            placeholder={t("admin.applications_page.search_placeholder")}
                             value={searchQuery}
                             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                             className="pl-11 pr-4 h-11 w-full sm:w-72 bg-white border-slate-200 rounded-2xl shadow-sm focus-visible:ring-slate-400 font-medium text-base"
@@ -92,7 +97,7 @@ export default function AdminApplicationsPage() {
                         <div className="text-slate-400 mb-4">
                             <Search className="w-12 h-12 opacity-20" />
                         </div>
-                        <p className="text-slate-500 font-bold text-lg">Заявок не найдено</p>
+                        <p className="text-slate-500 font-bold text-lg">{t("admin.applications_page.no_apps")}</p>
                     </div>
                 ) : (
                     paginatedApps.map((app) => (
@@ -108,7 +113,7 @@ export default function AdminApplicationsPage() {
 
                                 <div className="mb-4">
                                     <p className="text-sm font-medium text-slate-600 line-clamp-3">
-                                        {app.message || "Нет описания"}
+                                        {app.message || t("admin.applications_page.no_message")}
                                     </p>
                                 </div>
 
@@ -122,22 +127,26 @@ export default function AdminApplicationsPage() {
 
                                 <div className="grid grid-cols-2 gap-2 text-sm mb-6">
                                     <div>
-                                        <span className="block text-xs text-slate-400">Дата</span>
+                                        <span className="block text-xs text-slate-400">{t("admin.applications_page.date_label")}</span>
                                         <span className="font-semibold text-slate-700">
-                                            {app.create_date ? new Date(app.create_date).toLocaleDateString("ru-RU") : "—"}
+                                            {app.create_date ? new Date(app.create_date).toLocaleDateString(lang === "kk" ? "kk-KZ" : lang === "en" ? "en-US" : "ru-RU") : "—"}
                                         </span>
                                     </div>
                                     <div>
-                                        <span className="block text-xs text-slate-400">Просмотры</span>
+                                        <span className="block text-xs text-slate-400">{t("admin.applications_page.views_label")}</span>
                                         <span className="font-semibold text-slate-700">{app.views_count || 0}</span>
                                     </div>
                                     <div>
-                                        <span className="block text-xs text-slate-400">Совпадения</span>
+                                        <span className="block text-xs text-slate-400">{t("admin.applications_page.matches_label")}</span>
                                         <span className="font-semibold text-slate-700">{app.matching_cars_count || 0}</span>
                                     </div>
                                     <div>
-                                        <span className="block text-xs text-slate-400">Статус</span>
-                                        <span className="font-semibold text-indigo-600">{app.status}</span>
+                                        <span className="block text-xs text-slate-400">{t("admin.applications_page.status_label")}</span>
+                                        <span className="font-semibold text-indigo-600">
+                                            {app.status === "ACTIVE" ? t("admin.applications_page.status_active") :
+                                                app.status === "COMPLETED" ? t("admin.applications_page.status_completed") :
+                                                    app.status === "REJECTED" ? t("admin.applications_page.status_rejected") : app.status}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -148,9 +157,9 @@ export default function AdminApplicationsPage() {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="ACTIVE">Активная</SelectItem>
-                                        <SelectItem value="COMPLETED">Завершена</SelectItem>
-                                        <SelectItem value="REJECTED">Отклонена</SelectItem>
+                                        <SelectItem value="ACTIVE">{t("admin.applications_page.status_active")}</SelectItem>
+                                        <SelectItem value="COMPLETED">{t("admin.applications_page.status_completed")}</SelectItem>
+                                        <SelectItem value="REJECTED">{t("admin.applications_page.status_rejected")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <Button variant="ghost" size="icon" onClick={() => handleDelete(app.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl">
@@ -169,17 +178,17 @@ export default function AdminApplicationsPage() {
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     >
-                        Назад
+                        {t("common.back")}
                     </Button>
                     <span className="text-sm font-medium text-slate-500">
-                        Страница {currentPage} из {totalPages}
+                        {t("admin.users_page.page")} {currentPage} {t("admin.users_page.of")} {totalPages}
                     </span>
                     <Button
                         variant="outline"
                         disabled={currentPage === totalPages}
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     >
-                        Вперед
+                        {t("common.next")}
                     </Button>
                 </div>
             )}

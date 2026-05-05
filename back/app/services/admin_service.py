@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.entities import Car, User, Review, Dictionary
+from app.models import Car, User, Review, Dictionary
 from io import BytesIO
 
 class AdminService:
