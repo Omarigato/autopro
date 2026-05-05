@@ -7,29 +7,13 @@ let isReady = false;
 let isAuthenticated = false;
 let isInitializing = false;
 
-// Найти Chrome/Chromium на Windows или использовать системный
-function getChromePath() {
-    const paths = [
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files\\Chromium\\Application\\chrome.exe',
-        process.env.PUPPETEER_EXECUTABLE_PATH,
-    ].filter(Boolean);
-
-    const fs = require('fs');
-    for (const p of paths) {
-        try {
-            if (fs.existsSync(p)) return p;
-        } catch {}
-    }
-    return undefined; // puppeteer сам найдет
-}
-
 function createClient() {
-    const executablePath = getChromePath();
-    console.log(executablePath
-        ? `[WA] Using Chrome at: ${executablePath}`
-        : '[WA] Using bundled Chromium (puppeteer default)');
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+    if (executablePath) {
+        console.log(`[WA] Using browser from env: ${executablePath}`);
+    } else {
+        console.log('[WA] Using puppeteer bundled Chromium');
+    }
 
     return new Client({
         authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
@@ -43,21 +27,34 @@ function createClient() {
                 '--disable-gpu',
                 '--no-first-run',
                 '--disable-extensions',
+                '--disable-background-networking',
+                '--single-process',
             ],
-            timeout: 60000,
+            timeout: 120000, // 2 минуты на запуск браузера
         },
-        webVersionCache: {
-            type: 'remote',
-            remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1017054952-alpha/index.html',
-        }
     });
 }
 
-function initWhatsAppClient() {
-    if (isInitializing) return;
-    isInitializing = true;
-    console.log('[WA] Initializing WhatsApp client...');
+async function destroyClient() {
+    if (!client) return;
+    const c = client;
+    client = null;
+    try { await c.destroy(); } catch {}
+}
 
+async function initWhatsAppClient() {
+    if (isInitializing) {
+        console.log('[WA] Already initializing, skipping...');
+        return;
+    }
+    isInitializing = true;
+    isReady = false;
+    isAuthenticated = false;
+    currentQrCodeData = null;
+
+    await destroyClient();
+
+    console.log('[WA] Initializing WhatsApp client...');
     client = createClient();
 
     client.on('qr', (qr) => {
@@ -85,8 +82,8 @@ function initWhatsAppClient() {
         isAuthenticated = false;
         isReady = false;
         isInitializing = false;
-        // Через 5 секунд попробуем снова
-        setTimeout(() => initWhatsAppClient(), 5000);
+        console.log('[WA] Retrying in 15 seconds...');
+        setTimeout(() => initWhatsAppClient(), 15000);
     });
 
     client.on('disconnected', (reason) => {
@@ -94,18 +91,18 @@ function initWhatsAppClient() {
         isReady = false;
         isAuthenticated = false;
         isInitializing = false;
-        // Попробуем переподключиться через 5 секунд
-        setTimeout(() => initWhatsAppClient(), 5000);
+        console.log('[WA] Reconnecting in 10 seconds...');
+        setTimeout(() => initWhatsAppClient(), 10000);
     });
 
-    // Глобальный перехват unhandled rejection от puppeteer
-    client.initialize().catch((err) => {
+    client.initialize().catch(async (err) => {
         console.error('[WA] Initialization error:', err.message || err);
         isReady = false;
         isAuthenticated = false;
         isInitializing = false;
-        // Через 10 секунд попробуем снова
-        setTimeout(() => initWhatsAppClient(), 10000);
+        await destroyClient();
+        console.log('[WA] Retrying in 15 seconds...');
+        setTimeout(() => initWhatsAppClient(), 15000);
     });
 }
 
@@ -115,10 +112,24 @@ async function getQrCodeHtml() {
             <html><head><meta charset="utf-8"><title>AutoPro Gateway</title>
             <style>body{font-family:sans-serif;text-align:center;margin-top:80px;background:#f8fafc;}</style>
             </head><body>
-            <h1 style="color:#16a34a">✓ WhatsApp Подключен</h1>
+            <h1 style="color:#16a34a">&#10003; WhatsApp Подключен</h1>
             <p>Сессия активна. Шлюз готов к работе.</p>
-            <p><a href="/status">Статус</a></p>
+            <p><a href="/status">Проверить статус</a></p>
             </body></html>
+        `;
+    }
+
+    if (isInitializing && !currentQrCodeData) {
+        return `
+            <html>
+            <head><meta http-equiv="refresh" content="5"><meta charset="utf-8"><title>AutoPro Gateway</title>
+            <style>body{font-family:sans-serif;text-align:center;margin-top:80px;background:#f8fafc;}</style>
+            </head>
+            <body>
+                <h2>Запуск браузера...</h2>
+                <p>Первый запуск может занять 30–60 секунд. Страница обновится автоматически.</p>
+            </body>
+            </html>
         `;
     }
 
@@ -157,9 +168,8 @@ async function getQrCodeHtml() {
         <style>body{font-family:sans-serif;text-align:center;margin-top:80px;background:#f8fafc;}</style>
         </head>
         <body>
-            <h2>Инициализация...</h2>
-            <p>Запуск браузера и подключение к WhatsApp Web. Подождите 20–40 секунд.</p>
-            <p style="color:#94a3b8;font-size:13px;">Страница обновляется автоматически</p>
+            <h2>Ожидание...</h2>
+            <p>Шлюз запускается. Подождите.</p>
         </body>
         </html>
     `;
@@ -188,13 +198,9 @@ async function logout() {
     isAuthenticated = false;
     isInitializing = false;
     currentQrCodeData = null;
-    if (client) {
-        try { await client.logout(); } catch {}
-        try { await client.destroy(); } catch {}
-        client = null;
-    }
-    // Запустить заново — для нового QR
-    setTimeout(() => initWhatsAppClient(), 2000);
+    await destroyClient();
+    console.log('[WA] Logged out. Restarting in 3 seconds...');
+    setTimeout(() => initWhatsAppClient(), 3000);
 }
 
 module.exports = {
