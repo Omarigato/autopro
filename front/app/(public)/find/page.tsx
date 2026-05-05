@@ -13,6 +13,8 @@ import { Upload, X } from "lucide-react";
 import { getCachedDictionaries } from "@/lib/dictionaries";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+import { DictionarySelect } from "@/components/shared/DictionarySelect";
+
 
 const MAX_MESSAGE_LENGTH = 1000;
 
@@ -74,28 +76,19 @@ function FindContent() {
     }
   }, [user, cities]);
 
-  useEffect(() => {
-    if (formData.vehicle_mark_id) {
-      apiClient.get(`/dictionaries/model/${formData.vehicle_mark_id}`).then((res: any) => {
-        const data = Array.isArray(res) ? res : res?.data || [];
-        setModels(data);
-      }).catch(() => setModels([]));
-    } else {
-      setModels([]);
-    }
-  }, [formData.vehicle_mark_id]);
+
 
   const loadDictionaries = async () => {
     setLoading(true);
     try {
-      const [categoriesData, marksData, citiesData] = await Promise.all([
+      const [categoriesData, citiesData] = await Promise.all([
         getCachedDictionaries("CATEGORY"),
-        getCachedDictionaries("MARKA"),
         getCachedDictionaries("CITY"),
       ]);
+
       setCategories(categoriesData || []);
-      setMarks(marksData || []);
       setCities(citiesData || []);
+
       if (!formData.city_id && citiesData?.length) {
         const defaultCity = (user as any)?.city_id
           ? citiesData.find((c: any) => c.id === (user as any).city_id) || citiesData[0]
@@ -200,7 +193,7 @@ function FindContent() {
             onValueChange={(v) => handleChange("city_id", v ? Number(v) : null)}
             required
           >
-            <SelectTrigger>
+            <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200">
               <SelectValue placeholder="Выберите город" />
             </SelectTrigger>
             <SelectContent>
@@ -218,7 +211,7 @@ function FindContent() {
             onValueChange={(v) => handleChange("category_id", v ? Number(v) : null)}
             required
           >
-            <SelectTrigger>
+            <SelectTrigger className="rounded-xl h-11 sm:h-12 bg-white border-slate-200">
               <SelectValue placeholder="Выберите категорию" />
             </SelectTrigger>
             <SelectContent>
@@ -230,41 +223,28 @@ function FindContent() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Label>Марка <span className="text-red-500">*</span></Label>
-            <Select
-              value={formData.vehicle_mark_id != null ? String(formData.vehicle_mark_id) : ""}
-              onValueChange={(v) => handleChange("vehicle_mark_id", v ? Number(v) : null)}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите марку" />
-              </SelectTrigger>
-              <SelectContent>
-                {marks.map((m: any) => (
-                  <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DictionarySelect
+              type="MARKA"
+              value={formData.vehicle_mark_id ? String(formData.vehicle_mark_id) : null}
+              onChange={(v) => handleChange("vehicle_mark_id", v ? Number(v) : null)}
+              placeholder="Выберите марку"
+            />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Label>Модель</Label>
-            <Select
-              value={formData.vehicle_model_id != null ? String(formData.vehicle_model_id) : ""}
-              onValueChange={(v) => handleChange("vehicle_model_id", v ? Number(v) : null)}
+            <DictionarySelect
+              type="MODEL"
+              parentId={formData.vehicle_mark_id ?? undefined}
+              value={formData.vehicle_model_id ? String(formData.vehicle_model_id) : null}
+              onChange={(v) => handleChange("vehicle_model_id", v ? Number(v) : null)}
+              placeholder="Не выбрано"
               disabled={!formData.vehicle_mark_id}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Не выбрано" />
-              </SelectTrigger>
-              <SelectContent>
-                {models.map((m: any) => (
-                  <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
         </div>
+
 
         <div className="space-y-2">
           <Label>Дата и время</Label>

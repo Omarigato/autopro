@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.models.entities import Car, OwnerSubscription, SubscriptionPlan
+from app.models import Car, OwnerSubscription, SubscriptionPlan
 
 
 def get_active_subscription_for_owner(db: Session, owner_id: int) -> OwnerSubscription | None:

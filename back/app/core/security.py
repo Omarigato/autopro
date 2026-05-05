@@ -9,9 +9,15 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.models.entities import User
+from app.models import User
+
+import bcrypt
+# Фикс для совместимости passlib и bcrypt 4.0+
+if not hasattr(bcrypt, "__about__"):
+    bcrypt.__about__ = type("about", (object,), {"__version__": bcrypt.__version__})
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 security = HTTPBearer()
 
 

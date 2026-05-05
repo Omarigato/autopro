@@ -72,3 +72,22 @@ export const getCachedDictionaries = async (
     pendingRequests.set(cacheKey, fetchPromise);
     return fetchPromise;
 };
+export const findDictionaries = async (
+    params: {
+        type?: string;
+        parent_id?: number;
+        q?: string;
+        limit?: number;
+        offset?: number;
+    }
+): Promise<any[]> => {
+    try {
+        const res: any = await apiClient.get("/dictionaries", { params });
+        if (Array.isArray(res)) return res;
+        if (res && res.data && Array.isArray(res.data)) return res.data;
+        return res?.data || [];
+    } catch (e) {
+        console.error("Failed to find dictionaries", e);
+        return [];
+    }
+};

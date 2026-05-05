@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import get_current_user
-from app.models.entities import User, UserLike, UserEvent, Car
+from app.models import User, UserLike, UserEvent, Car
 from app.core.responses import create_response
 
 router = APIRouter()
@@ -20,7 +20,7 @@ def get_user_likes(
     result = []
     for like in likes:
         car = like.car
-        car_image = car.images[0].url if car and hasattr(car, 'images') and len(car.images) > 0 else None
+        car_image = car.car_images[0].url if car and hasattr(car, 'car_images') and len(car.car_images) > 0 else None
         
         result.append({
             "id": like.id,
@@ -103,7 +103,7 @@ def get_user_events(
         car = event.car
         # Машина может быть удалена (delete_date или status DELETED) — отдаём данные для отображения ссылки серым
         car_deleted = car is None or (getattr(car, "delete_date", None) is not None) or (getattr(car, "status", None) == "DELETED")
-        car_image = car.images[0].url if car and hasattr(car, 'images') and len(car.images) > 0 else None
+        car_image = car.car_images[0].url if car and hasattr(car, 'car_images') and len(car.car_images) > 0 else None
 
         result.append({
             "id": event.id,

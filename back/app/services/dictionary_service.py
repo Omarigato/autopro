@@ -2,7 +2,7 @@ import json
 import os
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
-from app.models.entities import Dictionary, DictionaryTranslation, SubscriptionPlan, PaymentAccount
+from app.models import Dictionary, DictionaryTranslation, SubscriptionPlan, PaymentAccount
 from app.core.logger import logger
 
 class DictionaryService:
@@ -122,9 +122,6 @@ class DictionaryService:
             
         for color in data.get("colors", []):
             self.upsert_item(db, color["code"], color["names"]["en"], "COLOR", translations=color["names"])
-            
-        for body in data.get("car_types", []):
-            self.upsert_item(db, body["code"], body["names"]["en"], "BODY", translations=body["names"])
 
         for st in data.get("steering", []):
             self.upsert_item(db, st["code"], st["names"]["en"], "STEERING", translations=st["names"])

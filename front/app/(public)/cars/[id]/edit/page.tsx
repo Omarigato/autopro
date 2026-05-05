@@ -14,6 +14,8 @@ import { getCachedDictionaries } from "@/lib/dictionaries";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DictionarySelect } from "@/components/shared/DictionarySelect";
+
 
 function EditCarContent() {
     const router = useRouter();
@@ -100,18 +102,14 @@ function EditCarContent() {
             setExistingImages(car.images || []);
             setInitialDataStr(JSON.stringify(initialForm));
 
-            if (car.vehicle_mark_id) {
-                loadModels(car.vehicle_mark_id);
-            }
         }
     }, [car, user, id, router]);
 
     const loadDictionaries = async () => {
         setLoadingDicts(true);
         try {
-            const [categoriesData, marksData, citiesData, enginesData, bodiesData, transmissionsData, colorsData, steeringData, conditionData, carClassData] = await Promise.all([
+            const [categoriesData, citiesData, enginesData, bodiesData, transmissionsData, colorsData, steeringData, conditionData, carClassData] = await Promise.all([
                 getCachedDictionaries("CATEGORY"),
-                getCachedDictionaries("MARKA"),
                 getCachedDictionaries("CITY"),
                 getCachedDictionaries("FUEL"),
                 getCachedDictionaries("BODY"),
@@ -122,9 +120,10 @@ function EditCarContent() {
                 getCachedDictionaries("CAR_CLASS")
             ]);
 
+
             setCategories(categoriesData || []);
-            setMarks(marksData || []);
             setCities(citiesData || []);
+
             setEngines(enginesData || []);
             setBodies(bodiesData || []);
             setTransmissions(transmissionsData || []);
@@ -160,12 +159,12 @@ function EditCarContent() {
             if (name === 'release_year' && !isNaN(num) && num > 2026) return;
         }
         if (name === 'vehicle_mark_id') {
-            loadModels(value);
             setFormData((prev: any) => ({ ...prev, vehicle_mark_id: value, vehicle_model_id: "" }));
         } else {
             setFormData({ ...formData, [name]: value });
         }
     };
+
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -330,7 +329,7 @@ function EditCarContent() {
                                 placeholder="Введите заголовок"
                                 value={formData.name || ''}
                                 onChange={(e) => handleChange('name', e.target.value)}
-                                className="rounded-xl h-12 bg-slate-50 border-transparent"
+                                className="rounded-xl h-12 bg-white border-slate-200 shadow-sm"
                             />
                         </div>
 
@@ -341,7 +340,7 @@ function EditCarContent() {
                                 placeholder="Введите цену"
                                 value={formData.price_per_day || ''}
                                 onChange={(e) => handleChange('price_per_day', e.target.value)}
-                                className="rounded-xl h-12 bg-slate-50 border-transparent"
+                                className="rounded-xl h-12 bg-white border-slate-200 shadow-sm"
                             />
                         </div>
                     </div>
@@ -349,7 +348,7 @@ function EditCarContent() {
                     <div className="space-y-2">
                         <Label>Категория <span className="text-red-500">*</span></Label>
                         <Select onValueChange={(val) => handleChange('category_id', val)} value={formData.category_id}>
-                            <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
+                            <SelectTrigger className="rounded-xl h-12 bg-white border-slate-200 shadow-sm">
                                 <SelectValue placeholder="Выберите категорию" />
                             </SelectTrigger>
                             <SelectContent>
@@ -361,38 +360,29 @@ function EditCarContent() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             <Label>Марка <span className="text-red-500">*</span></Label>
-                            <Select onValueChange={(val) => handleChange('vehicle_mark_id', val)} value={formData.vehicle_mark_id}>
-                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
-                                    <SelectValue placeholder="Выберите марку" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {marks.map((m) => (
-                                        <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <DictionarySelect
+                                type="MARKA"
+                                value={formData.vehicle_mark_id ? String(formData.vehicle_mark_id) : null}
+                                onChange={(val) => handleChange('vehicle_mark_id', val)}
+                                placeholder="Выберите марку"
+                            />
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             <Label>Модель</Label>
-                            <Select
-                                onValueChange={(val) => handleChange('vehicle_model_id', val)}
-                                value={formData.vehicle_model_id}
+                            <DictionarySelect
+                                type="MODEL"
+                                parentId={formData.vehicle_mark_id ? parseInt(formData.vehicle_mark_id) : undefined}
+                                value={formData.vehicle_model_id ? String(formData.vehicle_model_id) : null}
+                                onChange={(val) => handleChange('vehicle_model_id', val)}
+                                placeholder="Выберите модель"
                                 disabled={!formData.vehicle_mark_id}
-                            >
-                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
-                                    <SelectValue placeholder="Выберите модель" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {models.map((m) => (
-                                        <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            />
                         </div>
                     </div>
+
                 </div>
 
                 {/* 2. Детали */}
@@ -403,7 +393,7 @@ function EditCarContent() {
                         <div className="space-y-2">
                             <Label>Город <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('city_id', val)} value={formData.city_id}>
-                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
+                                <SelectTrigger className="rounded-xl h-12 bg-white border-slate-200 shadow-sm">
                                     <SelectValue placeholder="Выберите город" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -417,7 +407,7 @@ function EditCarContent() {
                         <div className="space-y-2">
                             <Label>Цвет <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('color_id', val)} value={formData.color_id}>
-                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
+                                <SelectTrigger className="rounded-xl h-12 bg-white border-slate-200 shadow-sm">
                                     <SelectValue placeholder="Укажите цвет" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -435,14 +425,14 @@ function EditCarContent() {
                                 placeholder="Введите год"
                                 value={formData.release_year || ''}
                                 onChange={(e) => handleChange('release_year', e.target.value)}
-                                className="rounded-xl h-12 bg-slate-50 border-transparent"
+                                className="rounded-xl h-12 bg-white border-slate-200 shadow-sm"
                             />
                         </div>
 
                         <div className="space-y-2">
                             <Label>Двигатель <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('fuel_type_id', val)} value={formData.fuel_type_id}>
-                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
+                                <SelectTrigger className="rounded-xl h-12 bg-white border-slate-200 shadow-sm">
                                     <SelectValue placeholder="Выберите двигатель" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -459,14 +449,14 @@ function EditCarContent() {
                                 placeholder="Укажите кузов"
                                 value={formData.body_type || ''}
                                 onChange={(e) => handleChange('body_type', e.target.value)}
-                                className="rounded-xl h-12 bg-slate-50 border-transparent"
+                                className="rounded-xl h-12 bg-white border-slate-200 shadow-sm"
                             />
                         </div>
 
                         <div className="space-y-2">
                             <Label>Руль <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('steering_id', val)} value={formData.steering_id}>
-                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
+                                <SelectTrigger className="rounded-xl h-12 bg-white border-slate-200 shadow-sm">
                                     <SelectValue placeholder="Выберите руль" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -484,14 +474,14 @@ function EditCarContent() {
                                 placeholder="Пробег"
                                 value={formData.mileage || ''}
                                 onChange={(e) => handleChange('mileage', e.target.value)}
-                                className="rounded-xl h-12 bg-slate-50 border-transparent"
+                                className="rounded-xl h-12 bg-white border-slate-200 shadow-sm"
                             />
                         </div>
 
                         <div className="space-y-2">
                             <Label>Коробка <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('transmission_id', val)} value={formData.transmission_id}>
-                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
+                                <SelectTrigger className="rounded-xl h-12 bg-white border-slate-200 shadow-sm">
                                     <SelectValue placeholder="Выберите коробку" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -505,7 +495,7 @@ function EditCarContent() {
                         <div className="space-y-2">
                             <Label>Состояние <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleChange('condition_id', val)} value={formData.condition_id}>
-                                <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-transparent">
+                                <SelectTrigger className="rounded-xl h-12 bg-white border-slate-200 shadow-sm">
                                     <SelectValue placeholder="Выберите состояние" />
                                 </SelectTrigger>
                                 <SelectContent>

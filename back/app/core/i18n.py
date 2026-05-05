@@ -1,6 +1,8 @@
 MESSAGES = {
     "ru": {
         "success": "Успешно",
+        "ok": "ОК",
+        "error": "Ошибка",
         "client_application_sent": "Заявка успешно отправлена владельцу",
         "car_saved_draft": "Объявление сохранено в черновики",
         "car_not_found": "Автомобиль не найден",
@@ -8,6 +10,9 @@ MESSAGES = {
         "car_deleted": "Автомобиль и фотографии удалены",
         "auth_failed": "Неверный логин или пароль",
         "user_exists": "Пользователь с таким логином уже существует",
+        "user_exists_phone": "Пользователь с таким номером телефона уже существует",
+        "user_exists_email": "Пользователь с таким email уже существует",
+        "user_not_found": "Пользователь не найден",
         "car_limit_reached": "Лимит автомобилей исчерпан для вашей подписки",
         "no_subscription": "У вас нет активной подписки",
         "otp_sent": "Код подтверждения отправлен",
@@ -15,9 +20,20 @@ MESSAGES = {
         "otp_expired": "Срок действия кода истек",
         "login_success": "Вы успешно вошли",
         "invalid_refresh_token": "Сессия истекла. Войдите снова",
+        "registration_success": "Регистрация успешно завершена",
+        "profile_updated": "Профиль обновлен",
+        "avatar_updated": "Аватар обновлен",
+        "password_or_otp_required": "Необходимо указать пароль или код",
+        "password_too_weak": "Пароль слишком слабый",
+        "password_updated": "Пароль успешно обновлен",
+        "email_reset_only": "Сброс пароля возможен только по email",
+        "upload_error": "Ошибка загрузки файла",
+        "application_already_exists": "У вас уже есть активная заявка с такими параметрами",
     },
     "kk": {
         "success": "Сәтті",
+        "ok": "ОК",
+        "error": "Қате",
         "client_application_sent": "Өтінім иесіне сәтті жіберілді",
         "car_saved_draft": "Жарнама жобаларға сақталды",
         "car_not_found": "Автокөлік табылмады",
@@ -25,6 +41,9 @@ MESSAGES = {
         "car_deleted": "Автокөлік пен фотосуреттер жойылды",
         "auth_failed": "Логин немесе пароль қате",
         "user_exists": "Мұндай логині бар пайдаланушы бұрыннан бар",
+        "user_exists_phone": "Мұндай телефон нөмірі бар пайдаланушы бұрыннан бар",
+        "user_exists_email": "Мұндай email бар пайдаланушы бұрыннан бар",
+        "user_not_found": "Пайдаланушы табылмады",
         "car_limit_reached": "Сіздің жазылымыңыз үшін автокөлік лимиті таусылды",
         "no_subscription": "Сізде белсенді жазылым жоқ",
         "otp_sent": "Растау коды жіберілді",
@@ -32,9 +51,20 @@ MESSAGES = {
         "otp_expired": "Кодтың жарамдылық мерзімі өтті",
         "login_success": "Сәтті кірдіңіз",
         "invalid_refresh_token": "Сессия мерзімі өтті. Қайта кіріңіз",
+        "registration_success": "Тіркелу сәтті аяқталды",
+        "profile_updated": "Профиль жаңартылды",
+        "avatar_updated": "Аватар жаңартылды",
+        "password_or_otp_required": "Пароль немесе кодты көрсету қажет",
+        "password_too_weak": "Пароль тым әлсіз",
+        "password_updated": "Пароль сәтті жаңартылды",
+        "email_reset_only": "Парольді тек email арқылы қалпына келтіруге болады",
+        "upload_error": "Файлды жүктеу қатесі",
+        "application_already_exists": "Сізде осындай параметрлері бар белсенді өтінім бар",
     },
     "en": {
         "success": "Success",
+        "ok": "OK",
+        "error": "Error",
         "client_application_sent": "Application successfully sent to owner",
         "car_saved_draft": "Ad saved to drafts",
         "car_not_found": "Car not found",
@@ -42,6 +72,9 @@ MESSAGES = {
         "car_deleted": "Car and images deleted",
         "auth_failed": "Incorrect login or password",
         "user_exists": "User with this login already exists",
+        "user_exists_phone": "User with this phone number already exists",
+        "user_exists_email": "User with this email already exists",
+        "user_not_found": "User not found",
         "car_limit_reached": "Car limit reached for your subscription",
         "no_subscription": "No active subscription",
         "otp_sent": "Security code sent",
@@ -49,9 +82,18 @@ MESSAGES = {
         "otp_expired": "Code expired",
         "login_success": "Login successful",
         "invalid_refresh_token": "Session expired. Please log in again",
+        "registration_success": "Registration successfully completed",
+        "profile_updated": "Profile updated",
+        "avatar_updated": "Avatar updated",
+        "password_or_otp_required": "Password or code is required",
+        "password_too_weak": "Password is too weak",
+        "password_updated": "Password successfully updated",
+        "email_reset_only": "Password reset is only possible via email",
+        "upload_error": "File upload error",
+        "application_already_exists": "You already have an active application with these parameters",
     }
 }
 
-def get_message(key: str, lang: str = "ru") -> str:
-    lang_messages = MESSAGES.get(lang, MESSAGES["ru"])
-    return lang_messages.get(key, MESSAGES["ru"].get(key, key))
+def get_message(key: str, lang: str = "kk") -> str:
+    lang_messages = MESSAGES.get(lang, MESSAGES["kk"])
+    return lang_messages.get(key, MESSAGES["kk"].get(key, key))

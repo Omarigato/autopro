@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CarResponse } from "@/types/cars";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface CarMiniCardProps {
     car: CarResponse;
@@ -8,6 +9,7 @@ interface CarMiniCardProps {
 }
 
 export function CarMiniCard({ car, href }: CarMiniCardProps) {
+    const { t } = useTranslation();
     const imageUrl = car.images?.[0]?.url || "https://via.placeholder.com/300x200?text=No+Image";
 
     const content = (
@@ -25,7 +27,7 @@ export function CarMiniCard({ car, href }: CarMiniCardProps) {
                     {car.mark ? `${car.mark} ${car.model || ""}` : car.name}
                 </h4>
                 <div className="text-primary font-bold mt-1">
-                    {car.price_per_day} ₸/день
+                    {car.price_per_day}  {'₸' + t("home.per_day")}
                 </div>
             </div>
         </div>

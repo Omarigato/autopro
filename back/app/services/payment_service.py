@@ -4,7 +4,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app.models.entities import PaymentTransaction, OwnerSubscription
+from app.models import PaymentTransaction, OwnerSubscription
 from app.services.tiptoppay_service import handle_tiptoppay_callback
 from app.core.logger import logger
 

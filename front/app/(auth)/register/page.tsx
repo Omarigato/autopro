@@ -19,26 +19,29 @@ import { apiClient } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-
-const formSchema = z.object({
-  name: z.string().min(2, "Имя должно быть не менее 2 символов"),
-  phone_number: z.string().min(11, "Введите корректный номер телефона"),
-  email: z.string().email("Введите корректный email").optional().or(z.literal("")),
-  password: z.string().min(6, "Пароль должен быть не менее 6 символов").optional().or(z.literal("")),
-  confirmPassword: z.string().optional().or(z.literal("")),
-}).refine((data) => {
-  // Если пароль не введён — ничего не проверяем
-  if (!data.password) return true;
-  return data.password === data.confirmPassword;
-}, {
-  message: "Пароли не совпадают",
-  path: ["confirmPassword"],
-});
+import { useTranslation } from "@/hooks/useTranslation";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 export default function RegisterPage() {
+  const { t, formatMessage } = useTranslation();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const formSchema = z.object({
+    name: z.string().min(2, t("register.name_min")),
+    phone_number: z.string().min(11, t("register.phone_error")),
+    email: z.string().email(t("login.email_error")).optional().or(z.literal("")),
+    password: z.string().min(6, t("register.password_min")).optional().or(z.literal("")),
+    confirmPassword: z.string().optional().or(z.literal("")),
+  }).refine((data) => {
+    // Если пароль не введён — ничего не проверяем
+    if (!data.password) return true;
+    return data.password === data.confirmPassword;
+  }, {
+    message: t("register.passwords_not_match"),
+    path: ["confirmPassword"],
+  });
 
   // Mask logic handled by InputMask comp
   const form = useForm<z.infer<typeof formSchema>>({
@@ -61,15 +64,15 @@ export default function RegisterPage() {
       const res: any = await apiClient.post("/auth/check-exists", payload);
 
       if (field === "email" && res?.email_exists) {
-        form.setError("email", { type: "manual", message: "Этот email уже зарегистрирован" });
-        toast.error("Этот email уже зарегистрирован", { style: { background: 'red', color: 'white' } });
+        form.setError("email", { type: "manual", message: t("register.email_exists") });
+        toast.error(t("register.email_exists"), { style: { background: 'red', color: 'white' } });
       } else if (field === "email") {
         form.clearErrors("email");
       }
 
       if (field === "phone_number" && res?.phone_exists) {
-        form.setError("phone_number", { type: "manual", message: "Этот номер уже зарегистрирован" });
-        toast.error("Этот номер уже зарегистрирован", { style: { background: 'red', color: 'white' } });
+        form.setError("phone_number", { type: "manual", message: t("register.phone_exists") });
+        toast.error(t("register.phone_exists"), { style: { background: 'red', color: 'white' } });
       } else if (field === "phone_number") {
         form.clearErrors("phone_number");
       }
@@ -87,20 +90,11 @@ export default function RegisterPage() {
         password: payload.password || undefined,
       };
       await apiClient.post("/auth/register", normalizedPayload);
-      toast.success("Регистрация успешна! Теперь вы можете войти.");
+      toast.success(t("register.success"));
       router.push("/login");
     } catch (error: any) {
       console.error(error);
-      const rawMsg = error?.response?.data?.message ?? error?.message ?? error?.detail;
-      let msg: string = "Ошибка регистрации";
-      if (typeof rawMsg === "string") {
-        msg = rawMsg;
-      } else if (Array.isArray(rawMsg)) {
-        msg = rawMsg.map((e: any) => e?.msg || JSON.stringify(e)).join("\n");
-      } else if (rawMsg && typeof rawMsg === "object") {
-        msg = (rawMsg.ru || rawMsg.en || rawMsg.msg || JSON.stringify(rawMsg)) as string;
-      }
-
+      const msg = formatMessage(error?.message) || t("register.error");
       toast.error(msg);
       if (msg.includes("телефона")) {
         form.setError("phone_number", { message: msg });
@@ -114,8 +108,8 @@ export default function RegisterPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Создать аккаунт</h1>
-        <p className="text-muted-foreground">Присоединяйтесь к сообществу AutoPro</p>
+        <h1 className="text-3xl font-bold">{t("register.title")}</h1>
+        <p className="text-muted-foreground">{t("register.subtitle")}</p>
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -124,9 +118,9 @@ export default function RegisterPage() {
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Полное имя <span className="text-red-500">*</span></FormLabel>
+                <FormLabel>{t("register.name_label")} <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
-                  <Input placeholder="Иван Иванов" {...field} />
+                  <Input placeholder={t("register.name_placeholder")} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -137,7 +131,7 @@ export default function RegisterPage() {
             name="phone_number"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Телефон <span className="text-red-500">*</span></FormLabel>
+                <FormLabel>{t("register.phone_label")} <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
                   <InputMask
                     mask="+7 (999) 999-99-99"
@@ -166,7 +160,7 @@ export default function RegisterPage() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>{t("register.email_label")}</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="user@example.com"
@@ -185,7 +179,7 @@ export default function RegisterPage() {
             <>
               <div className="pt-2">
                 <p className="text-xs text-muted-foreground">
-                  Если хотите входить по email и паролю, придумайте пароль. Иначе можете входить по SMS‑коду.
+                  {t("register.email_login_note")}
                 </p>
               </div>
               <FormField
@@ -193,7 +187,7 @@ export default function RegisterPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Пароль</FormLabel>
+                    <FormLabel>{t("register.password_label")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
@@ -219,7 +213,7 @@ export default function RegisterPage() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Подтвердите пароль</FormLabel>
+                    <FormLabel>{t("register.confirm_password")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
@@ -243,58 +237,18 @@ export default function RegisterPage() {
             </>
           )}
           <Button type="submit" className="w-full">
-            Зарегистрироваться
+            {t("register.submit")}
           </Button>
         </form>
       </Form>
       <div className="text-center text-sm">
-        Уже есть аккаунт?{" "}
+        {t("register.have_account")}{" "}
         <Link href="/login" className="font-medium text-primary hover:underline">
-          Войти
+          {t("register.login")}
         </Link>
       </div>
     </div >
   );
 }
 
-function EyeIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
 
-function EyeOffIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7c.44 0 .87-.022 1.28-.07" />
-      <line x1="2" x2="22" y1="2" y2="22" />
-    </svg>
-  )
-}

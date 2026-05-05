@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_current_owner
 from app.db.session import get_db
-from app.models.entities import (
+from app.models import (
     OwnerSubscription,
     PaymentTransaction,
     SubscriptionPlan,
@@ -43,7 +43,7 @@ def subscription_check(
     """
     Для страницы добавления объявления: включены ли подписки, первое ли объявление бесплатно, есть ли активная подписка, список планов.
     """
-    from app.models.entities import AppSetting
+    from app.models import AppSetting
 
     setting = db.query(AppSetting).filter(AppSetting.key == "subscriptions_enabled").first()
     subscriptions_enabled = setting and setting.value and setting.value.lower() == "true"

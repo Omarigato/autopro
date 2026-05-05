@@ -1,41 +1,18 @@
-version: '3.8'
-
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: autopro_db
-    restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-autopro}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autopro123}
-      POSTGRES_DB: ${POSTGRES_DB:-autopro}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - POSTGRES_USER=${POSTGRES_USER:-autopro}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-autopro123}
+      - POSTGRES_DB=${POSTGRES_DB:-autopro}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autopro}"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autopro} -d ${POSTGRES_DB:-autopro}"]
+      interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - autopro_network
-
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: autopro_pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@autopro.kz}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    ports:
-      - "5050:80"
-    depends_on:
-      - db
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
     networks:
       - autopro_network
 
@@ -60,6 +37,7 @@ services:
       context: ./front
       args:
         - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
+        - API_BACKEND_URL=http://back:${BACKEND_PORT:-8000}
     container_name: autopro_frontend
     ports:
       - "3000:3000"
@@ -67,20 +45,8 @@ services:
       - .env
     environment:
       - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
+      - API_BACKEND_URL=http://back:8000
     depends_on:
-      - back
-    networks:
-      - autopro_network
-      
-  nginx:
-    image: nginx:alpine
-    container_name: autopro_nginx
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - front
       - back
     networks:
       - autopro_network
@@ -91,6 +57,3 @@ networks:
 
 volumes:
   postgres_data:
-    driver: local
-  pgadmin_data:
-    driver: local

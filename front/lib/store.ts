@@ -9,7 +9,7 @@ interface AppState {
 }
 
 export const useAppState = create<AppState>((set) => ({
-  lang: 'ru',
+  lang: 'kk',
   city: 'Алматы',
   setLang: (lang) => {
     localStorage.setItem('lang', lang);

@@ -14,16 +14,22 @@ from app.core.security import (
     verify_password,
 )
 from app.db.session import get_db
-from app.models.entities import CarOwner, User, OTPVerification, Image, Dictionary
+from app.models import CarOwner, User, OTPVerification, Image, Dictionary
 from app.schemas.auth import OwnerLoginRequest, OwnerRegisterRequest, Token, UserResponse
 from app.core.responses import create_response
 from pydantic import BaseModel, EmailStr
 import re
-
-from app.services.whatsapp_service import whatsapp_service
 from app.services.email_service import email_service
+from app.services.whatsapp_service import whatsapp_service
 
 router = APIRouter()
+
+def normalize_login(login: str) -> str:
+    """Нормализует логин: для телефонов удаляет всё, кроме цифр и плюса."""
+    if login and "@" not in login:
+        # Оставляем только цифры и плюс
+        return re.sub(r"[^\d+]", "", login)
+    return login
 
 def is_password_strong(password: str) -> bool:
     """
@@ -77,10 +83,11 @@ def login(
     Вход по паролю ИЛИ по одноразовому коду (OTP).
     Идентификатором может быть номер телефона или email.
     """
+    login_id = normalize_login(payload.login)
     user = db.query(User).filter(
         or_(
-            User.phone_number == payload.login,
-            User.email == payload.login,
+            User.phone_number == login_id,
+            User.email == login_id,
         )
     ).first()
 
@@ -90,11 +97,15 @@ def login(
     # Вход по OTP
     if payload.otp_code:
         # Проверяем код для указанного идентификатора (телефон или email).
+        # Проверяем как по нормализованному, так и по изначальному вводу,
+        # так как OTP мог быть запрошен в любом из форматов.
         verification = db.query(OTPVerification).filter(
             or_(
+                OTPVerification.target == login_id,
                 OTPVerification.target == payload.login,
-                OTPVerification.target == user.phone_number,
-                OTPVerification.target == user.email,
+                OTPVerification.target == (user.phone_number if user else None),
+                OTPVerification.target == (normalize_login(user.phone_number) if user and user.phone_number else None),
+                OTPVerification.target == (user.email if user else None),
             ),
             OTPVerification.code == payload.otp_code,
             OTPVerification.is_used == False,
@@ -116,7 +127,7 @@ def login(
                 lang=request.state.lang
             )
     else:
-        return create_response(code=400, message="Необходимо указать пароль или код", lang=request.state.lang)
+        return create_response(code=400, message_key="password_or_otp_required", lang=request.state.lang)
 
     access_token = create_access_token(subject=user.id)
     refresh_token = create_refresh_token(subject=user.id)
@@ -137,13 +148,13 @@ def register(
     """
     # Проверяем телефон
     if db.query(User).filter(User.phone_number == payload.phone_number).first():
-        return create_response(code=400, message="Пользователь с таким номером телефона уже существует", lang=request.state.lang)
+        return create_response(code=400, message_key="user_exists_phone", lang=request.state.lang)
 
     # Проверяем email (если указан)
     target_email = payload.email
     if target_email:
         if db.query(User).filter(User.email == target_email).first():
-             return create_response(code=400, message="Пользователь с таким email уже существует", lang=request.state.lang)
+             return create_response(code=400, message_key="user_exists_email", lang=request.state.lang)
     
     # Если клиент хочет пароль (для входа по email) — проверяем сложность.
     password_hash = None
@@ -151,7 +162,7 @@ def register(
         if not is_password_strong(payload.password):
             return create_response(
                 code=400,
-                message="Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол",
+                message_key="password_too_weak",
                 lang=request.state.lang,
             )
         password_hash = get_password_hash(payload.password)
@@ -181,7 +192,7 @@ def register(
     refresh_token = create_refresh_token(subject=new_user.id)
     return create_response(
         data={"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"},
-        message="Регистрация успешно завершена",
+        message_key="registration_success",
         lang=request.state.lang
     )
 
@@ -254,18 +265,19 @@ async def request_otp(
     Отправка одноразового кода (OTP) для входа или восстановления пароля.
     Используется с телефоном или email.
     """
+    target = normalize_login(payload.target)
     user = db.query(User).filter(
         or_(
-            User.phone_number == payload.target,
-            User.email == payload.target,
+            User.phone_number == target,
+            User.email == target,
         )
     ).first()
 
-    # Если это не запрос на обновление профиля и пользователь не найден — ошибка:
-    if not user and payload.type != "update":
+    # Для update профиля пользователь должен существовать
+    if payload.type == "update" and not user:
         return create_response(
             code=404,
-            message="Пользователь с такими данными не найден. Пожалуйста, зарегистрируйтесь.",
+            message_key="user_not_found",
             lang=request.state.lang,
         )
 
@@ -275,7 +287,7 @@ async def request_otp(
     otp_type = payload.type if payload.type else ("login" if user else "register")
 
     verification = OTPVerification(
-        target=payload.target,
+        target=target,
         code=otp,
         type=otp_type,
         expires_at=datetime.utcnow() + timedelta(minutes=5),
@@ -289,7 +301,7 @@ async def request_otp(
         await email_service.send_otp(payload.target, otp)
     else:
         # Отправка в WhatsApp/SMS по номеру телефона
-        phone = user.phone_number or payload.target
+        phone = (user.phone_number if user else None) or target
         await whatsapp_service.send_otp(phone, otp)
 
     print(f"DEBUG: OTP for {payload.target} is {otp}")
@@ -329,7 +341,7 @@ def verify_otp(
     # Let's keep it simple: just return Valid. The 'change-password' or 'login' will consume it.
     
     return create_response(
-        message="Код верен",
+        message_key="ok",
         data={"verified": True, "target": payload.target, "code": payload.otp_code},
         lang=request.state.lang
     )
@@ -361,7 +373,7 @@ def change_password(
     if "@" not in payload.target:
         return create_response(
             code=400,
-            message="Сброс пароля возможен только по email",
+            message_key="email_reset_only",
             lang=request.state.lang,
         )
 
@@ -374,7 +386,7 @@ def change_password(
     if not is_password_strong(payload.password):
         return create_response(
             code=400, 
-            message="Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол", 
+            message_key="password_too_weak", 
             lang=request.state.lang
         )
         
@@ -382,7 +394,7 @@ def change_password(
     verification.is_used = True
     db.commit()
     
-    return create_response(message="Пароль успешно обновлен", lang=request.state.lang)
+    return create_response(message_key="password_updated", lang=request.state.lang)
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user), request: Request = None):
@@ -441,7 +453,7 @@ def update_profile(
         current_user.notify_by_whatsapp = payload.notify_by_whatsapp
 
     db.commit()
-    return create_response(message="Профиль обновлен", lang=request.state.lang)
+    return create_response(message_key="profile_updated", lang=request.state.lang)
 
 
 from fastapi import File, UploadFile
@@ -457,7 +469,7 @@ async def upload_avatar(
     # Upload to Cloudinary
     url, public_id = CloudinaryService.upload_image(file.file, folder="avatars")
     if not url:
-        return create_response(code=500, message="Ошибка загрузки фото", lang=request.state.lang)
+        return create_response(code=500, message_key="upload_error", lang=request.state.lang)
     
     # Remove old avatar if exists (cascade delete-orphan will handle DB side, 
     # but we need to ensure the Image record is replaced)
@@ -477,5 +489,5 @@ async def upload_avatar(
     current_user.avatar_url = url
     
     db.commit()
-    return create_response(data={"url": url}, message="Аватар обновлен", lang=request.state.lang)
+    return create_response(data={"url": url}, message_key="avatar_updated", lang=request.state.lang)
 

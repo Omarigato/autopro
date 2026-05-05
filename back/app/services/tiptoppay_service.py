@@ -6,7 +6,7 @@
 import httpx
 from sqlalchemy.orm import Session
 
-from app.models.entities import PaymentAccount, PaymentTransaction, OwnerSubscription, SubscriptionPlan
+from app.models import PaymentAccount, PaymentTransaction, OwnerSubscription, SubscriptionPlan
 from app.core.logger import logger
 
 
