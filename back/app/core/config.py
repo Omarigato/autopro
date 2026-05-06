@@ -59,7 +59,6 @@ class Settings(BaseSettings):
     KASSA24_MERCHANT_ID: str | None = None
     KASSA24_LOGIN: str | None = None
     KASSA24_PASSWORD: str | None = None
-    KASSA24_SECRET_KEY: str | None = None
     KASSA24_API_URL: str | None = None
     KASSA24_CALLBACK_URL: str | None = None
     KASSA24_RETURN_URL: str | None = None

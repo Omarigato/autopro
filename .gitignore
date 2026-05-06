@@ -37,5 +37,9 @@ back/.pytest_cache/
 back/.coverage
 back/htmlcov/
 
+whatsapp-gateway/node_modules/
+whatsapp-gateway/.wwebjs_auth/
+whatsapp-gateway/.wwebjs_cache/
+
 **/__pycache__/*
 __pycache__/

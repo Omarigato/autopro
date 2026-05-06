@@ -119,49 +119,79 @@ async def buy_subscription(
 
 
 @router.post("/kassa24/callback")
-async def kassa24_callback(request: Request, payload: dict, db: Session = Depends(get_db)):
-    """Webhook от Kassa24. По успешному статусу активируем подписку."""
-    
-    # Логируем
-    logger.info(f"Kassa24 Callback received: {payload}")
-    
-    if not kassa24_service.validate_callback(payload):
-        return {"error": "invalid signature"}
+async def kassa24_callback(request: Request, db: Session = Depends(get_db)):
+    """Webhook от Kassa24. По документации: только с IP 35.157.105.64, статус 1=успех, 0=ошибка, 3=отмена."""
 
-    # Предположим, что Kassa24 присылает orderId (наш внутренний) или transactionId
+    # Проверка IP — коллбэки приходят ТОЛЬКО с 35.157.105.64 (по документации Kassa24)
+    # В DEBUG=true (локальная разработка через localtunnel) — проверка отключена
+    client_ip = request.client.host
+    if not settings.DEBUG and client_ip != "35.157.105.64":
+        logger.warning(f"[KASSA24] Callback rejected: unknown IP {client_ip}")
+        return {"accepted": False}
+
+    payload = await request.json()
+    logger.info(f"[KASSA24] Callback received: {payload}")
+
+    # По документации: orderId — наш внутренний номер заказа
     order_id = payload.get("orderId")
-    status = payload.get("status") # Ищем статус, например "paid" или "success"
+    # status: 1=успех, 0=ошибка, 2=холд (двухэтапный), 3=отмена/возврат
+    status = payload.get("status")
+    # id — номер транзакции в системе Kassa24
+    kassa24_id = str(payload.get("id", ""))
 
     if not order_id:
-        return {"error": "no orderId"}
+        logger.error("[KASSA24] Callback missing orderId")
+        return {"accepted": False}
 
-    transaction = db.query(PaymentTransaction).filter(PaymentTransaction.order_id == str(order_id)).first()
+    transaction = db.query(PaymentTransaction).filter(
+        PaymentTransaction.order_id == str(order_id)
+    ).first()
+
     if not transaction:
-        return {"error": "transaction not found"}
+        logger.error(f"[KASSA24] Transaction not found: orderId={order_id}")
+        return {"accepted": False}
 
-    # Сохраним сырые данные
+    # Сохраняем сырые данные и external_id от Kassa24
     transaction.raw_data = payload
+    if kassa24_id and not transaction.external_id:
+        transaction.external_id = kassa24_id
 
+    # Идемпотентность — если уже обработано, сразу отвечаем
     if transaction.status == "paid":
-        # Уже оплачено, идемпотентность
         db.commit()
         return {"accepted": True}
 
-    # Если статус успешный:
-    if status in ("success", "paid", "PAID"):
+    if status == 1:
+        # Успешная транзакция
         transaction.status = "paid"
         subscription = transaction.subscription
-        if subscription.status != "active":
+        if subscription and subscription.status != "active":
             subscription.status = "active"
             subscription.started_at = datetime.utcnow()
             subscription.valid_until = datetime.utcnow() + timedelta(days=subscription.plan.period_days)
-            # Если есть функция активации
-            # activate_subscription_after_success_payment(db, subscription)
-    elif status in ("failed", "cancelled", "expired", "error"):
+        logger.info(f"[KASSA24] Payment SUCCESS: orderId={order_id}, id={kassa24_id}")
+
+    elif status == 0:
+        # Неуспешная транзакция
+        err = payload.get("errMessage", "")
         transaction.status = "failed"
-        transaction.subscription.status = "failed"
-    
+        if transaction.subscription:
+            transaction.subscription.status = "failed"
+        logger.warning(f"[KASSA24] Payment FAILED: orderId={order_id}, err={err}")
+
+    elif status == 3:
+        # Отмена или возврат
+        transaction.status = "cancelled"
+        if transaction.subscription:
+            transaction.subscription.status = "cancelled"
+        logger.info(f"[KASSA24] Payment CANCELLED: orderId={order_id}")
+
+    else:
+        # Промежуточный статус (холд, обработка и т.д.) — просто сохраняем
+        logger.info(f"[KASSA24] Intermediate status={status}: orderId={order_id}")
+
     db.commit()
+    # По документации обязательно вернуть {"accepted": true}
     return {"accepted": True}
 
 @router.get("/payments/history")

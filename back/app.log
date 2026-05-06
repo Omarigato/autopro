@@ -23,3 +23,69 @@ AttributeError: module 'bcrypt' has no attribute '__about__'
 2026-03-11 11:39:25,043 - autopro - INFO - [EMAIL] Sending to kengesbaeve28@gmail.com | subject=Ваш код подтверждения AutoPro
 2026-03-11 11:42:10,582 - autopro - INFO - [EMAIL] Sending to omarakim2005@gmail.com | subject=Ваш код подтверждения AutoPro
 2026-03-11 11:43:59,811 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8733136965:AAHDoy9vlcQ2b7S7vckc1iBHIdhLA6SRrZY/sendMessage "HTTP/1.1 200 OK"
+2026-05-06 15:28:34,546 - passlib.handlers.bcrypt - DEBUG - detected 'bcrypt' backend, version '3.2.2'
+2026-05-06 15:28:34,548 - passlib.handlers.bcrypt - DEBUG - 'bcrypt' backend lacks $2$ support, enabling workaround
+2026-05-06 15:58:08,369 - autopro - INFO - [WHATSAPP_GATEWAY] Sending to +77056948240: 🔑 *Код подтверждения AutoPro*
+
+Ваш код: *638507*
+
+...
+2026-05-06 15:58:08,371 - httpx - DEBUG - load_ssl_context verify=True cert=None trust_env=True http2=False
+2026-05-06 15:58:08,382 - httpx - DEBUG - load_verify_locations cafile='C:\\Users\\Akim.O\\Documents\\Личные\\autopro\\back\\venv\\Lib\\site-packages\\certifi\\cacert.pem'
+2026-05-06 15:58:18,865 - httpcore.connection - DEBUG - connect_tcp.started host='localhost' port=3001 local_address=None timeout=15 socket_options=None
+2026-05-06 15:58:18,869 - httpcore.connection - DEBUG - connect_tcp.complete return_value=<httpcore._backends.anyio.AnyIOStream object at 0x00000220E93F3B90>
+2026-05-06 15:58:18,870 - httpcore.http11 - DEBUG - send_request_headers.started request=<Request [b'POST']>
+2026-05-06 15:58:18,872 - httpcore.http11 - DEBUG - send_request_headers.complete
+2026-05-06 15:58:18,874 - httpcore.http11 - DEBUG - send_request_body.started request=<Request [b'POST']>
+2026-05-06 15:58:18,875 - httpcore.http11 - DEBUG - send_request_body.complete
+2026-05-06 15:58:18,877 - httpcore.http11 - DEBUG - receive_response_headers.started request=<Request [b'POST']>
+2026-05-06 15:58:21,133 - httpcore.http11 - DEBUG - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Cross-Origin-Opener-Policy', b'same-origin'), (b'Cross-Origin-Resource-Policy', b'same-origin'), (b'Origin-Agent-Cluster', b'?1'), (b'Referrer-Policy', b'no-referrer'), (b'Strict-Transport-Security', b'max-age=15552000; includeSubDomains'), (b'X-Content-Type-Options', b'nosniff'), (b'X-DNS-Prefetch-Control', b'off'), (b'X-Download-Options', b'noopen'), (b'X-Frame-Options', b'SAMEORIGIN'), (b'X-Permitted-Cross-Domain-Policies', b'none'), (b'X-XSS-Protection', b'0'), (b'Access-Control-Allow-Origin', b'*'), (b'RateLimit-Policy', b'20;w=60'), (b'RateLimit-Limit', b'20'), (b'RateLimit-Remaining', b'19'), (b'RateLimit-Reset', b'60'), (b'Content-Type', b'application/json; charset=utf-8'), (b'Content-Length', b'69'), (b'ETag', b'W/"45-4mCAMFMX75JuiG0E3TrkfJE0r2U"'), (b'Date', b'Wed, 06 May 2026 10:58:21 GMT'), (b'Connection', b'keep-alive'), (b'Keep-Alive', b'timeout=5')])
+2026-05-06 15:58:21,135 - httpx - INFO - HTTP Request: POST http://localhost:3001/messages/send "HTTP/1.1 200 OK"
+2026-05-06 15:58:21,136 - httpcore.http11 - DEBUG - receive_response_body.started request=<Request [b'POST']>
+2026-05-06 15:58:21,137 - httpcore.http11 - DEBUG - receive_response_body.complete
+2026-05-06 15:58:21,139 - httpcore.http11 - DEBUG - response_closed.started
+2026-05-06 15:58:21,141 - httpcore.http11 - DEBUG - response_closed.complete
+2026-05-06 15:58:21,143 - httpcore.connection - DEBUG - close.started
+2026-05-06 15:58:21,144 - httpcore.connection - DEBUG - close.complete
+2026-05-06 16:01:35,678 - multipart.multipart - DEBUG - Calling on_part_begin with no data
+2026-05-06 16:01:35,680 - multipart.multipart - DEBUG - Calling on_header_field with data[42:61]
+2026-05-06 16:01:35,681 - multipart.multipart - DEBUG - Calling on_header_value with data[63:143]
+2026-05-06 16:01:35,683 - multipart.multipart - DEBUG - Calling on_header_end with no data
+2026-05-06 16:01:35,684 - multipart.multipart - DEBUG - Calling on_header_field with data[145:157]
+2026-05-06 16:01:35,686 - multipart.multipart - DEBUG - Calling on_header_value with data[159:169]
+2026-05-06 16:01:35,687 - multipart.multipart - DEBUG - Calling on_header_end with no data
+2026-05-06 16:01:35,689 - multipart.multipart - DEBUG - Calling on_headers_finished with no data
+2026-05-06 16:01:35,691 - multipart.multipart - DEBUG - Calling on_part_data with data[173:32768]
+2026-05-06 16:01:35,692 - multipart.multipart - DEBUG - Calling on_part_data with data[0:16384]
+2026-05-06 16:01:35,696 - multipart.multipart - DEBUG - Calling on_part_data with data[0:262144]
+2026-05-06 16:01:35,699 - multipart.multipart - DEBUG - Calling on_part_data with data[0:67584]
+2026-05-06 16:01:35,701 - multipart.multipart - DEBUG - Calling on_part_end with no data
+2026-05-06 16:01:35,702 - multipart.multipart - DEBUG - Calling on_end with no data
+2026-05-06 16:01:36,260 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): api.cloudinary.com:443
+2026-05-06 16:01:48,899 - urllib3.connectionpool - DEBUG - https://api.cloudinary.com:443 "POST /v1_1/drtsxey7d/image/upload HTTP/1.1" 200 None
+2026-05-06 16:02:13,635 - autopro - INFO - [KASSA24] Creating payment: order=ee242981-9561-4ed9-b999-6903ee0065e6, amount=100 KZT
+2026-05-06 16:02:13,636 - httpx - DEBUG - load_ssl_context verify=True cert=None trust_env=True http2=False
+2026-05-06 16:02:13,639 - httpx - DEBUG - load_verify_locations cafile='C:\\Users\\Akim.O\\Documents\\Личные\\autopro\\back\\venv\\Lib\\site-packages\\certifi\\cacert.pem'
+2026-05-06 16:02:25,160 - httpcore.connection - DEBUG - connect_tcp.started host='ecommerce.pult24.kz' port=443 local_address=None timeout=15.0 socket_options=None
+2026-05-06 16:02:25,513 - httpcore.connection - DEBUG - connect_tcp.complete return_value=<httpcore._backends.anyio.AnyIOStream object at 0x00000220E9C80C90>
+2026-05-06 16:02:25,515 - httpcore.connection - DEBUG - start_tls.started ssl_context=<ssl.SSLContext object at 0x00000220E9856CC0> server_hostname='ecommerce.pult24.kz' timeout=15.0
+2026-05-06 16:02:25,623 - httpcore.connection - DEBUG - start_tls.complete return_value=<httpcore._backends.anyio.AnyIOStream object at 0x00000220E9CBD550>
+2026-05-06 16:02:25,625 - httpcore.http11 - DEBUG - send_request_headers.started request=<Request [b'POST']>
+2026-05-06 16:02:25,627 - httpcore.http11 - DEBUG - send_request_headers.complete
+2026-05-06 16:02:25,628 - httpcore.http11 - DEBUG - send_request_body.started request=<Request [b'POST']>
+2026-05-06 16:02:25,630 - httpcore.http11 - DEBUG - send_request_body.complete
+2026-05-06 16:02:25,631 - httpcore.http11 - DEBUG - receive_response_headers.started request=<Request [b'POST']>
+2026-05-06 16:02:25,770 - httpcore.http11 - DEBUG - receive_response_headers.complete return_value=(b'HTTP/1.1', 401, b'Unauthorized', [(b'Date', b'Wed, 06 May 2026 11:02:25 GMT'), (b'Content-Type', b'text/plain; charset=utf-8'), (b'Content-Length', b'35'), (b'Connection', b'keep-alive'), (b'x-amzn-RequestId', b'797eb9db-07e6-4782-aad9-8eca804f9aa4'), (b'Referrer-Policy', b'no-referrer-when-downgrade'), (b'X-Xss-Protection', b'1; mode=block'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'X-Frame-Options', b'SAMEORIGIN'), (b'Content-Security-Policy', b"default-src 'self' https:; img-src 'self' https://s3.eu-central-1.amazonaws.com/pult.ecommerce.kz/ data: blob: https://www.gstatic.com/; object-src 'none'; script-src 'self' 'unsafe-eval' 'unsafe-inline'  https://s3.eu-central-1.amazonaws.com/pult.ecommerce.kz/ https://www.gstatic.com/ https://google.com https://www.google.com/ https://pay.google.com https://mc.yandex.ru https://www.googletagmanager.com https://www.facebook.com/pay; style-src 'self' 'unsafe-eval' 'unsafe-inline'  https://s3.eu-central-1.amazonaws.com/pult.ecommerce.kz/ https://fonts.googleapis.com https://www.google.com/ https://www.gstatic.com/ https://pay.google.com https://cdn.jsdelivr.net https://api.amplitude.com https://www.facebook.com/pay; base-uri 'self'; connect-src 'self'  https://s3.eu-central-1.amazonaws.com/pult.ecommerce.kz/ https://sentry.kassa24.dev https://cdn.jsdelivr.net https://fonts.gstatic.com https://fonts.googleapis.com https://www.gstatic.com/ https://www.google.com/ https://google.com https://firebase.googleapis.com https://api.amplitude.com https://pay.google.com https://mc.yandex.ru https://www.google-analytics.com https://chart.googleapis.com https://firebaseinstallations.googleapis.com https://qr.prod.tech24.kz https://qr.kassa24.dev https://www.facebook.com/pay https://api2.amplitude.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com https://www.gstatic.com/ https://pay.google.com https://cdn.jsdelivr.net  https://s3.eu-central-1.amazonaws.com/pult.ecommerce.kz/; frame-ancestors 'self' https: ;"), (b'x-amz-apigw-id', b'c8HmVHVQFiAEWOg='), (b'X-Content-Type-Options', b'nosniff'), (b'X-Amzn-Trace-Id', b'Root=1-69fb1fc1-0dd62a194f8861467dd95de6;Parent=21e7000e69ce854c;Sampled=0;Lineage=1:573ad1ba:0'), (b'Permissions-Policy', b'camera=(), microphone=(), geolocation=()')])
+2026-05-06 16:02:25,773 - httpx - INFO - HTTP Request: POST https://ecommerce.pult24.kz/payment/create "HTTP/1.1 401 Unauthorized"
+2026-05-06 16:02:25,774 - httpcore.http11 - DEBUG - receive_response_body.started request=<Request [b'POST']>
+2026-05-06 16:02:25,776 - httpcore.http11 - DEBUG - receive_response_body.complete
+2026-05-06 16:02:25,777 - httpcore.http11 - DEBUG - response_closed.started
+2026-05-06 16:02:25,779 - httpcore.http11 - DEBUG - response_closed.complete
+2026-05-06 16:02:25,781 - httpcore.connection - DEBUG - close.started
+2026-05-06 16:02:25,783 - httpcore.connection - DEBUG - close.complete
+2026-05-06 16:02:25,784 - autopro - ERROR - [KASSA24] HTTP error on create_payment: Client error '401 Unauthorized' for url 'https://ecommerce.pult24.kz/payment/create'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+2026-05-06 16:05:51,219 - autopro - INFO - [KASSA24] Creating payment: order=8ae25245-2990-4873-9d26-bdaff6df72cf, amount=100 KZT
+2026-05-06 16:06:02,372 - httpx - INFO - HTTP Request: POST https://ecommerce.pult24.kz/payment/create "HTTP/1.1 401 Unauthorized"
+2026-05-06 16:06:02,375 - autopro - ERROR - [KASSA24] HTTP error on create_payment: Client error '401 Unauthorized' for url 'https://ecommerce.pult24.kz/payment/create'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
