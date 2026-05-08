@@ -1,21 +1,4 @@
- services:
-  db:
-    image: postgres:16-alpine
-    container_name: autopro_db
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER:-autopro}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-autopro123}
-      - POSTGRES_DB=${POSTGRES_DB:-autopro}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autopro} -d ${POSTGRES_DB:-autopro}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - autopro_network
-
+services:
   back:
     build: ./back
     container_name: autopro_backend
@@ -24,14 +7,8 @@
     env_file:
       - .env
     environment:
-      - SQLALCHEMY_DATABASE_URI=postgresql://${POSTGRES_USER:-autopro}:${POSTGRES_PASSWORD:-autopro123}@db:5432/${POSTGRES_DB:-autopro}
       - WHATSAPP_GATEWAY_URL=http://whatsapp-gateway:3001
     command: sh -c "python -m app.init_db && uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000}"
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - autopro_network
 
   front:
     build:
@@ -49,8 +26,6 @@
       - API_BACKEND_URL=http://back:${BACKEND_PORT:-8000}
     depends_on:
       - back
-    networks:
-      - autopro_network
 
   whatsapp-gateway:
     build: ./whatsapp-gateway
@@ -65,13 +40,6 @@
       - SESSION_SECRET=${SESSION_SECRET:-super_secret}
     volumes:
       - whatsapp_sessions:/app/.wwebjs_auth
-    networks:
-      - autopro_network
-
-networks:
-  autopro_network:
-    driver: bridge
 
 volumes:
-  postgres_data:
   whatsapp_sessions:
