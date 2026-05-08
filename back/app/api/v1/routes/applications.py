@@ -178,10 +178,11 @@ async def create_application(
         )
         subject_email = "🔔 Новая заявка на автомобиль (AutoPro)"
         
+        owner_has_sub = get_active_subscription_for_owner(db, owner.id) is not None
         if getattr(owner, 'notify_by_email', True) and owner.email:
             action_url = f"{settings.FRONTEND_BASE_URL}/applications"
             background_tasks.add_task(email_service.send_notification, email=owner.email, subject=subject_email, text=text_email, action_url=action_url)
-        if getattr(owner, 'notify_by_whatsapp', True) and owner.phone_number:
+        if owner_has_sub and getattr(owner, 'notify_by_whatsapp', True) and owner.phone_number:
             background_tasks.add_task(whatsapp_service.send_notification, phone_number=owner.phone_number, text=text_whatsapp)
 
     lang = getattr(request.state, "lang", "ru")

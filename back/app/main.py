@@ -22,10 +22,13 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
+    # wildcard "*" несовместим с allow_credentials=True (стандарт CORS)
+    _origins = settings.CORS_ORIGINS
+    _credentials = "*" not in _origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
+        allow_origins=_origins,
+        allow_credentials=_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

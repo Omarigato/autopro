@@ -1,6 +1,10 @@
 # General
 .DS_Store
 Thumbs.db
+app.log
+*.log
+node_modules/
+tsconfig.tsbuildinfo
 
 # VS Code
 .vscode/
@@ -32,6 +36,10 @@ back/.env
 back/.pytest_cache/
 back/.coverage
 back/htmlcov/
+
+whatsapp-gateway/node_modules/
+whatsapp-gateway/.wwebjs_auth/
+whatsapp-gateway/.wwebjs_cache/
 
 **/__pycache__/*
 __pycache__/

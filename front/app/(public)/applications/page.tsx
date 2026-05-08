@@ -13,10 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowLeft, FileText, Inbox, List, Upload, X, ChevronDown, ChevronUp, Eye, Star, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft, FileText, Inbox, List, Upload, X, ChevronDown, ChevronUp, Eye, Star } from "lucide-react";
 import { toast } from "sonner";
 import { getCachedDictionaries } from "@/lib/dictionaries";
-import { DictionarySelect } from "@/components/shared/DictionarySelect";
 
 const MAX_MESSAGE_LENGTH = 1000;
 
@@ -316,45 +315,63 @@ function ProfileRequestsContent() {
                 <form onSubmit={handleCreateApplication} className="space-y-4 pt-4 border-t border-slate-100 mt-4 animate-in fade-in slide-in-from-top-4 duration-300">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <DictionarySelect
-                        type="CITY"
-                        label="Город"
-                        value={formData.city_id ? String(formData.city_id) : ""}
-                        onChange={(v) => setFormData((p) => ({ ...p, city_id: v ? Number(v) : null }))}
-                        placeholder="Выберите город"
-                        required
-                      />
+                      <Label className="text-sm">Город</Label>
+                      <Select
+                        value={formData.city_id != null ? String(formData.city_id) : ""}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, city_id: v ? Number(v) : null }))}
+                      >
+                        <SelectTrigger className="h-11 sm:h-12 rounded-xl"><SelectValue placeholder="Город" /></SelectTrigger>
+                        <SelectContent>
+                          {cities.map((c: any) => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
-                      <DictionarySelect
-                        type="CATEGORY"
-                        label="Категория"
-                        value={formData.category_id ? String(formData.category_id) : ""}
-                        onChange={(v) => setFormData((p) => ({ ...p, category_id: v ? Number(v) : null }))}
-                        placeholder="Любая"
-                      />
+                      <Label className="text-sm">Категория</Label>
+                      <Select
+                        value={formData.category_id != null ? String(formData.category_id) : ""}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, category_id: v ? Number(v) : null }))}
+                      >
+                        <SelectTrigger className="h-11 sm:h-12 rounded-xl"><SelectValue placeholder="Любая" /></SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c: any) => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <DictionarySelect
-                        type="MARKA"
-                        label="Марка"
-                        value={formData.vehicle_mark_id ? String(formData.vehicle_mark_id) : ""}
-                        onChange={(v) => setFormData((p) => ({ ...p, vehicle_mark_id: v ? Number(v) : null, vehicle_model_id: null }))}
-                        placeholder="Любая"
-                      />
+                      <Label className="text-sm">Марка</Label>
+                      <Select
+                        value={formData.vehicle_mark_id != null ? String(formData.vehicle_mark_id) : ""}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, vehicle_mark_id: v ? Number(v) : null, vehicle_model_id: null }))}
+                      >
+                        <SelectTrigger className="h-11 sm:h-12 rounded-xl"><SelectValue placeholder="Не выбрано" /></SelectTrigger>
+                        <SelectContent>
+                          {marks.map((m: any) => (
+                            <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
-                      <DictionarySelect
-                        type="MODEL"
-                        parentId={formData.vehicle_mark_id || undefined}
-                        label="Модель"
-                        value={formData.vehicle_model_id ? String(formData.vehicle_model_id) : ""}
-                        onChange={(v) => setFormData((p) => ({ ...p, vehicle_model_id: v ? Number(v) : null }))}
-                        placeholder="Любая"
+                      <Label className="text-sm">Модель</Label>
+                      <Select
+                        value={formData.vehicle_model_id != null ? String(formData.vehicle_model_id) : ""}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, vehicle_model_id: v ? Number(v) : null }))}
                         disabled={!formData.vehicle_mark_id}
-                      />
+                      >
+                        <SelectTrigger className="h-11 sm:h-12 rounded-xl"><SelectValue placeholder="Не выбрано" /></SelectTrigger>
+                        <SelectContent>
+                          {models.map((m: any) => (
+                            <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -431,7 +448,6 @@ function ProfileRequestsContent() {
                               {app.status === "ACTIVE" ? "Активна" : app.status === "COMPLETED" ? "Завершена" : "Отклонена"}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-500 font-medium">{app.city_name ?? "—"}</p>
                           <p className="text-xs text-slate-500 font-medium">{app.requested_at ? new Date(app.requested_at).toLocaleString("ru") : "—"}</p>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -488,52 +504,25 @@ function ProfileRequestsContent() {
                               <h3 className="font-bold text-slate-800 text-sm sm:text-base">Список объявлений ({app.matching_cars_count ?? 0})</h3>
                               <Button variant="outline" size="sm" className="rounded-xl text-xs h-9 w-full sm:w-auto shrink-0 touch-manipulation" disabled={app.status === 'REJECTED'} onClick={() => loadMy()}>Обновить</Button>
                             </div>
-                            <div className="space-y-3 sm:space-y-4 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+                            <div className="space-y-2 sm:space-y-3 overflow-y-auto max-h-56 sm:max-h-64 pr-2">
                               {app.matching_cars && app.matching_cars.length > 0 ? (
                                 app.matching_cars.map((car: any) => (
-                                  <div key={car.id} className="bg-white p-4 rounded-2xl border border-slate-100 hover:border-slate-300 transition-all shadow-sm hover:shadow-md">
-                                    <Link href={`/cars/${car.id}`} className="flex items-center gap-3 sm:gap-4 mb-3 touch-manipulation group">
-                                      {car.images?.[0]?.url ? (
-                                        <img src={car.images[0].url} className="w-16 h-16 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform" alt="" />
-                                      ) : (
-                                        <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                                          <FileText className="text-slate-300 w-6 h-6" />
-                                        </div>
-                                      )}
-                                      <div className="min-w-0 flex-1">
-                                        <p className="font-bold text-slate-800 text-sm sm:text-base truncate group-hover:text-primary transition-colors">{car.name}</p>
-                                        <p className="text-primary font-black text-xs sm:text-sm mt-0.5">{car.price_per_day?.toLocaleString()} ₸/сут</p>
+                                  <Link key={car.id} href={`/cars/${car.id}`} className="flex items-center gap-3 sm:gap-4 bg-white p-3 rounded-xl sm:rounded-2xl border border-slate-100 hover:border-slate-300 transition-colors shadow-sm touch-manipulation">
+                                    {car.images?.[0]?.url ? (
+                                      <img src={car.images[0].url} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover shrink-0" alt="" />
+                                    ) : (
+                                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                                        <FileText className="text-slate-300 w-5 h-5 sm:w-6 sm:h-6" />
                                       </div>
-                                    </Link>
-
-                                    <div className="pt-3 border-t border-slate-50 flex flex-col sm:flex-row gap-2">
-                                      {car.author_phone ? (
-                                        <>
-                                          <Button asChild size="sm" className="bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl h-10 font-bold flex-1 touch-manipulation">
-                                            <a href={`https://wa.me/${car.author_phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
-                                              <MessageCircle className="h-4 w-4" /> WhatsApp
-                                            </a>
-                                          </Button>
-                                          <Button asChild variant="outline" size="sm" className="rounded-xl h-10 font-bold border-slate-200 hover:bg-slate-50 hover:border-slate-300 flex-1 touch-manipulation">
-                                            <a href={`tel:${car.author_phone}`} className="flex items-center justify-center gap-2">
-                                              <Phone className="h-4 w-4 text-slate-400" /> {car.author_phone}
-                                            </a>
-                                          </Button>
-                                        </>
-                                      ) : (
-                                        <p className="text-[10px] text-slate-400 font-medium italic py-2">Контакты не указаны</p>
-                                      )}
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-bold text-slate-800 text-sm truncate">{car.name}</p>
+                                      {car.price_per_day != null && <p className="text-indigo-600 font-black text-xs mt-0.5">{car.price_per_day.toLocaleString()} ₸/сут</p>}
                                     </div>
-                                  </div>
+                                  </Link>
                                 ))
                               ) : (
-                                <div className="text-center py-8 bg-white rounded-3xl border border-dashed border-slate-200 flex flex-col items-center">
-                                  <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                                    <Inbox className="h-6 w-6 text-slate-300" />
-                                  </div>
-                                  <p className="text-sm font-bold text-slate-800">Нет подходящих вариантов</p>
-                                  <p className="text-xs text-slate-500 mt-1">Ожидайте, скоро владельцы увидят вашу заявку</p>
-                                </div>
+                                <p className="text-sm text-slate-500 text-center py-4 bg-white rounded-xl sm:rounded-2xl border border-slate-100">Нет подходящих вариантов</p>
                               )}
                             </div>
                           </div>
@@ -579,35 +568,18 @@ function ProfileRequestsContent() {
                     <div>
                       <h3 className="font-bold text-slate-800 text-sm sm:text-base mb-4">Контакты клиента</h3>
                       {app.applicant_contact ? (
-                        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm mb-4">
-                          <p className="font-black text-lg sm:text-xl text-slate-900 truncate mb-1">{app.applicant_contact.name}</p>
-                          {app.applicant_contact.email && <p className="text-slate-400 text-xs mb-4 truncate">{app.applicant_contact.email}</p>}
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-                            {app.applicant_contact.phone_number && (
-                              <>
-                                <Button asChild size="lg" className="bg-[#25D366] hover:bg-[#128C7E] text-white rounded-2xl h-12 font-bold touch-manipulation shadow-md shadow-green-500/20">
-                                  <a href={`https://wa.me/${app.applicant_contact.phone_number.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
-                                    <MessageCircle className="h-5 w-5" /> WhatsApp
-                                  </a>
-                                </Button>
-                                <Button asChild variant="outline" size="lg" className="rounded-2xl h-12 font-bold border-slate-200 hover:bg-slate-50 transition-all touch-manipulation">
-                                  <a href={`tel:${app.applicant_contact.phone_number}`} className="flex items-center justify-center gap-2">
-                                    <Phone className="h-5 w-5 text-slate-400" /> Позвонить
-                                  </a>
-                                </Button>
-                              </>
-                            )}
-                          </div>
+                        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-4">
+                          <p className="font-bold text-base sm:text-lg text-slate-900 truncate">{app.applicant_contact.name}</p>
+                          {app.applicant_contact.phone_number && (
+                            <a href={`tel:${app.applicant_contact.phone_number}`} className="block text-indigo-600 font-bold mt-2 text-sm touch-manipulation">{app.applicant_contact.phone_number}</a>
+                          )}
+                          {app.applicant_contact.email && <p className="text-slate-500 text-sm mt-1 truncate">{app.applicant_contact.email}</p>}
                         </div>
                       ) : subscriptionsEnabled ? (
-                        <div className="bg-slate-800 text-white p-6 rounded-3xl mb-6 shadow-xl relative overflow-hidden group">
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-150 transition-transform duration-700" />
-                          <p className="text-sm font-bold mb-4 relative z-10">Чтобы увидеть контакты клиента и договориться об аренде, подключите подписку</p>
-                          <Link href="/subscriptions" className="relative z-10 block">
-                            <Button className="w-full bg-primary hover:bg-primary/90 text-white font-black rounded-2xl h-12 shadow-lg shadow-primary/30 transition-all active:scale-[0.98]">
-                              Выбрать тариф
-                            </Button>
+                        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 mb-4 flex flex-col items-center text-center">
+                          <p className="text-sm text-amber-800 font-bold mb-2">Для просмотра контактов заявителя необходима активная подписка</p>
+                          <Link href="/subscriptions" className="w-full sm:w-auto">
+                            <Button size="sm" className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 font-bold text-white shadow-md rounded-xl touch-manipulation">Ознакомиться с тарифами</Button>
                           </Link>
                         </div>
                       ) : null}

@@ -6,8 +6,12 @@ from app.core.security import get_password_hash
 from app.services.dictionary_service import dictionary_service
 from app.models import AppSetting, Dictionary, User
 
+from app.core.config import settings
+
 def init_db(recreate: bool = False) -> None:
     if recreate:
+        if settings.ENVIRONMENT == "production":
+            raise ValueError("Dropping tables is strictly forbidden in production!")
         print("Dropping all tables...")
         Base.metadata.drop_all(bind=engine)
     
@@ -35,6 +39,25 @@ def init_db(recreate: bool = False) -> None:
         if not db.query(AppSetting).filter(AppSetting.key == "subscriptions_enabled").first():
             db.add(AppSetting(key="subscriptions_enabled", value="true"))
             db.commit()
+
+        # 3. Тестовые тарифы
+        plans_data = [
+            {"code": "TEST_100", "name": "Тариф 100 ₸", "price_kzt": 100, "period_days": 30, "free_days": 0, "is_active": True},
+            {"code": "TEST_150", "name": "Тариф 150 ₸", "price_kzt": 150, "period_days": 30, "free_days": 0, "is_active": True},
+            {"code": "TEST_200", "name": "Тариф 200 ₸", "price_kzt": 200, "period_days": 30, "free_days": 0, "is_active": True},
+        ]
+        for p_data in plans_data:
+            existing_plan = db.query(models.SubscriptionPlan).filter(models.SubscriptionPlan.code == p_data["code"]).first()
+            if existing_plan:
+                existing_plan.price_kzt = p_data["price_kzt"]
+                existing_plan.name = p_data["name"]
+                existing_plan.period_days = p_data["period_days"]
+                existing_plan.free_days = p_data["free_days"]
+                existing_plan.is_active = p_data["is_active"]
+            else:
+                new_plan = models.SubscriptionPlan(**p_data)
+                db.add(new_plan)
+        db.commit()
 
         # 3. Синхронизация (defaults)
         print("Syncing defaults...")

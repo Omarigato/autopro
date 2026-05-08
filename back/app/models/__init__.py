@@ -3,7 +3,7 @@ from .car import Car, Image, UserLike, Review
 from .dictionary import Dictionary, DictionaryTranslation
 from .application import Application, ApplicationCar, ApplicationSelectedCar
 from .payment import PaymentAccount, SubscriptionPlan, OwnerSubscription, PaymentTransaction
-from .system import UserEvent, AppSetting, OTPVerification
+from .system import UserEvent, AppSetting, OTPVerification, NotificationLog
 
 __all__ = [
     "User",
@@ -24,4 +24,5 @@ __all__ = [
     "UserEvent",
     "AppSetting",
     "OTPVerification",
+    "NotificationLog",
 ]
