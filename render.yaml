@@ -23,7 +23,7 @@ services:
       - key: SQLALCHEMY_DATABASE_URI
         sync: false
       - key: CORS_ORIGINS
-        value: "https://autopro.kz,https://www.autopro.kz"
+        value: "*"
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

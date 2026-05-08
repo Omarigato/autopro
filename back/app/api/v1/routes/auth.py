@@ -304,7 +304,7 @@ async def request_otp(
         phone = (user.phone_number if user else None) or target
         await whatsapp_service.send_otp(phone, otp)
 
-    print(f"DEBUG: OTP for {payload.target} is {otp}")
+    # print(f"DEBUG: OTP for {payload.target} is {otp}")
 
     return create_response(
         message_key="otp_sent",

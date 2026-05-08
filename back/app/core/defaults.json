@@ -83,17 +83,25 @@
     ],
     "subscription_plans": [
         {
-            "code": "FREE",
-            "name": "Free Plan",
-            "price_kzt": 0,
+            "code": "START",
+            "name": "Start Plan",
+            "price_kzt": 100,
             "period_days": 30,
             "max_cars": 1,
             "description": "Базовый план для одного автомобиля"
         },
         {
+            "code": "PRO",
+            "name": "Pro Plan",
+            "price_kzt": 200,
+            "period_days": 30,
+            "max_cars": 5,
+            "description": "Продвинутый план до 5 автомобилей"
+        },
+        {
             "code": "PREMIUM",
             "name": "Premium Plan",
-            "price_kzt": 5000,
+            "price_kzt": 500,
             "period_days": 30,
             "max_cars": null,
             "description": "Безлимитный план с приоритетным размещением"
