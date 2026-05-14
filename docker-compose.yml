@@ -30,6 +30,7 @@ services:
   whatsapp-gateway:
     build: ./whatsapp-gateway
     container_name: autopro_whatsapp_gateway
+    restart: always
     ports:
       - "3001:3001"
     environment:
@@ -39,7 +40,4 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
       - SESSION_SECRET=${SESSION_SECRET:-super_secret}
     volumes:
-      - whatsapp_sessions:/app/.wwebjs_auth
-
-volumes:
-  whatsapp_sessions:
+      - ./wwebjs_auth:/app/.wwebjs_auth
