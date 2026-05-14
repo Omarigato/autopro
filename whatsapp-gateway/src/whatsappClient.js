@@ -138,14 +138,16 @@ async function getQrCodeHtml() {
         return `
             <html>
             <head>
-                <meta http-equiv="refresh" content="60">
                 <meta charset="utf-8">
                 <title>AutoPro Gateway - Подключение</title>
                 <style>
                     body { font-family: sans-serif; text-align: center; margin-top: 50px; background:#f8fafc; }
-                    img { width: 300px; height: 300px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1); }
+                    #qr-img { width: 300px; height: 300px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1); }
                     .instructions { max-width: 500px; margin: 0 auto 20px; line-height: 1.8; font-size: 16px; text-align: left; background:white; padding:20px; border-radius:16px; }
                     h1 { font-size: 28px; }
+                    .refresh-btn { margin-top: 16px; padding: 10px 28px; background:#0f172a; color:white; border:none; border-radius:10px; font-size:15px; font-weight:bold; cursor:pointer; }
+                    .refresh-btn:hover { background:#1e293b; }
+                    #hint { color:#94a3b8; font-size:13px; margin-top:12px; }
                 </style>
             </head>
             <body>
@@ -155,8 +157,10 @@ async function getQrCodeHtml() {
                     <p><b>2.</b> Зайдите в <b>Настройки → Связанные устройства</b>.</p>
                     <p><b>3.</b> Нажмите <b>Привязать устройство</b> и отсканируйте QR-код.</p>
                 </div>
-                <img src="${qrImage}" alt="QR Code" />
-                <p style="color:#94a3b8;font-size:13px;margin-top:20px;">Страница обновляется автоматически каждые 60 секунд</p>
+                <img id="qr-img" src="${qrImage}" alt="QR Code" />
+                <br>
+                <button class="refresh-btn" onclick="location.reload()">🔄 Обновить QR</button>
+                <p id="hint">QR не обновляется автоматически — нажмите кнопку если истёк</p>
             </body>
             </html>
         `;
