@@ -15,12 +15,18 @@ export default function HomePage() {
   const cars = data?.items || [];
 
   const [currentImage, setCurrentImage] = useState(0);
-  const heroImages = ["/car.png", "/car-2.png", "/car-3.png", "/car-4.png"];
+  const heroImages = [
+    { src: "/car.png", className: "scale-[1.64]" },
+    { src: "/car-2.png", className: "scale-[1.00]" },
+    { src: "/car-3.png", className: "scale-[1.08]" },
+    { src: "/car-4.png", className: "scale-[1.02]" },
+    { src: "/car-5.png", className: "scale-[1.12]" },
+  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentImage((prev) => (prev + 1) % heroImages.length);
-    }, 4000); // 4 seconds
+    }, 5000); // 5 seconds
     return () => clearInterval(timer);
   }, []);
 
@@ -48,20 +54,23 @@ export default function HomePage() {
           {/* Мобильная: 2. Машина | Десктоп: правая колонка на всю высоту */}
           <div className="relative w-full h-[250px] sm:h-[300px] lg:h-[400px] flex items-center justify-center order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[70%] bg-zinc-400/10 rounded-full blur-[100px] pointer-events-none" />
-            {heroImages.map((src, idx) => (
-              <Image
-                key={src}
-                src={src}
-                alt="Premium Car Rental"
-                fill
-                className={`object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.8)] z-10 transition-all duration-1000 ease-in-out lg:translate-x-2 lg:translate-y-[8%] ${
-                  idx === currentImage 
-                    ? 'opacity-100 scale-110 lg:scale-[1.45]' 
-                    : 'opacity-0 scale-95 lg:scale-[1.30]'
-                }`}
-                priority={idx === 0}
-                sizes="(max-width: 1024px) 100vw, 50vw"
-              />
+            {heroImages.map((item, idx) => (
+              <div
+                key={item.src}
+                className={`absolute inset-0 transition-all duration-1000 ease-in-out ${idx === currentImage
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
+                  }`}
+              >
+                <Image
+                  src={item.src}
+                  alt={item.src}
+                  fill
+                  priority={idx === 0}
+                  sizes="(max-width: 1024px) 100vw, 55vw"
+                  className={`object-contain drop-shadow-[0_35px_45px_rgba(0,0,0,0.75)] transition-transform duration-1000 ${item.className}`}
+                />
+              </div>
             ))}
           </div>
 

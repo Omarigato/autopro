@@ -138,7 +138,7 @@ async function getQrCodeHtml() {
         return `
             <html>
             <head>
-                <meta http-equiv="refresh" content="5">
+                <meta http-equiv="refresh" content="60">
                 <meta charset="utf-8">
                 <title>AutoPro Gateway - Подключение</title>
                 <style>
@@ -156,7 +156,7 @@ async function getQrCodeHtml() {
                     <p><b>3.</b> Нажмите <b>Привязать устройство</b> и отсканируйте QR-код.</p>
                 </div>
                 <img src="${qrImage}" alt="QR Code" />
-                <p style="color:#94a3b8;font-size:13px;margin-top:20px;">Страница обновляется автоматически каждые 5 секунд</p>
+                <p style="color:#94a3b8;font-size:13px;margin-top:20px;">Страница обновляется автоматически каждые 60 секунд</p>
             </body>
             </html>
         `;
